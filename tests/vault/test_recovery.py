@@ -20,7 +20,7 @@ def test_reindex_after_index_loss(tmp_path):
         {
             "name": "小明",
             "attributes": {
-                "disability": "visual",
+                "disabilities": ["visual"],
                 "severity": "mild",
                 "cognitive_level": "primary_low",
             },
@@ -30,7 +30,7 @@ def test_reindex_after_index_loss(tmp_path):
 
     reopened = Vault(data_dir=tmp_path).collection("students")
     reopened.reindex()
-    items, total = reopened.list({"attributes.disability": "visual"})
+    items, total = reopened.list({"attributes.disabilities": "visual"})
     assert total == 1
     assert items[0]["name"] == "小明"
 

@@ -124,12 +124,8 @@ student_types:
             └─ 评分标准 Rubric
 ```
 
-- **维度**：顶层分类，采用申报书的**四维评价体系**——知识掌握、课堂参与、行为改善、身心康复，再叠加**障碍特异维度**。
-- **指标**：维度下的可评价能力项，随障碍类型不同：
-  - 视障：听觉理解、盲文识字、定向行走、听触觉注意
-  - 听障：口语/手语表达、书面表达、视觉注意
-  - 智障：生活自理、指令理解、步骤执行
-  - 自闭：社交互动、情绪调节、刻板行为改善
+- **维度（当前阶段）**：因课题研究方向尚未确定，暂不启用各障碍类型的专有指标，统一使用**两个公共维度**——课堂参与、练习质量。
+- **指标（公共）**：所有学生共用两项公共标准——**上课参与度**（课堂参与维度）、**练习完成质量**（练习质量维度）。后续课题确定后再按障碍类型扩展专有维度与指标。
 - **观测点**：指标的可观测行为，是数据采集的落点，明确"看什么、记什么"。
 - **评分标准（Rubric）**：等级描述（如 未达成/初步/基本/熟练 四级）+ 观测证据要求，保证不同教师评价口径一致。
 
@@ -162,10 +158,8 @@ student_types:
 
 | 指标 | 观测点 | 证据来源 | 方式 |
 |---|---|---|---|
-| 知识掌握 | 10 以内加减法正确率 | `item_response` | 量化（自动） |
-| 课堂参与 | 主动举手/回应次数 | `classroom_observation` / `video_event` | 量化 |
-| 行为改善 | 刻板行为持续时间 | `classroom_observation` + `video_event` | 量化 + 质性 |
-| 身心康复 | 听到名字转头 | `rehab_record` | 质性 |
+| 上课参与度 | 课堂参与程度 | `classroom_observation` / `teacher_rating` | 质性 |
+| 练习完成质量 | 练习完成质量 | `work_sample` / `item_response` / `teacher_rating` | 量化 |
 
 ### 6.2 是否使用大模型（LLM）
 
@@ -178,19 +172,18 @@ student_types:
 
 结论：本模块主体**规则驱动、无 LLM**，保证可解释、可复现、零推理成本；LLM 仅用于边界处的自然语言抽取与质性数据辅助分析，且遵循"AI 建议 + 教师确认"。
 
-## 七、框架生成引擎（个性化）
+## 七、框架生成引擎
 
 ```
 输入 StudentEvaluationProfile
       │
-      ├─ 按 student_type.tags 选取适用维度与指标
-      ├─ 按 severity 裁剪指标数量/难度（越重越细化、等级越少）
-      ├─ 按 rehab_goals 对相关指标加权
-      ├─ 按 cognitive_level 调整观测点表述
-      └─ 输出 个性化评价框架（指标清单 + 权重 + 观测频率 + 评分方式）
+      ├─ 载入公共指标模板（上课参与度、练习完成质量）
+      ├─ 按 rehab_goals 对相关维度加权
+      ├─ 按 severity 提升观测频率并压缩评分等级
+      └─ 输出 公共评价框架（指标清单 + 权重 + 观测频率 + 评分方式）
 ```
 
-评价方式同时支持**量化**（计数/时长/得分）与**质性**（观察描述/等级），对应课题"量化与质性结合法"。观测频率可按每课/每周/每阶段配置。`severity=severe` 时，指标会被拆得更细、等级从四级降到三级，避免评价压力过大。
+评价方式同时支持**量化**（计数/时长/得分）与**质性**（观察描述/等级），对应课题"量化与质性结合法"。观测频率可按每课/每周/每阶段配置。`severity=severe` 时观测频率提升为每课、评分等级从四级降到三级，避免评价压力过大。
 
 ## 八、数据模型（Pydantic）
 
@@ -202,7 +195,7 @@ class StudentType(BaseModel):        # 类型层
     tags: list[str]
 
 class StudentAttributes(BaseModel):  # 属性层
-    disability: str
+    disabilities: list[str]          # 多障碍时为多项，首项视为主障碍
     severity: str
     cognitive_level: str
     sensory_preference: str | None
@@ -253,16 +246,14 @@ configs/profile/
 ├── student_types.yaml         类型树
 ├── attributes.yaml            属性维度与取值
 ├── evidence_sources.yaml      证据类型枚举
-├── evaluation_frameworks.yaml 各类型评价维度/指标模板
+├── evaluation_frameworks.yaml 公共评价维度与指标模板
 └── rubrics/                   评分标准
-    ├── knowledge.yaml
     ├── participation.yaml
-    ├── behavior.yaml
-    └── rehabilitation.yaml
+    └── practice.yaml
 ```
 
 - 启动时加载并校验配置，缺失字段报错。
-- 支持按障碍类型 + 程度叠加覆盖（程度越重约束越严格）。
+- 当前阶段为公共框架；后续可按障碍类型 + 程度叠加覆盖（程度越重约束越严格）。
 - 提供热重载接口，便于试点中调参。
 - 配置纳入版本管理，重载保留历史快照。
 
@@ -300,7 +291,7 @@ configs/profile/
   "client_request_id": "req-8f2c",
   "name": "小明",
   "attributes": {
-    "disability": "visual",
+    "disabilities": ["visual"],
     "severity": "moderate",
     "cognitive_level": "primary_low",
     "sensory_preference": null,
@@ -321,7 +312,7 @@ configs/profile/
     "profile_id": "p_0001",
     "name": "小明",
     "attributes": {
-      "disability": "visual",
+      "disabilities": ["visual"],
       "severity": "moderate",
       "cognitive_level": "primary_low",
       "sensory_preference": "audio_first",
@@ -330,15 +321,14 @@ configs/profile/
     },
     "framework": {
       "framework_id": "fw_p_0001",
-      "dimensions": ["knowledge", "participation", "behavior", "rehabilitation"],
+      "dimensions": ["participation", "practice"],
       "indicators": [
-        { "key": "auditory_attention", "name": "听觉注意", "dimension": "rehabilitation" }
+        { "key": "class_participation", "name": "上课参与度", "dimension": "participation" },
+        { "key": "practice_quality", "name": "练习完成质量", "dimension": "practice" }
       ],
       "weights": {
-        "knowledge": 0.3,
-        "participation": 0.2,
-        "behavior": 0.2,
-        "rehabilitation": 0.3
+        "participation": 0.5,
+        "practice": 0.5
       },
       "prompt_template_key": "visual_layer"
     },

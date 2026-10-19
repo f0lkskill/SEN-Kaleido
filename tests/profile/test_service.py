@@ -27,7 +27,7 @@ def _service(tmp_path) -> ProfileService:
 
 def _input(**overrides) -> StudentAttributesInput:
     data = {
-        "disability": "visual",
+        "disabilities": ["visual"],
         "severity": "moderate",
         "cognitive_level": "primary_low",
         "rehab_goals": ["language"],
@@ -62,23 +62,23 @@ def test_update_regenerates_framework(tmp_path):
     updated = service.update_student(
         created["profile_id"],
         UpdateStudentRequest(
-            attributes=_input(disability="autism", severity="severe", rehab_goals=[])
+            attributes=_input(disabilities=["autism"], severity="severe", rehab_goals=[])
         ),
     )
-    assert updated["attributes"]["disability"] == "autism"
+    assert updated["attributes"]["disabilities"] == ["autism"]
     assert updated["framework"]["prompt_template_key"] == "autism_layer"
 
 
 def test_preview_does_not_persist(tmp_path):
     service = _service(tmp_path)
-    service.preview_framework(_input(disability="hearing"))
+    service.preview_framework(_input(disabilities=["hearing"]))
     assert service.repository.list()[1] == 0
 
 
 def test_metadata_endpoints(tmp_path):
     service = _service(tmp_path)
-    assert "knowledge" in service.get_dimensions()["dimensions"]
-    assert service.get_rubric("knowledge")["levels"][0]["label"] == "未达成"
+    assert "participation" in service.get_dimensions()["dimensions"]
+    assert service.get_rubric("participation")["levels"][0]["label"] == "未达成"
     assert "item_response" in service.get_evidence_sources()
     assert set(service.reload()["student_types"]) == {
         "visual",

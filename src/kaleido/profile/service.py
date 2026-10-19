@@ -46,7 +46,7 @@ class ProfileService:
         attributes = self.schema.resolve(self.taxonomy, request.attributes)
         profile_id = self.repository.next_id()
         framework = self.engine.build(
-            attributes.disability,
+            attributes.disabilities[0],
             attributes.severity,
             attributes.cognitive_level,
             attributes.rehab_goals,
@@ -88,7 +88,7 @@ class ProfileService:
             attributes = self.schema.resolve(self.taxonomy, request.attributes)
             profile.attributes = attributes
             profile.framework = self.engine.build(
-                attributes.disability,
+                attributes.disabilities[0],
                 attributes.severity,
                 attributes.cognitive_level,
                 attributes.rehab_goals,
@@ -107,7 +107,7 @@ class ProfileService:
         """仅预览属性解析与框架生成结果，不落库。"""
         resolved = self.schema.resolve(self.taxonomy, attributes)
         framework = self.engine.build(
-            resolved.disability,
+            resolved.disabilities[0],
             resolved.severity,
             resolved.cognitive_level,
             resolved.rehab_goals,

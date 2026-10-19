@@ -35,8 +35,15 @@ def _dig(data: dict, path: str) -> Any:
 
 
 def _matches(entry: dict, key: str, value: Any) -> bool:
-    """索引条目字段与过滤值比较（字符串化后相等）。"""
-    return str(entry.get(key)) == str(value)
+    """索引条目字段与过滤值比较。
+
+    数组型字段（如障碍类型列表）采用"包含"语义：过滤值命中数组中
+    任一项即视为匹配；其余字段字符串化后相等即可。
+    """
+    actual = entry.get(key)
+    if isinstance(actual, list):
+        return str(value) in [str(item) for item in actual]
+    return str(actual) == str(value)
 
 
 class Collection:

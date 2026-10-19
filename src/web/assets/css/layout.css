@@ -84,6 +84,38 @@
   display: none;
 }
 
+/* 视图切换动画：display 从 none 恢复为可见时自动重放 */
+.view {
+  animation: view-in 0.28s ease both;
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- 学生档案：左右分栏（master-detail） ----
+   未选中时列表占满；选中后列表收窄靠左，详情面板在右侧滑出。 */
+.student-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  align-items: start;
+  transition: grid-template-columns 0.32s ease;
+}
+
+@media (min-width: 900px) {
+  .student-layout.narrowed {
+    grid-template-columns: minmax(220px, 300px) 1fr;
+  }
+}
+
 /* ---- 自适应：窄屏时压缩内边距、堆叠工具条 ---- */
 @media (max-width: 720px) {
   .site-header,

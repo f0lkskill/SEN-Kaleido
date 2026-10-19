@@ -124,6 +124,7 @@
   font-size: var(--font-body);
   font-family: inherit;
   cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
 .tab:hover {
@@ -406,4 +407,239 @@ details.disclosure > summary {
 
 .spacer {
   flex: 1;
+}
+
+/* ---- 信息类徽章（证据来源等） ---- */
+.badge-info { background: #e2f0ff; color: #1553b3; }
+
+/* ---- 学生档案：列表卡片 ---- */
+.student-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.student-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.student-card:hover {
+  background: var(--color-surface-alt);
+}
+
+.student-card.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  box-shadow: var(--shadow-sm);
+}
+
+.student-card h4 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-body);
+}
+
+/* ---- 学生档案：详情面板 ---- */
+.student-detail {
+  animation: panel-in 0.3s ease both;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.detail-body {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface);
+}
+
+.detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.detail-head h3 {
+  margin: 0;
+}
+
+.detail-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ---- 属性分组卡片 ---- */
+.attr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.attr-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.attr-name {
+  font-size: var(--font-small);
+  color: var(--color-text-muted);
+}
+
+.attr-value {
+  font-weight: 600;
+}
+
+/* ---- 评价框架可视化 ---- */
+.framework {
+  margin-top: var(--space-2);
+}
+
+.weight-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.weight-item {
+  display: grid;
+  grid-template-columns: 96px 1fr 48px;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.weight-name {
+  font-weight: 600;
+}
+
+.weight-value {
+  text-align: right;
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
+}
+
+.meter {
+  height: 12px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.4s ease;
+}
+
+.indicator {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  background: var(--color-surface);
+}
+
+.indicator-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.indicator-head h4 {
+  margin: 0;
+}
+
+.observation {
+  border-top: 1px dashed var(--color-border);
+  padding-top: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.obs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.obs-name {
+  font-weight: 600;
+}
+
+.obs-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.rubric-box {
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+.rubric-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.rubric-item {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.rubric-level {
+  flex: none;
+  min-width: 42px;
+  text-align: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: var(--font-small);
+  font-weight: 600;
+}
+
+.rubric-body strong {
+  display: block;
+}
+
+.rubric-desc {
+  margin: 2px 0;
+  font-size: var(--font-small);
 }

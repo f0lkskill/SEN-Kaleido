@@ -121,7 +121,7 @@ def test_students_namespace_uses_config(tmp_path):
         {
             "name": "小明",
             "attributes": {
-                "disability": "visual",
+                "disabilities": ["visual"],
                 "severity": "mild",
                 "cognitive_level": "primary_low",
             },

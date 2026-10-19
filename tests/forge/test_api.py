@@ -78,7 +78,7 @@ def _setup(tmp_path):
 def _payload(**overrides) -> dict:
     data = {
         "attributes": {
-            "disability": "visual",
+            "disabilities": ["visual"],
             "severity": "moderate",
             "cognitive_level": "primary_low",
             "rehab_goals": ["language"],

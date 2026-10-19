@@ -63,9 +63,13 @@ def test_edge_cases(tmp_path, case):
         assert attributes["sensory_preference"] == "audio_first"
     if case["id"] == "explicit_sensory":
         assert attributes["sensory_preference"] == "mixed"
-    if case["id"] == "preschool_visual_filter":
+    if case["id"] == "multi_disability_merges_constraints":
+        # 多障碍应合并各类型适配约束：视力 voice_first + 智力 step_by_step
+        constraints = attributes["adaptation_constraints"]
+        assert constraints["format"] == "voice_first"
+        assert constraints["step_by_step"] is True
         keys = {indicator["key"] for indicator in profile["framework"]["indicators"]}
-        assert "braille_literacy" not in keys
+        assert {"class_participation", "practice_quality"} <= keys
 
 if __name__ == "__main__":
     import pytest

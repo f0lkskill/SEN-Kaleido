@@ -13,7 +13,7 @@ collections:
     idempotent: true
     index_fields:
       - name
-      - attributes.disability
+      - attributes.disabilities
       - attributes.severity
       - attributes.cognitive_level
   resources:

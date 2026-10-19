@@ -32,7 +32,7 @@ def _setup(tmp_path):
 
 def _attributes(**overrides) -> StudentAttributesInput:
     data = {
-        "disability": "visual",
+        "disabilities": ["visual"],
         "severity": "moderate",
         "cognitive_level": "primary_low",
         "rehab_goals": ["language"],
@@ -93,7 +93,7 @@ def test_list_and_filter(tmp_path):
     )
     service.generate(
         GenerateRequest(
-            attributes=_attributes(disability="autism"), resource_type="exercise", topic="B"
+            attributes=_attributes(disabilities=["autism"]), resource_type="exercise", topic="B"
         )
     )
     listed = service.list_resources(resource_type="courseware")

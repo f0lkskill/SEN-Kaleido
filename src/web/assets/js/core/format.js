@@ -49,13 +49,66 @@ export const LEARNING_PACE = {
   slow: "较慢",
 };
 
-/** 评价维度。 */
+/** 评价维度（当前阶段仅两个公共维度）。 */
 export const DIMENSION = {
-  knowledge: "知识掌握",
   participation: "课堂参与",
-  behavior: "行为改善",
-  rehabilitation: "身心康复",
+  practice: "练习质量",
 };
+
+/** 评价方式。 */
+export const METHOD = {
+  quantitative: "量化",
+  qualitative: "质性",
+};
+
+/** 观测频率。 */
+export const FREQUENCY = {
+  per_lesson: "每课",
+  weekly: "每周",
+  phase: "阶段性",
+};
+
+/**
+ * 证据来源静态兜底映射。
+ * 运行时可经 setEvidenceSources() 用后端元数据覆盖，保持与配置同源。
+ */
+export const EVIDENCE_SOURCE = {
+  item_response: "试题作答",
+  classroom_observation: "课堂观察",
+  video_event: "视频事件",
+  work_sample: "作品/作业样本",
+  teacher_rating: "教师评分",
+  parent_feedback: "家长反馈",
+  rehab_record: "康复师记录",
+  system_log: "系统埋点",
+};
+
+/** 当前生效的证据来源映射（静态兜底 + 后端元数据）。 */
+let evidenceSourceMap = { ...EVIDENCE_SOURCE };
+
+/**
+ * 用后端返回的证据来源定义更新映射。
+ * @param {Object} map 形如 { key: { name } } 的定义表
+ */
+export function setEvidenceSources(map) {
+  if (!map || typeof map !== "object") return;
+  const merged = {};
+  for (const [key, value] of Object.entries(map)) {
+    merged[key] = value && value.name ? value.name : String(value);
+  }
+  evidenceSourceMap = { ...EVIDENCE_SOURCE, ...merged };
+}
+
+/** 证据来源键转中文名。 */
+export function evidenceLabel(key) {
+  return evidenceSourceMap[key] || String(key);
+}
+
+/** 证据来源键数组转中文顿号串。 */
+export function evidenceLabels(keys) {
+  if (!Array.isArray(keys) || keys.length === 0) return "无";
+  return keys.map(evidenceLabel).join("、");
+}
 
 /** 任务状态。 */
 export const TASK_STATUS = {

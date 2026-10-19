@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 class StudentAttributesInput(BaseModel):
     """学生属性录入（输入）。感官偏好与康复目标可缺省。"""
 
-    disability: str  # 障碍类型
+    disabilities: list[str]  # 障碍类型（可多选，至少一项）
     severity: str  # 障碍程度：mild / moderate / severe
     cognitive_level: str  # 认知等级
     sensory_preference: str | None = None  # 感官偏好，缺省则由类型规则推导
@@ -23,7 +23,7 @@ class StudentAttributesInput(BaseModel):
 class StudentAttributes(BaseModel):
     """规范化后的学生属性（输出）。字段完整，附带推导结果。"""
 
-    disability: str
+    disabilities: list[str]  # 障碍类型（多障碍时为多项，首项视为主障碍）
     severity: str
     cognitive_level: str
     sensory_preference: str  # 已解析（显式值或类型默认值）

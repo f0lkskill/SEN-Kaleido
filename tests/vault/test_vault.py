@@ -22,7 +22,7 @@ def test_students_spec_from_config(tmp_path):
     assert collection.spec.envelope is False
     assert collection.spec.idempotent is True
     assert collection.spec.id_prefix == "p"
-    assert "attributes.disability" in collection.spec.index_fields
+    assert "attributes.disabilities" in collection.spec.index_fields
 
 
 def test_unknown_namespace_defaults(tmp_path):

@@ -60,14 +60,15 @@ data/
 {
   "counter": 4,
   "entries": {
-    "p_0001": { "name": "小明", "attributes.disability": "visual", "attributes.severity": "moderate" }
+    "p_0001": { "name": "小明", "attributes.disabilities": ["visual"], "attributes.severity": "moderate" }
   },
   "idempotency": { "demo-req-1": "p_0001" }
 }
 ```
 
 - `entries` 只冗余**列表/筛选需要的字段**（`index_fields`），列表查询不读分片。
-- 索引字段用**点路径**指向 payload（如 `attributes.disability`）。
+- 索引字段用**点路径**指向 payload（如 `attributes.disabilities`）。
+- 数组型索引字段（如 `attributes.disabilities`）在过滤时采用**包含**语义：过滤值命中数组中任一项即匹配。
 
 ## 三、架构分层
 
@@ -140,7 +141,7 @@ collections:
     envelope: false          # 兼容 profile 现有裸文档结构，零迁移
     idempotent: true
     index_fields:
-      ["name", "attributes.disability", "attributes.severity", "attributes.cognitive_level"]
+      ["name", "attributes.disabilities", "attributes.severity", "attributes.cognitive_level"]
   resources:
     id_prefix: r
     id_zerofill: 5
@@ -185,7 +186,7 @@ class StudentRepository:
     def delete(self, pid):    self._collection.delete(pid)
     def list(self, disability=None, cognitive_level=None, page=1, size=20):
         filters = {}
-        if disability:        filters["attributes.disability"] = disability
+        if disability:        filters["attributes.disabilities"] = disability  # 数组按包含匹配
         if cognitive_level:   filters["attributes.cognitive_level"] = cognitive_level
         return self._collection.list(filters, page=page, size=size)
 ```

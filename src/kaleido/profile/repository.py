@@ -56,7 +56,8 @@ class StudentRepository:
         """
         filters: dict[str, str] = {}
         if disability:
-            filters["attributes.disability"] = disability
+            # 障碍类型为数组字段，按"包含"语义过滤
+            filters["attributes.disabilities"] = disability
         if cognitive_level:
             filters["attributes.cognitive_level"] = cognitive_level
         items, total = self.collection.list(filters, page=page, size=size)
@@ -64,7 +65,8 @@ class StudentRepository:
             {
                 "profile_id": item["id"],
                 "name": item.get("name"),
-                "disability": item.get("attributes.disability"),
+                # 障碍类型为数组，多障碍时返回全部
+                "disabilities": item.get("attributes.disabilities") or [],
                 "severity": item.get("attributes.severity"),
                 "cognitive_level": item.get("attributes.cognitive_level"),
             }

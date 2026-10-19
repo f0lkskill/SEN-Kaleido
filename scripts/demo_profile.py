@@ -18,7 +18,7 @@ SAMPLES = [
     {
         "name": "小明",
         "attributes": {
-            "disability": "visual",
+            "disabilities": ["visual"],
             "severity": "moderate",
             "cognitive_level": "primary_low",
             "sensory_preference": None,
@@ -29,7 +29,7 @@ SAMPLES = [
     {
         "name": "小红",
         "attributes": {
-            "disability": "hearing",
+            "disabilities": ["hearing"],
             "severity": "mild",
             "cognitive_level": "primary_high",
             "sensory_preference": None,
@@ -40,7 +40,7 @@ SAMPLES = [
     {
         "name": "小刚",
         "attributes": {
-            "disability": "intellectual",
+            "disabilities": ["intellectual"],
             "severity": "severe",
             "cognitive_level": "primary_low",
             "sensory_preference": None,
@@ -51,7 +51,7 @@ SAMPLES = [
     {
         "name": "小美",
         "attributes": {
-            "disability": "autism",
+            "disabilities": ["autism"],
             "severity": "moderate",
             "cognitive_level": "preschool",
             "sensory_preference": None,
@@ -75,15 +75,15 @@ def describe(profile: dict) -> None:
     fw = profile["framework"]
     print(f"[学生] {profile['name']}  ({profile['profile_id']})")
     print("  ── 原始录入被翻译成的标签向量 ──")
-    print(f"     障碍类型      : {attrs['disability']}")
+    print(f"     障碍类型      : {', '.join(attrs['disabilities'])}")
     print(f"     障碍程度      : {attrs['severity']}")
     print(f"     认知等级      : {attrs['cognitive_level']}")
-    print(f"     感官偏好      : {attrs['sensory_preference']}  (由类型规则推导)")
+    print(f"     感官偏好      : {attrs['sensory_preference']}  (由主障碍类型规则推导)")
     print(f"     康复目标      : {', '.join(attrs['rehab_goals']) or '无'}")
     print(f"     学习节奏      : {attrs['learning_pace']}")
     print(f"     适配约束      : {attrs['adaptation_constraints']}")
     print(f"     Prompt 模板键 : {attrs['prompt_template_key']}")
-    print("  ── 生成的个性化评价框架 ──")
+    print("  ── 生成的评价框架（公共标准） ──")
     print(f"     评价维度权重  : {fw['weights']}")
     print(f"     指标数量      : {len(fw['indicators'])}")
     for indicator in fw["indicators"]:
@@ -102,8 +102,8 @@ def demo_external_usage(profile: dict) -> None:
     print(f"    选用 prompt_template_key={attrs['prompt_template_key']} 生成资源")
 
     print("  [kaleido-match 匹配层]")
-    print(f"    按 disability={attrs['disability']} + cognitive_level={attrs['cognitive_level']} 过滤资源库")
-    if attrs["disability"] == "hearing" and attrs["sensory_preference"] == "visual_first":
+    print(f"    按 disabilities={attrs['disabilities']} + cognitive_level={attrs['cognitive_level']} 过滤资源库")
+    if "hearing" in attrs["disabilities"] and attrs["sensory_preference"] == "visual_first":
         print("    硬规则：排除无字幕的纯音频资源")
 
     print("  [kaleido-loop 反馈层]")
@@ -119,7 +119,7 @@ def demo_preview(service: ProfileService) -> None:
     line("B. 只预览：改一个属性，评价框架立刻变化（不落库）")
     mild = service.preview_framework(
         StudentAttributesInput(
-            disability="intellectual",
+            disabilities=["intellectual"],
             severity="mild",
             cognitive_level="primary_high",
             rehab_goals=["cognitive"],
@@ -128,7 +128,7 @@ def demo_preview(service: ProfileService) -> None:
     )
     severe = service.preview_framework(
         StudentAttributesInput(
-            disability="intellectual",
+            disabilities=["intellectual"],
             severity="severe",
             cognitive_level="primary_high",
             rehab_goals=["cognitive"],
@@ -172,7 +172,7 @@ def main() -> None:
     listed = service.list_students()
     print(f"共 {listed['total']} 名学生：")
     for item in listed["items"]:
-        print(f"  {item['profile_id']}  {item['name']}  {item['disability']}/{item['severity']}")
+        print(f"  {item['profile_id']}  {item['name']}  {'/'.join(item['disabilities'])}/{item['severity']}")
 
 
 if __name__ == "__main__":

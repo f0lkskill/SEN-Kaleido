@@ -26,7 +26,7 @@ def _create(service: ProfileService, name: str = "测试") -> dict:
         CreateStudentRequest(
             name=name,
             attributes=StudentAttributesInput(
-                disability="visual",
+                disabilities=["visual"],
                 severity="mild",
                 cognitive_level="primary_low",
                 learning_pace="slow",
@@ -67,7 +67,7 @@ def test_list_filter(tmp_path):
         CreateStudentRequest(
             name="B",
             attributes=StudentAttributesInput(
-                disability="autism",
+                disabilities=["autism"],
                 severity="moderate",
                 cognitive_level="preschool",
                 learning_pace="slow",

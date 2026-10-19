@@ -1,4 +1,4 @@
-"""评价框架生成引擎测试：权重归一化、等级过滤与重度压缩。"""
+"""评价框架生成引擎测试：公共指标、权重归一化与重度压缩。"""
 
 import sys
 from pathlib import Path
@@ -15,42 +15,39 @@ from kaleido.common.errors import ValidationError
 from kaleido.profile.framework import FrameworkEngine
 
 
-def test_weights_normalized():
+def test_public_dimensions_and_weights_normalized():
     engine = FrameworkEngine.load()
     framework = engine.build("visual", "moderate", "primary_low", ["language"], "fw_test")
-    assert set(framework.dimensions) == {
-        "knowledge",
-        "participation",
-        "behavior",
-        "rehabilitation",
-    }
+    # 当前阶段仅两个公共维度：课堂参与、练习质量
+    assert set(framework.dimensions) == {"participation", "practice"}
     # 权重归一化到 4 位小数，故使用 1e-3 容差
     assert abs(sum(framework.weights.values()) - 1.0) < 1e-3
-    assert framework.weights["knowledge"] > framework.weights["participation"]
+    # 康复目标 language 对 practice 加权，故 practice 权重应更高
+    assert framework.weights["practice"] > framework.weights["participation"]
 
 
-def test_cognitive_level_filters_indicators():
+def test_public_indicators_present_for_all():
     engine = FrameworkEngine.load()
     framework = engine.build("visual", "moderate", "preschool", [], "fw_test")
     keys = {indicator.key for indicator in framework.indicators}
-    assert "braille_literacy" not in keys
+    # 公共指标不随障碍类型/认知等级裁剪
+    assert keys == {"class_participation", "practice_quality"}
 
 
-def test_severe_keeps_core_and_compresses():
+def test_severe_compresses_and_bumps_frequency():
     engine = FrameworkEngine.load()
     framework = engine.build("intellectual", "severe", "primary_low", [], "fw_test")
-    keys = {indicator.key for indicator in framework.indicators}
-    assert "basic_literacy" not in keys
     for indicator in framework.indicators:
         for obs in indicator.observations:
             assert obs.frequency == "per_lesson"
             assert len(obs.rubrics) == 3
 
 
-def test_unknown_disability_raises():
+def test_unknown_cognitive_level_raises():
     engine = FrameworkEngine.load()
     with pytest.raises(ValidationError):
-        engine.build("unknown", "mild", "primary_low", [], "fw_test")
+        engine.build("visual", "mild", "unknown", [], "fw_test")
+
 
 if __name__ == "__main__":
     import pytest

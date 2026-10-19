@@ -1,0 +1,19 @@
+key: practice
+name: 练习质量
+levels:
+  - level: 1
+    label: 未达成
+    description: 基本未完成练习任务
+    evidence: 需练习作品与教师评阅
+  - level: 2
+    label: 初步
+    description: 在提示下完成少部分练习
+    evidence: 需练习作品与教师评阅
+  - level: 3
+    label: 基本
+    description: 独立完成大部分练习且正确率尚可
+    evidence: 需练习作品、作答记录与教师评阅
+  - level: 4
+    label: 熟练
+    description: 独立高质量完成练习并能举一反三
+    evidence: 需练习作品、作答记录与教师评语

@@ -49,22 +49,31 @@ class AttributeSchema:
     def resolve(
         self, taxonomy: Taxonomy, data: StudentAttributesInput
     ) -> StudentAttributes:
-        """校验并补全属性，输出规范化结果。"""
+        """校验并补全属性，输出规范化结果。
+
+        多障碍时：以首项为主障碍决定感官偏好与 Prompt 模板；
+        适配约束按障碍顺序依次合并，后项覆盖同名字段。
+        """
         self.validate(data)
-        student_type = taxonomy.get(data.disability)
-        # 感官偏好：显式值优先，否则用类型默认值
-        sensory = data.sensory_preference or student_type.defaults.get("sensory_preference")
+        primary = data.disabilities[0]  # 主障碍：决定默认感官偏好与模板
+        primary_type = taxonomy.get(primary)
+        # 感官偏好：显式值优先，否则用主障碍类型默认值
+        sensory = data.sensory_preference or primary_type.defaults.get("sensory_preference")
         if not sensory:
-            raise ConfigError(f"类型 {data.disability} 未定义默认感官偏好")
+            raise ConfigError(f"类型 {primary} 未定义默认感官偏好")
+        # 依次合并各障碍类型的适配约束
+        constraints: dict = {}
+        for key in data.disabilities:
+            constraints.update(taxonomy.get(key).constraints)
         return StudentAttributes(
-            disability=data.disability,
+            disabilities=list(data.disabilities),
             severity=data.severity,
             cognitive_level=data.cognitive_level,
             sensory_preference=sensory,
             rehab_goals=list(data.rehab_goals),
             learning_pace=data.learning_pace,
             baseline=data.baseline,
-            # 从类型定义复制适配约束，供生成层使用
-            adaptation_constraints=dict(student_type.constraints),
-            prompt_template_key=student_type.prompt_template,
+            # 合并后的适配约束，供生成层使用
+            adaptation_constraints=constraints,
+            prompt_template_key=primary_type.prompt_template,
         )

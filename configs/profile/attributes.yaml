@@ -5,8 +5,8 @@ cognitive_level_order:
   - vocational
 
 attributes:
-  disability:
-    type: enum
+  disabilities:
+    type: list
     required: true
     values: [visual, hearing, intellectual, autism]
   severity:

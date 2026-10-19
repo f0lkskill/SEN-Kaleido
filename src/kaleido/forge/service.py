@@ -37,6 +37,12 @@ class ForgeService:
             return preview["attributes"]
         raise ValidationError("必须提供 profile_id 或 attributes")
 
+    @staticmethod
+    def _primary_disability(attributes: dict) -> str:
+        """取主障碍类型；多障碍时取首项，缺失时返回空串。"""
+        values = attributes.get("disabilities") or []
+        return str(values[0]) if values else ""
+
     def _build_messages(self, request: GenerateRequest, attributes: dict) -> tuple[list, str]:
         """拼装分层 Prompt，返回 (messages, 系统提示词)。"""
         labels = self.config.get("resource_types", {})
@@ -44,7 +50,7 @@ class ForgeService:
             raise ValidationError(f"未知资源类型: {request.resource_type}")
 
         template_key = attributes.get("prompt_template_key") or (
-            f"{attributes.get('disability')}_layer"
+            f"{self._primary_disability(attributes)}_layer"
         )
         mapping = {
             "severity": attributes.get("severity", ""),
@@ -79,7 +85,7 @@ class ForgeService:
             "resource_type": request.resource_type,
             "topic": request.topic,
             "profile_id": request.profile_id,
-            "disability": attributes.get("disability", ""),
+            "disability": self._primary_disability(attributes),
             "content": result.content,
             "prompt_template_key": attributes.get("prompt_template_key", ""),
             "model": result.model,

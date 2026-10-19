@@ -1,0 +1,124 @@
+{
+  "students": [
+    {
+      "name": "陈思远",
+      "attributes": {
+        "disabilities": ["visual"],
+        "severity": "mild",
+        "cognitive_level": "primary_high",
+        "rehab_goals": ["language"],
+        "learning_pace": "medium"
+      }
+    },
+    {
+      "name": "林小雨",
+      "attributes": {
+        "disabilities": ["visual"],
+        "severity": "moderate",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["sensory_integration"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "name": "王浩然",
+      "attributes": {
+        "disabilities": ["hearing"],
+        "severity": "mild",
+        "cognitive_level": "primary_high",
+        "rehab_goals": ["social"],
+        "learning_pace": "fast"
+      }
+    },
+    {
+      "name": "赵雪",
+      "attributes": {
+        "disabilities": ["hearing"],
+        "severity": "severe",
+        "cognitive_level": "vocational",
+        "rehab_goals": ["social", "language"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "name": "李俊杰",
+      "attributes": {
+        "disabilities": ["intellectual"],
+        "severity": "moderate",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["cognitive"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "name": "周欣怡",
+      "attributes": {
+        "disabilities": ["intellectual"],
+        "severity": "mild",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["cognitive", "language"],
+        "learning_pace": "medium"
+      }
+    },
+    {
+      "name": "吴天航",
+      "attributes": {
+        "disabilities": ["autism"],
+        "severity": "moderate",
+        "cognitive_level": "preschool",
+        "rehab_goals": ["social"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "name": "郑好",
+      "attributes": {
+        "disabilities": ["autism"],
+        "severity": "mild",
+        "cognitive_level": "primary_high",
+        "rehab_goals": ["social", "language"],
+        "learning_pace": "medium"
+      }
+    },
+    {
+      "name": "孙梦琪",
+      "attributes": {
+        "disabilities": ["visual", "intellectual"],
+        "severity": "moderate",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["sensory_integration", "cognitive"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "name": "高远",
+      "attributes": {
+        "disabilities": ["hearing", "autism"],
+        "severity": "mild",
+        "cognitive_level": "primary_high",
+        "rehab_goals": ["social"],
+        "learning_pace": "medium"
+      }
+    },
+    {
+      "name": "何静",
+      "attributes": {
+        "disabilities": ["visual", "hearing"],
+        "severity": "severe",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["sensory_integration"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "name": "周子涵",
+      "attributes": {
+        "disabilities": ["intellectual", "autism"],
+        "severity": "moderate",
+        "cognitive_level": "preschool",
+        "rehab_goals": ["social", "cognitive"],
+        "learning_pace": "slow"
+      }
+    }
+  ]
+}

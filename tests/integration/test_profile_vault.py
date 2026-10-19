@@ -33,7 +33,7 @@ def _service(tmp_path) -> ProfileService:
 
 def _attributes(**overrides) -> StudentAttributesInput:
     data = {
-        "disability": "visual",
+        "disabilities": ["visual"],
         "severity": "moderate",
         "cognitive_level": "primary_low",
         "rehab_goals": ["language"],
@@ -56,7 +56,7 @@ def test_create_lands_on_disk(tmp_path):
 
     index = json.loads((tmp_path / "students" / "index.json").read_text(encoding="utf-8"))
     assert index["counter"] == 1
-    assert index["entries"]["p_0001"]["attributes.disability"] == "visual"
+    assert index["entries"]["p_0001"]["attributes.disabilities"] == ["visual"]
     assert created["framework"]["weights"]
 
 
@@ -67,7 +67,7 @@ def test_restart_reads_back(tmp_path):
     reopened = _service(tmp_path)
     loaded = reopened.get_student(created["profile_id"])
     assert loaded["name"] == "小明"
-    assert loaded["attributes"]["disability"] == "visual"
+    assert loaded["attributes"]["disabilities"] == ["visual"]
 
 
 def test_idempotency_conflict(tmp_path):
@@ -88,10 +88,10 @@ def test_update_and_delete(tmp_path):
 
     updated = service.update_student(
         created["profile_id"],
-        UpdateStudentRequest(attributes=_attributes(disability="autism", severity="severe", rehab_goals=[])),
+        UpdateStudentRequest(attributes=_attributes(disabilities=["autism"], severity="severe", rehab_goals=[])),
     )
     assert updated["updated_at"] >= created["updated_at"]
-    assert updated["attributes"]["disability"] == "autism"
+    assert updated["attributes"]["disabilities"] == ["autism"]
 
     service.delete_student(created["profile_id"])
     assert not (tmp_path / "students" / "p_0001.json").exists()
@@ -103,7 +103,7 @@ def test_list_filter_and_paging(tmp_path):
     service = _service(tmp_path)
     service.create_student(CreateStudentRequest(name="A", attributes=_attributes()))
     service.create_student(
-        CreateStudentRequest(name="B", attributes=_attributes(disability="autism"))
+        CreateStudentRequest(name="B", attributes=_attributes(disabilities=["autism"]))
     )
     listed = service.list_students(disability="autism")
     assert listed["total"] == 1

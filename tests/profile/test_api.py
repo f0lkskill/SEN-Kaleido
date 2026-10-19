@@ -72,7 +72,7 @@ def _payload(name="小明"):
     return {
         "name": name,
         "attributes": {
-            "disability": "visual",
+            "disabilities": ["visual"],
             "severity": "moderate",
             "cognitive_level": "primary_low",
             "rehab_goals": ["language"],
@@ -125,7 +125,7 @@ def test_list_and_preview_and_meta(tmp_path):
         "POST",
         "/api/v1/evaluation/framework",
         {
-            "disability": "hearing",
+            "disabilities": ["hearing"],
             "severity": "mild",
             "cognitive_level": "primary_high",
             "learning_pace": "medium",
@@ -134,9 +134,9 @@ def test_list_and_preview_and_meta(tmp_path):
     assert body["data"]["framework"]["prompt_template_key"] == "hearing_layer"
 
     _status, body = call("GET", "/api/v1/evaluation/dimensions")
-    assert "knowledge" in body["data"]["dimensions"]
+    assert "participation" in body["data"]["dimensions"]
 
-    _status, body = call("GET", "/api/v1/evaluation/rubric/knowledge")
+    _status, body = call("GET", "/api/v1/evaluation/rubric/participation")
     assert body["data"]["levels"]
 
 if __name__ == "__main__":

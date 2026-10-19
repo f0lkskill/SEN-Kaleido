@@ -1,8 +1,10 @@
 /**
- * views/framework.js —— 评价框架视图
- * 提供两处能力：
- * 1. renderFramework：把框架对象渲染为可读的四级结构（维度→指标→观测点→评分标准）；
- * 2. createView：独立的"评价框架预览"页，输入临时属性即时预览，不落库。
+ * views/framework.js —— 评价框架视图与共用渲染
+ * 提供三处能力：
+ * 1. buildAttributesForm / readAttributes：属性录入表单（支持多障碍）；
+ * 2. renderAttributes / renderFramework：把规范化属性与评价框架渲染为
+ *    直观的可视化结构（分组标签、权重进度条、评分等级卡片）；
+ * 3. createView：独立的"评价框架预览"页，输入临时属性即时预览，不落库。
  */
 
 import { api } from "../core/api.js";
@@ -15,14 +17,18 @@ import {
   REHAB_GOAL,
   LEARNING_PACE,
   DIMENSION,
+  METHOD,
+  FREQUENCY,
   label,
   labels,
+  evidenceLabels,
 } from "../core/format.js";
 import { toastError } from "../core/toast.js";
 
 /** 枚举选项定义（与后端 attributes.yaml 保持一致）。 */
 export const ATTRIBUTE_OPTIONS = {
   disability: Object.entries(DISABILITY),
+  disabilities: Object.entries(DISABILITY),
   severity: Object.entries(SEVERITY),
   cognitive_level: Object.entries(COGNITIVE_LEVEL),
   sensory_preference: Object.entries(SENSORY),
@@ -30,7 +36,7 @@ export const ATTRIBUTE_OPTIONS = {
   rehab_goals: Object.entries(REHAB_GOAL),
 };
 
-/** 生成一个 <select>，包含给定选项。 */
+/** 生成一个单选下拉，包含给定选项。 */
 function select(name, options, { required = false, includeBlank = false } = {}) {
   const node = el("select", { name, id: name });
   if (includeBlank) node.append(el("option", { value: "", text: "（不指定）" }));
@@ -41,105 +47,130 @@ function select(name, options, { required = false, includeBlank = false } = {}) 
   return node;
 }
 
+/** 把 0~1 的权重渲染为进度条。 */
+function meter(value) {
+  const percent = Math.round(Number(value || 0) * 100);
+  return el("div", { class: "meter", role: "img", "aria-label": `权重 ${percent}%` }, [
+    el("div", { class: "meter-fill", style: `width:${percent}%` }),
+  ]);
+}
+
 /**
- * 渲染评价框架（四级结构）。
+ * 渲染评价框架（可视化结构）。
  * @param {Object} framework 框架对象
  * @returns {HTMLElement}
  */
 export function renderFramework(framework) {
   const wrap = el("div", { class: "framework" });
 
-  // ---- 维度权重 ----
+  // ---- 维度权重（进度条，直观展示各维度占比） ----
   const weights = framework.weights || {};
-  const weightItems = Object.entries(weights).map(([key, value]) =>
-    el("div", { class: "badge" }, [
-      `${label(DIMENSION, key)} ${Math.round(Number(value) * 100)}%`,
-    ])
-  );
+  const weightBox = el("div", { class: "weight-list" });
+  const entries = Object.entries(weights);
+  if (entries.length === 0) {
+    weightBox.append(el("p", { class: "meta", text: "无" }));
+  } else {
+    for (const [key, value] of entries) {
+      weightBox.append(
+        el("div", { class: "weight-item" }, [
+          el("span", { class: "weight-name", text: label(DIMENSION, key) }),
+          meter(value),
+          el("span", { class: "weight-value", text: `${Math.round(Number(value) * 100)}%` }),
+        ])
+      );
+    }
+  }
   wrap.append(
     el("h3", { text: "评价维度与权重" }),
-    el("div", { class: "badge-row" }, weightItems.length ? weightItems : [el("span", { class: "meta", text: "无" })])
+    el("p", { class: "card-hint", text: "权重越高，该维度在综合评价中占比越大。" }),
+    weightBox
   );
 
-  if (framework.prompt_template_key) {
-    wrap.append(
-      el("p", { class: "meta" }, [`Prompt 模板：${framework.prompt_template_key}`])
-    );
-  }
-
-  // ---- 指标与观测点 ----
-  wrap.append(el("h3", { text: "指标与观测点" }));
+  // ---- 指标与观测点（分组卡片 + 评分等级展示） ----
+  wrap.append(el("h3", { text: "评价标准与观测点" }));
   const indicators = framework.indicators || [];
   if (indicators.length === 0) {
     wrap.append(placeholder("该框架未包含指标"));
     return wrap;
   }
 
-  const list = el("div", { class: "list" });
   for (const indicator of indicators) {
-    const observations = el("div", { class: "table-wrap" });
-    const table = el("table", { class: "data" });
-    table.append(
-      el("thead", {}, [
-        el("tr", {}, [
-          el("th", { text: "观测点" }),
-          el("th", { text: "方式" }),
-          el("th", { text: "频率" }),
-          el("th", { text: "证据来源" }),
-          el("th", { text: "评分等级" }),
-        ]),
-      ])
-    );
-    const tbody = el("tbody");
-    for (const obs of indicator.observations || []) {
-      tbody.append(
-        el("tr", {}, [
-          el("td", { text: obs.name }),
-          el("td", { text: obs.method === "quantitative" ? "量化" : "质性" }),
-          el("td", { text: label(FREQUENCY, obs.frequency) }),
-          el("td", { text: labels({}, obs.evidence_sources) }),
-          el("td", { text: `${(obs.rubrics || []).length} 级` }),
-        ])
-      );
-    }
-    table.append(tbody);
-    observations.append(table);
+    const indicatorCard = el("div", { class: "indicator" }, [
+      el("div", { class: "indicator-head" }, [
+        el("h4", { text: indicator.name }),
+        el("span", { class: "badge", text: label(DIMENSION, indicator.dimension) }),
+      ]),
+    ]);
 
-    list.append(
-      el("div", { class: "list-item" }, [
-        el("h4", {}, [
-          indicator.name,
-          " ",
-          el("span", { class: "badge", text: label(DIMENSION, indicator.dimension) }),
+    for (const obs of indicator.observations || []) {
+      const obsCard = el("div", { class: "observation" }, [
+        el("div", { class: "obs-head" }, [
+          el("span", { class: "obs-name", text: obs.name }),
+          el("span", { class: "badge badge-muted", text: label(METHOD, obs.method) }),
+          el("span", { class: "badge badge-muted", text: label(FREQUENCY, obs.frequency) }),
         ]),
-        observations,
-      ])
-    );
+      ]);
+
+      // 证据来源：把后端键转成中文名称
+      const sources = (obs.evidence_sources || []).map((key) =>
+        el("span", { class: "badge badge-info", text: evidenceLabels([key]) })
+      );
+      if (sources.length) {
+        obsCard.append(
+          el("div", { class: "obs-sources" }, [
+            el("span", { class: "meta", text: "证据来源：" }),
+            ...sources,
+          ])
+        );
+      }
+
+      // 评分标准：以等级卡片直观呈现"达到什么程度算几级"
+      const rubrics = obs.rubrics || [];
+      if (rubrics.length) {
+        const rubricList = el("div", { class: "rubric-list" });
+        for (const level of rubrics) {
+          rubricList.append(
+            el("div", { class: "rubric-item" }, [
+              el("span", { class: "rubric-level", text: `${level.level} 级` }),
+              el("div", { class: "rubric-body" }, [
+                el("strong", { text: level.label }),
+                el("p", { class: "rubric-desc", text: level.description }),
+                el("p", { class: "meta", text: `证据要求：${level.evidence}` }),
+              ]),
+            ])
+          );
+        }
+        obsCard.append(el("div", { class: "rubric-box" }, [
+          el("p", { class: "meta", text: "评分标准：" }),
+          rubricList,
+        ]));
+      }
+
+      indicatorCard.append(obsCard);
+    }
+    wrap.append(indicatorCard);
   }
-  wrap.append(list);
   return wrap;
 }
 
-/** 观测频率标签。 */
-const FREQUENCY = {
-  per_lesson: "每课",
-  weekly: "每周",
-  phase: "阶段性",
-};
-
-/** 渲染已规范化的属性概览。 */
+/** 渲染已规范化的属性概览（分组卡片，值用中文标签）。 */
 export function renderAttributes(attributes) {
   const rows = [
-    ["障碍类型", label(DISABILITY, attributes.disability)],
+    ["障碍类型", labels(DISABILITY, attributes.disabilities), true],
     ["障碍程度", label(SEVERITY, attributes.severity)],
     ["认知等级", label(COGNITIVE_LEVEL, attributes.cognitive_level)],
     ["感官偏好", label(SENSORY, attributes.sensory_preference)],
     ["康复目标", labels(REHAB_GOAL, attributes.rehab_goals)],
     ["学习节奏", label(LEARNING_PACE, attributes.learning_pace)],
   ];
-  const wrap = el("div", { class: "badge-row" });
+  const wrap = el("div", { class: "attr-grid" });
   for (const [name, value] of rows) {
-    wrap.append(el("span", { class: "badge badge-muted", text: `${name}：${value}` }));
+    wrap.append(
+      el("div", { class: "attr-item" }, [
+        el("span", { class: "attr-name", text: name }),
+        el("span", { class: "attr-value", text: value }),
+      ])
+    );
   }
   return wrap;
 }
@@ -152,8 +183,9 @@ export function renderAttributes(attributes) {
 export function readAttributes(form) {
   const data = new FormData(form);
   const goals = data.getAll("rehab_goals").map(String);
+  const disabilities = data.getAll("disabilities").map(String);
   const attributes = {
-    disability: String(data.get("disability") || ""),
+    disabilities,
     severity: String(data.get("severity") || ""),
     cognitive_level: String(data.get("cognitive_level") || ""),
     learning_pace: String(data.get("learning_pace") || ""),
@@ -164,38 +196,55 @@ export function readAttributes(form) {
   return attributes;
 }
 
-/** 构建属性录入表单（供预览页与学生建档共用）。 */
+/** 校验录入属性，返回错误信息或 null。 */
+export function validateAttributes(attributes) {
+  if (!attributes.disabilities || attributes.disabilities.length === 0) {
+    return "请至少选择一种障碍类型";
+  }
+  return null;
+}
+
+/** 构建属性录入表单（供预览页、学生建档与资源生成共用）。 */
 export function buildAttributesForm(prefix) {
   const form = el("form", { class: "attributes-form" });
-  const row1 = el("div", { class: "field-row" });
-  row1.append(
-    el("div", { class: "field" }, [
-      el("label", { for: `${prefix}-disability`, text: "障碍类型" }),
-      select("disability", ATTRIBUTE_OPTIONS.disability, { required: true }),
-    ]),
+
+  // 障碍类型：多选（一个学生可同时具备多种障碍）
+  const disabilityField = el("div", { class: "field" }, [
+    el("label", { text: "障碍类型（可多选，至少一项）" }),
+    el(
+      "div",
+      { class: "checks" },
+      ATTRIBUTE_OPTIONS.disabilities.map(([value, text]) =>
+        el("label", { class: "check" }, [
+          el("input", { type: "checkbox", name: "disabilities", value }),
+          text,
+        ])
+      )
+    ),
+  ]);
+
+  const row1 = el("div", { class: "field-row" }, [
     el("div", { class: "field" }, [
       el("label", { for: `${prefix}-severity`, text: "障碍程度" }),
       select("severity", ATTRIBUTE_OPTIONS.severity, { required: true }),
-    ])
-  );
-
-  const row2 = el("div", { class: "field-row" });
-  row2.append(
+    ]),
     el("div", { class: "field" }, [
       el("label", { for: `${prefix}-cognitive`, text: "认知等级" }),
       select("cognitive_level", ATTRIBUTE_OPTIONS.cognitive_level, { required: true }),
     ]),
+  ]);
+
+  const row2 = el("div", { class: "field-row" }, [
     el("div", { class: "field" }, [
       el("label", { for: `${prefix}-pace`, text: "学习节奏" }),
       select("learning_pace", ATTRIBUTE_OPTIONS.learning_pace, { required: true }),
-    ])
-  );
-
-  const sensoryField = el("div", { class: "field" }, [
-    el("label", { for: `${prefix}-sensory`, text: "感官偏好（留空则按类型推导）" }),
-    select("sensory_preference", ATTRIBUTE_OPTIONS.sensory_preference, {
-      includeBlank: true,
-    }),
+    ]),
+    el("div", { class: "field" }, [
+      el("label", { for: `${prefix}-sensory`, text: "感官偏好（留空则按主障碍推导）" }),
+      select("sensory_preference", ATTRIBUTE_OPTIONS.sensory_preference, {
+        includeBlank: true,
+      }),
+    ]),
   ]);
 
   const goalField = el("div", { class: "field" }, [
@@ -212,7 +261,7 @@ export function buildAttributesForm(prefix) {
     ),
   ]);
 
-  form.append(row1, row2, sensoryField, goalField);
+  form.append(disabilityField, row1, row2, goalField);
   return form;
 }
 
@@ -233,7 +282,7 @@ export function createView(root) {
       el("div", { class: "card-header" }, [el("h2", { text: "评价框架预览" })]),
       el("p", {
         class: "card-hint",
-        text: "输入临时属性，即时查看规范化属性与个性化评价框架，不写入档案。",
+        text: "当前阶段所有学生共用公共标准（上课参与度、练习完成质量）；输入临时属性可即时预览，不写入档案。",
       }),
       form,
       el("button", {
@@ -248,10 +297,16 @@ export function createView(root) {
   }
 
   async function preview() {
+    const attributes = readAttributes(form);
+    const error = validateAttributes(attributes);
+    if (error) {
+      toastError(error);
+      return;
+    }
     clear(output);
     output.append(placeholder("正在生成预览…", "loading"));
     try {
-      const data = await api.previewFramework(readAttributes(form));
+      const data = await api.previewFramework(attributes);
       clear(output);
       output.append(
         el("h3", { text: "规范化属性" }),

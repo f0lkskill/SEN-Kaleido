@@ -27,7 +27,7 @@ def test_resolve_defaults_sensory():
     resolved = schema.resolve(
         taxonomy,
         StudentAttributesInput(
-            disability="visual",
+            disabilities=["visual"],
             severity="moderate",
             cognitive_level="primary_low",
             learning_pace="slow",
@@ -44,7 +44,7 @@ def test_explicit_sensory_overrides_default():
     resolved = schema.resolve(
         taxonomy,
         StudentAttributesInput(
-            disability="visual",
+            disabilities=["visual"],
             severity="moderate",
             cognitive_level="primary_low",
             sensory_preference="mixed",
@@ -61,7 +61,7 @@ def test_invalid_enum_raises():
         schema.resolve(
             taxonomy,
             StudentAttributesInput(
-                disability="visual",
+                disabilities=["visual"],
                 severity="unknown",
                 cognitive_level="primary_low",
                 learning_pace="slow",
@@ -76,7 +76,7 @@ def test_invalid_rehab_goal_raises():
         schema.resolve(
             taxonomy,
             StudentAttributesInput(
-                disability="visual",
+                disabilities=["visual"],
                 severity="mild",
                 cognitive_level="primary_low",
                 rehab_goals=["dance"],

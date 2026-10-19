@@ -1,310 +1,48 @@
+# 评价框架配置（当前阶段）
+# 说明：课题研究方向尚未确定，暂不设各障碍类型的专有指标；
+# 全部学生统一使用两个公共指标：上课参与度、练习完成质量。
+# dimensions：评价维度定义；base_weights：维度基础权重（归一化前）。
 dimensions:
-  knowledge:
-    name: 知识掌握
   participation:
     name: 课堂参与
-  behavior:
-    name: 行为改善
-  rehabilitation:
-    name: 身心康复
+  practice:
+    name: 练习质量
 
+# 维度基础权重（最终会归一化，保证之和为 1）
 base_weights:
-  knowledge: 0.3
-  participation: 0.2
-  behavior: 0.2
-  rehabilitation: 0.3
+  participation: 0.5
+  practice: 0.5
 
+# 康复目标对相关维度的权重加成（归一化前累加）
 goal_weight_bonus:
   language:
-    knowledge: 0.1
-  sensory_integration:
-    rehabilitation: 0.1
-  social:
-    behavior: 0.1
+    practice: 0.1
   cognitive:
-    knowledge: 0.1
+    practice: 0.1
+  social:
+    participation: 0.1
+  sensory_integration:
+    participation: 0.1
 
-frameworks:
-  visual:
-    dimensions: [knowledge, participation, behavior, rehabilitation]
-    indicators:
-      - key: auditory_comprehension
-        name: 听觉理解
-        dimension: knowledge
-        core: true
-        observations:
-          - key: instruction_recall
-            name: 听指令回忆正确率
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [item_response, classroom_observation]
-            rubric: knowledge
-      - key: braille_literacy
-        name: 盲文识字
-        dimension: knowledge
-        core: false
-        min_cognitive_level: primary_low
-        observations:
-          - key: braille_recognition
-            name: 盲文点字认读
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [item_response, work_sample]
-            rubric: knowledge
-      - key: auditory_attention
-        name: 听觉注意
-        dimension: rehabilitation
-        core: true
-        observations:
-          - key: name_response
-            name: 听到名字有反应
-            method: qualitative
-            frequency: per_lesson
-            evidence_sources: [classroom_observation]
-            rubric: rehabilitation
-      - key: orientation_mobility
-        name: 定向行走
-        dimension: rehabilitation
-        core: false
-        min_cognitive_level: primary_low
-        observations:
-          - key: independent_walk
-            name: 独立完成路线
-            method: quantitative
-            frequency: phase
-            evidence_sources: [rehab_record, video_event]
-            rubric: rehabilitation
-      - key: class_participation
-        name: 课堂参与
-        dimension: participation
-        core: true
-        observations:
-          - key: response_count
-            name: 主动回应次数
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [classroom_observation]
-            rubric: participation
-      - key: emotional_regulation
-        name: 情绪调节
-        dimension: behavior
-        core: true
-        observations:
-          - key: calm_down
-            name: 情绪平复时长
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [classroom_observation]
-            rubric: behavior
-
-  hearing:
-    dimensions: [knowledge, participation, behavior, rehabilitation]
-    indicators:
-      - key: lip_reading
-        name: 口型识别
-        dimension: knowledge
-        core: true
-        observations:
-          - key: lip_word_recognition
-            name: 口型辨认正确率
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [item_response, classroom_observation]
-            rubric: knowledge
-      - key: sign_language
-        name: 手语表达
-        dimension: knowledge
-        core: false
-        observations:
-          - key: sign_expression
-            name: 手语表达完整度
-            method: qualitative
-            frequency: weekly
-            evidence_sources: [classroom_observation, video_event]
-            rubric: knowledge
-      - key: written_expression
-        name: 书面表达
-        dimension: knowledge
-        core: true
-        min_cognitive_level: primary_high
-        observations:
-          - key: sentence_writing
-            name: 句子书写正确率
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [item_response, work_sample]
-            rubric: knowledge
-      - key: visual_attention
-        name: 视觉注意
-        dimension: rehabilitation
-        core: true
-        observations:
-          - key: gaze_tracking
-            name: 注视目标时长
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [classroom_observation, video_event]
-            rubric: rehabilitation
-      - key: class_participation
-        name: 课堂参与
-        dimension: participation
-        core: true
-        observations:
-          - key: response_count
-            name: 主动回应次数
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [classroom_observation]
-            rubric: participation
-      - key: emotional_regulation
-        name: 情绪调节
-        dimension: behavior
-        core: true
-        observations:
-          - key: calm_down
-            name: 情绪平复时长
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [classroom_observation]
-            rubric: behavior
-
-  intellectual:
-    dimensions: [knowledge, participation, behavior, rehabilitation]
-    indicators:
-      - key: life_skills
-        name: 生活自理
-        dimension: behavior
-        core: true
-        observations:
-          - key: self_care_task
-            name: 自理任务完成度
-            method: qualitative
-            frequency: weekly
-            evidence_sources: [classroom_observation, rehab_record]
-            rubric: behavior
-      - key: instruction_comprehension
-        name: 指令理解
-        dimension: knowledge
-        core: true
-        observations:
-          - key: simple_instruction
-            name: 简单指令执行正确率
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [item_response, classroom_observation]
-            rubric: knowledge
-      - key: step_execution
-        name: 步骤执行
-        dimension: knowledge
-        core: true
-        observations:
-          - key: step_completion
-            name: 分步任务完成率
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [item_response, work_sample]
-            rubric: knowledge
-      - key: basic_literacy
-        name: 基础识字
-        dimension: knowledge
-        core: false
-        min_cognitive_level: primary_low
-        observations:
-          - key: word_recognition
-            name: 常用字认读
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [item_response]
-            rubric: knowledge
-      - key: class_participation
-        name: 课堂参与
-        dimension: participation
-        core: true
-        observations:
-          - key: response_count
-            name: 主动回应次数
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [classroom_observation]
-            rubric: participation
-      - key: emotional_regulation
-        name: 情绪调节
-        dimension: behavior
-        core: true
-        observations:
-          - key: calm_down
-            name: 情绪平复时长
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [classroom_observation]
-            rubric: behavior
-
-  autism:
-    dimensions: [knowledge, participation, behavior, rehabilitation]
-    indicators:
-      - key: social_interaction
-        name: 社交互动
-        dimension: behavior
-        core: true
-        observations:
-          - key: peer_interaction
-            name: 同伴互动次数
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [classroom_observation, video_event]
-            rubric: behavior
-      - key: emotion_regulation
-        name: 情绪调节
-        dimension: behavior
-        core: true
-        observations:
-          - key: calm_down
-            name: 情绪平复时长
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [classroom_observation]
-            rubric: behavior
-      - key: stereotypy_reduction
-        name: 刻板行为改善
-        dimension: behavior
-        core: true
-        observations:
-          - key: stereotypy_duration
-            name: 刻板行为持续时间
-            method: quantitative
-            frequency: weekly
-            evidence_sources: [classroom_observation, video_event]
-            rubric: behavior
-      - key: joint_attention
-        name: 共同注意
-        dimension: participation
-        core: true
-        observations:
-          - key: joint_attention_response
-            name: 共同注意回应次数
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [classroom_observation, video_event]
-            rubric: participation
-      - key: instruction_comprehension
-        name: 指令理解
-        dimension: knowledge
-        core: true
-        observations:
-          - key: simple_instruction
-            name: 简单指令执行正确率
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [item_response, classroom_observation]
-            rubric: knowledge
-      - key: class_participation
-        name: 课堂参与
-        dimension: participation
-        core: false
-        observations:
-          - key: response_count
-            name: 主动回应次数
-            method: quantitative
-            frequency: per_lesson
-            evidence_sources: [classroom_observation]
-            rubric: participation
+# 公共指标：所有学生共有，不随障碍类型或认知等级裁剪
+public_indicators:
+  - key: class_participation
+    name: 上课参与度
+    dimension: participation
+    observations:
+      - key: class_engagement
+        name: 课堂参与程度
+        method: qualitative
+        frequency: per_lesson
+        evidence_sources: [classroom_observation, teacher_rating]
+        rubric: participation
+  - key: practice_quality
+    name: 练习完成质量
+    dimension: practice
+    observations:
+      - key: practice_completion
+        name: 练习完成质量
+        method: quantitative
+        frequency: weekly
+        evidence_sources: [work_sample, item_response, teacher_rating]
+        rubric: practice

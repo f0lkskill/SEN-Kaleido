@@ -94,7 +94,7 @@ def test_profile_route_available(tmp_path):
     body = {
         "name": "小测",
         "attributes": {
-            "disability": "visual",
+            "disabilities": ["visual"],
             "severity": "mild",
             "cognitive_level": "primary_low",
             "learning_pace": "medium",
@@ -123,7 +123,7 @@ def test_forge_generate_via_task(tmp_path, monkeypatch):
         "task_type": "forge.generate",
         "payload": {
             "attributes": {
-                "disability": "hearing",
+                "disabilities": ["hearing"],
                 "severity": "moderate",
                 "cognitive_level": "primary_high",
                 "learning_pace": "slow",

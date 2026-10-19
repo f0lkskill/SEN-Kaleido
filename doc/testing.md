@@ -31,7 +31,8 @@
 tests/fixtures/
 ├── __init__.py                  # 加载工具：load_student_samples()
 └── students/
-    └── samples.json             # valid(12：4 类型×3 程度) + edge(边界/非法)
+    └── samples.json             # valid(13：4 类型×3 程度 + 多障碍) + edge(边界/非法)
+    └── demo_students.json       # 真实感演示数据（含多障碍），供 seed_data.py 灌入
 ```
 
 > 预留（后续模块）：`expected/frameworks/`（金标准快照）、`resources/`（forge/match 样例资源）。
@@ -42,7 +43,7 @@ tests/fixtures/
 {
   "name": "小明",
   "attributes": {
-    "disability": "visual",
+    "disabilities": ["visual"],
     "severity": "moderate",
     "cognitive_level": "primary_low",
     "sensory_preference": null,
@@ -61,14 +62,13 @@ tests/fixtures/
 | intellectual | ✓ | ✓ | ✓ |
 | autism | ✓ | ✓ | ✓ |
 
-**边界样例**（`edge_cases.json`）：
+**边界样例**（`samples.json` 的 `edge`）：
 
-- 缺省 `sensory_preference`：应由类型默认值推导。
+- 缺省 `sensory_preference`：应由主障碍类型默认值推导。
 - 显式覆盖感官偏好：应尊重显式值。
-- 非法枚举（disability / severity / rehab_goals）：应抛 `ValidationError`。
-- `severe` 压缩：指标仅保留核心、评分标准压到 3 级、观测频率升为 `per_lesson`。
-- 认知等级过滤：低于 `min_cognitive_level` 的指标应被剔除（如 preschool 无盲文指标）。
-- 多重障碍：带 `parent` 组合的类型表达（后续扩展）。
+- 非法枚举（disabilities / severity / rehab_goals）与空 `disabilities`：应抛 `ValidationError`。
+- 多障碍：应合并各障碍类型的适配约束，公共指标仍完整。
+- `severe` 压缩：评分标准压到 3 级、观测频率升为 `per_lesson`。
 
 ### 2.4 金标准（golden）生成与维护
 
@@ -98,7 +98,7 @@ tests/fixtures/
 3. **幂等**：相同 `client_request_id` 二次建档抛 `ConflictError`，且只落一个分片。
 4. **更新**：改属性 → 分片更新、`updated_at` 变化、评价框架重建。
 5. **删除**：分片删除、索引 entry 移除。
-6. **列表筛选**：按 `disability` / `cognitive_level` 过滤；分页边界。
+6. **列表筛选**：按 `disabilities`（数组包含）/ `cognitive_level` 过滤；分页边界。
 7. **一致性**：遍历索引 `entries`，逐个分片可读且 id 匹配；`reindex()` 幂等。
 8. **共存**：vault 通用 API 与 profile 领域 API 读写同一集合互不干扰。
 

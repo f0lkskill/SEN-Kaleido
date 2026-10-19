@@ -1,8 +1,7 @@
 """评价框架生成引擎。
 
-按"类型 + 属性"实例化个性化评价框架，规则如下：
-- 按认知等级过滤：低于指标 ``min_cognitive_level`` 的指标不纳入；
-- 按障碍程度过滤：``severe`` 只保留 ``core`` 核心指标；
+当前阶段所有学生共用公共指标（上课参与度、练习完成质量），规则如下：
+- 指标来自配置 ``public_indicators``，不随障碍类型或认知等级裁剪；
 - 按康复目标加权：对相关评价维度增加权重后整体归一化；
 - ``severe`` 时提升观测频率并压缩评分标准等级数，降低评价负担。
 """
@@ -36,33 +35,25 @@ class FrameworkEngine:
 
     def build(
         self,
-        disability: str,
+        primary_disability: str,
         severity: str,
         cognitive_level: str,
         rehab_goals: list[str],
         framework_id: str,
     ) -> EvaluationFramework:
-        """生成个性化评价框架。"""
-        frameworks = self.config.get("frameworks", {})
-        if disability not in frameworks:
-            raise ValidationError(f"未定义评价框架: {disability}")
+        """生成评价框架（当前阶段为公共框架）。
+
+        参数 ``primary_disability`` 仅用于推导 Prompt 模板键；
+        指标统一取自 ``public_indicators``，所有学生一致。
+        """
         if cognitive_level not in self.level_order:
             raise ValidationError(f"未知认知等级: {cognitive_level}")
-        template = frameworks[disability]
-        current_index = self.level_order.index(cognitive_level)
 
-        indicators: list[Indicator] = []
-        for item in template.get("indicators", []):
-            # 认知等级不足，跳过该指标
-            min_level = item.get("min_cognitive_level")
-            if min_level and self.level_order.index(min_level) > current_index:
-                continue
-            # 重度只保留核心指标
-            if severity == "severe" and not item.get("core", False):
-                continue
-            indicators.append(self._build_indicator(item, severity))
-
-        dimensions = list(template.get("dimensions", []))
+        indicators = [
+            self._build_indicator(item, severity)
+            for item in self.config.get("public_indicators", [])
+        ]
+        dimensions = list(self.config.get("dimensions", {}).keys())
         weights = self._compute_weights(
             self.config.get("base_weights", {}),
             self.config.get("goal_weight_bonus", {}),
@@ -74,7 +65,7 @@ class FrameworkEngine:
             dimensions=dimensions,
             indicators=indicators,
             weights=weights,
-            prompt_template_key=f"{disability}_layer",
+            prompt_template_key=f"{primary_disability}_layer",
         )
 
     def _build_indicator(self, item: dict, severity: str) -> Indicator:
