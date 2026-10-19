@@ -3,14 +3,19 @@
 import json
 import sys
 from io import BytesIO
+from typing import Any, Callable
 
 from kaleido.profile.api import create_app
 from kaleido.profile.repository import StudentRepository
 from kaleido.profile.service import ProfileService
 
 
-def _client(app):
-    def call(method: str, path: str, body=None, query: str = ""):
+def _client(app: Any) -> Callable[..., tuple[str, dict[str, Any]]]:
+    """把 WSGI 应用包装成简单的 (method, path, body) 调用器，返回 (状态行, 响应体)。"""
+
+    def call(
+        method: str, path: str, body: Any = None, query: str = ""
+    ) -> tuple[str, dict[str, Any]]:
         payload = b""
         if body is not None:
             payload = json.dumps(body).encode("utf-8")
@@ -32,16 +37,17 @@ def _client(app):
             "wsgi.multiprocess": False,
             "wsgi.run_once": False,
         }
-        captured = {}
+        captured: dict[str, str] = {}
 
-        def start_response(status, headers, exc_info=None):
+        def start_response(status: str, headers: Any, exc_info: Any = None) -> None:
             captured["status"] = status
 
         chunks = app(environ, start_response)
         raw = b"".join(chunks)
         if hasattr(chunks, "close"):
             chunks.close()
-        data = json.loads(raw.decode("utf-8")) if raw else None
+        # 始终返回 dict，避免下游下标时被类型检查判为 Optional
+        data: dict[str, Any] = json.loads(raw.decode("utf-8")) if raw else {}
         return captured["status"], data
 
     return call

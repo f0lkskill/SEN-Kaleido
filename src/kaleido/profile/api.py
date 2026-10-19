@@ -6,6 +6,8 @@
 - 业务异常按自身 ``http_status`` 映射状态码，参数校验失败返回 400。
 """
 
+from typing import Any, cast
+
 from bottle import Bottle, request, response
 from pydantic import ValidationError as PydanticValidationError
 
@@ -21,7 +23,9 @@ from kaleido.profile.service import ProfileService
 
 def create_app(service: ProfileService | None = None) -> Bottle:
     """构建 Bottle 应用。传入 service 可注入测试用服务。"""
-    app = Bottle()
+    # bottle 的路由装饰器自带类型标注有缺陷（返回类型含 ModuleType），
+    # 这里用 Any 视图规避误报，不影响运行时行为
+    app = cast(Any, Bottle())
     svc = service or ProfileService()
 
     def run(action, status: int = 200):
@@ -52,7 +56,7 @@ def create_app(service: ProfileService | None = None) -> Bottle:
         """建立学生档案。"""
 
         def action():
-            payload = request.json or {}
+            payload = cast("dict[str, Any]", request.json) or {}
             return svc.create_student(CreateStudentRequest(**payload))
 
         return run(action, status=201)
@@ -62,7 +66,8 @@ def create_app(service: ProfileService | None = None) -> Bottle:
         """分页列出学生档案，可按类型/认知等级过滤。"""
 
         def action():
-            query = request.query
+            # request.query 被 bottle 标注为 DictProperty，实际是 dict 子类，需 cast
+            query = cast("dict[str, str]", request.query)
             page = int(query.get("page", 1))
             size = int(query.get("size", 20))
             return svc.list_students(
@@ -84,7 +89,7 @@ def create_app(service: ProfileService | None = None) -> Bottle:
         """更新学生档案。"""
 
         def action():
-            payload = request.json or {}
+            payload = cast("dict[str, Any]", request.json) or {}
             return svc.update_student(profile_id, UpdateStudentRequest(**payload))
 
         return run(action)
@@ -114,7 +119,7 @@ def create_app(service: ProfileService | None = None) -> Bottle:
         """按给定属性预览评价框架（不落库）。"""
 
         def action():
-            payload = request.json or {}
+            payload = cast("dict[str, Any]", request.json) or {}
             return svc.preview_framework(StudentAttributesInput(**payload))
 
         return run(action)
