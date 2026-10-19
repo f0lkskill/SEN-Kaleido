@@ -94,6 +94,13 @@ function activate(id) {
       onGenerated: () => {
         if (controllers.library) controllers.library.refresh();
       },
+      // 从学生档案一键跳转到资源生成，并以该学生为模板
+      onGenerateFor: (profileId) => {
+        activate("forge");
+        if (controllers.forge && controllers.forge.preselect) {
+          controllers.forge.preselect(profileId);
+        }
+      },
     });
     if (controllers[id].init) controllers[id].init();
   } else if (controllers[id].refresh) {

@@ -47,7 +47,7 @@ function firstChar(name) {
  * 创建学生档案视图。
  * @param {HTMLElement} root 视图容器
  */
-export function createView(root) {
+export function createView(root, hooks = {}) {
   let filterDisability;
   let filterCognitive;
   let listBox;
@@ -296,6 +296,16 @@ export function createView(root) {
         el("h3", { text: `${item.name}` }),
       ]),
       el("div", { class: "detail-actions" }, [
+        el("button", {
+          class: "btn btn-primary btn-sm",
+          type: "button",
+          text: "创建课件",
+          on: {
+            click: () => {
+              if (hooks.onGenerateFor) hooks.onGenerateFor(item.profile_id, item.name);
+            },
+          },
+        }),
         el("button", {
           class: "btn btn-sm",
           type: "button",

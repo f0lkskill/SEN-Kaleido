@@ -271,12 +271,12 @@ table.data th {
 /* ---- 标签/徽章 ---- */
 .badge {
   display: inline-block;
-  padding: 2px var(--space-2);
+  padding: 3px var(--space-3);
   border-radius: 999px;
   background: var(--color-primary-soft);
   color: var(--color-primary-dark);
   font-size: var(--font-small);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .badge-success { background: #d8f3e5; color: var(--color-success); }
@@ -287,7 +287,12 @@ table.data th {
 .badge-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: var(--space-2) var(--space-3);
+}
+
+/* 空标签行不占位 */
+.badge-row:empty {
+  display: none;
 }
 
 /* ---- 列表 ---- */
@@ -472,8 +477,23 @@ details.disclosure > summary {
 
 /* 生成正文滚动区：限高并可随流式输出自动滚动 */
 .gen-scroll {
+  margin-top: var(--space-3);
   max-height: 60vh;
   overflow: auto;
+}
+
+/* 思考过程与元信息之间的间距 */
+.collapse + .badge-row {
+  margin-top: var(--space-3);
+}
+
+/* 资源生成：所选学生信息板 */
+.selected-student {
+  margin-top: var(--space-3);
+}
+
+.selected-student .student-card {
+  cursor: default;
 }
 
 /* 通用加载占位（placeholder(text, "loading")）也带旋转圆圈 */

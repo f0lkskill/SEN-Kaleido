@@ -5,7 +5,7 @@
 
 import { api } from "../core/api.js";
 import { el, clear, placeholder, enhanceDisclosure, panel } from "../core/dom.js";
-import { label, formatTime } from "../core/format.js";
+import { label, labels, DISABILITY, SEVERITY, COGNITIVE_LEVEL } from "../core/format.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { toastSuccess, toastError } from "../core/toast.js";
 import { buildAttributesForm, readAttributes } from "./framework.js";
@@ -23,6 +23,9 @@ export function createView(root, hooks = {}) {
   let tempForm;
   let tempWrapper;
   let output;
+  let studentPanel;
+  let studentsCache = [];
+  let pendingProfile = null;
 
   function build() {
     clear(root);
@@ -34,10 +37,12 @@ export function createView(root, hooks = {}) {
     tempWrapper = el("div", { hidden: true });
     output = el("div");
     output.append(placeholder("生成结果将显示在此。"));
+    studentPanel = el("div", { class: "selected-student", hidden: true });
 
     studentSelect.addEventListener("change", () => {
       // 未选择学生时展示临时属性表单
       tempWrapper.hidden = studentSelect.value !== "";
+      renderSelectedStudent();
     });
 
     // 左：信息表单；右：生成结果
@@ -47,6 +52,7 @@ export function createView(root, hooks = {}) {
           el("label", { text: "选择学生" }),
           studentSelect,
         ]),
+        studentPanel,
         tempWrapper,
       ]),
       panel("生成设置", [
@@ -94,6 +100,7 @@ export function createView(root, hooks = {}) {
         api.resourceTypes(),
       ]);
 
+      const previous = pendingProfile || studentSelect.value;
       clear(studentSelect);
       studentSelect.append(
         el("option", { value: "", text: "（使用下方临时属性）" })
@@ -108,9 +115,56 @@ export function createView(root, hooks = {}) {
       for (const [value, text] of Object.entries(types)) {
         resourceSelect.append(el("option", { value, text }));
       }
+      studentsCache = students.items;
+      // 选项重建后 value 会被重置，这里恢复原选中/待预选的学生
+      if (previous && selectStudent(previous)) pendingProfile = null;
+      renderSelectedStudent();
     } catch (err) {
       toastError(`加载选项失败：${err.message}`);
     }
+  }
+
+  /** 渲染所选学生的信息板（复用档案列表卡片样式）。 */
+  function renderSelectedStudent() {
+    clear(studentPanel);
+    const id = studentSelect.value;
+    const item = studentsCache.find((student) => student.profile_id === id);
+    if (!item) {
+      studentPanel.hidden = true;
+      return;
+    }
+    studentPanel.hidden = false;
+    studentPanel.append(
+      el("div", { class: "student-card" }, [
+        el("span", { class: "avatar", text: (item.name || "?").slice(0, 1) }),
+        el("span", { class: "student-card-body" }, [
+          el("h4", { text: item.name }),
+          el("div", { class: "badge-row" }, [
+            el("span", { class: "badge badge-info", text: labels(DISABILITY, item.disabilities) }),
+            el("span", { class: "badge badge-muted", text: label(SEVERITY, item.severity) }),
+            el("span", {
+              class: "badge badge-muted",
+              text: `认知：${label(COGNITIVE_LEVEL, item.cognitive_level)}`,
+            }),
+          ]),
+        ]),
+      ])
+    );
+  }
+
+  /** 选中指定学生并刷新信息板；返回是否成功。 */
+  function selectStudent(profileId) {
+    const option = Array.from(studentSelect.options).find((o) => o.value === profileId);
+    if (!option) return false;
+    studentSelect.value = profileId;
+    tempWrapper.hidden = true;
+    renderSelectedStudent();
+    return true;
+  }
+
+  /** 应用待预选的学生（选项尚未就绪时留存，加载完成后生效）。 */
+  function applyPending() {
+    if (pendingProfile && selectStudent(pendingProfile)) pendingProfile = null;
   }
 
   /** 执行生成（流式：实时显示模型思考与正文增量）。 */
@@ -223,6 +277,11 @@ export function createView(root, hooks = {}) {
   return {
     refresh() {
       loadOptions();
+    },
+    /** 预选指定学生（用于从学生档案快速跳转生成）。 */
+    preselect(profileId) {
+      pendingProfile = profileId;
+      applyPending();
     },
   };
 }
