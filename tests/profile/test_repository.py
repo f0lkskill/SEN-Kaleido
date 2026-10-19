@@ -28,7 +28,7 @@ def _create(service: ProfileService, name: str = "测试") -> dict:
             attributes=StudentAttributesInput(
                 disabilities=["visual"],
                 severity="mild",
-                cognitive_level="primary_low",
+                cognitive_level="primary_3",
                 learning_pace="slow",
             ),
         )

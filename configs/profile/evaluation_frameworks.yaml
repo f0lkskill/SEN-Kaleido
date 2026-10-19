@@ -27,7 +27,7 @@ goal_weight_bonus:
 # 维度指数推导模型（0~1，体现"当前可达/适切程度"，由属性确定性推导）
 index_model:
   severity: {mild: 0.85, moderate: 0.65, severe: 0.45}
-  cognitive_level: {preschool: 0.4, primary_low: 0.55, primary_high: 0.7, vocational: 0.8}
+  cognitive_level: {preschool: 0.4, primary_1: 0.45, primary_2: 0.48, primary_3: 0.52, primary_4: 0.56, primary_5: 0.6, primary_6: 0.64, junior_1: 0.68, junior_2: 0.70, junior_3: 0.72, senior_1: 0.75, senior_2: 0.78, senior_3: 0.80, vocational: 0.80}
   learning_pace: {fast: 0.85, medium: 0.6, slow: 0.35}
   # 康复目标对相关维度的加成
   goal_bonus:

@@ -4,11 +4,11 @@ import json
 from collections.abc import Iterator
 
 from kaleido.common.config import load_yaml
-from kaleido.common.errors import NotFoundError, ValidationError
+from kaleido.common.errors import ConfigError, NotFoundError, ValidationError
 from kaleido.common.logging import get_logger
 from kaleido.forge.llm_client import LLMClient, create_client
 from kaleido.forge.models import GenerateRequest
-from kaleido.forge.prompts import render
+from kaleido.forge.prompts import load_template, render
 from kaleido.profile.service import ProfileService
 from kaleido.vault import Vault
 
@@ -42,10 +42,46 @@ class ForgeService:
         raise ValidationError("必须提供 profile_id 或 attributes")
 
     @staticmethod
-    def _primary_disability(attributes: dict) -> str:
-        """取主障碍类型；多障碍时取首项，缺失时返回空串。"""
+    def _disabilities(attributes: dict) -> list[str]:
+        """取全部障碍类型（有序、去空）。"""
         values = attributes.get("disabilities") or []
-        return str(values[0]) if values else ""
+        return [str(item) for item in values if item]
+
+    def _primary_disability(self, attributes: dict) -> str:
+        """取主障碍类型；多障碍时取首项，缺失时返回空串。"""
+        values = self._disabilities(attributes)
+        return values[0] if values else ""
+
+    def _disability_name(self, key: str) -> str:
+        """障碍类型的中文名（取自 student_types 配置）。"""
+        types = load_yaml("profile", "student_types").get("student_types", {})
+        entry = types.get(key) or {}
+        return str(entry.get("name") or key)
+
+    @staticmethod
+    def _requirement_of(template_key: str) -> str:
+        """从模板中抽取「要求：」这一行的具体内容。"""
+        try:
+            text = load_template(template_key)
+        except ConfigError:
+            return ""
+        prefix = "要求："
+        for line in text.splitlines():
+            if line.startswith(prefix):
+                return line[len(prefix) :].strip()
+        return ""
+
+    def _extra_layer_requirements(self, attributes: dict, primary: str) -> str:
+        """多障碍时的叠加说明：把主障碍之外每种障碍的适配要点合并。"""
+        lines: list[str] = []
+        for key in self._disabilities(attributes):
+            if key == primary:
+                continue
+            requirement = self._requirement_of(f"{key}_layer")
+            if not requirement:
+                continue
+            lines.append(f"- 本学生同时具备「{self._disability_name(key)}」：{requirement}")
+        return "\n".join(lines)
 
     def _build_messages(self, request: GenerateRequest, attributes: dict) -> tuple[list, str]:
         """拼装分层 Prompt，返回 (messages, 系统提示词)。"""
@@ -56,9 +92,11 @@ class ForgeService:
         template_key = attributes.get("prompt_template_key") or (
             f"{self._primary_disability(attributes)}_layer"
         )
+        cognitive_labels = load_yaml("profile", "attributes").get("cognitive_level_labels", {})
+        cognitive_key = attributes.get("cognitive_level", "")
         mapping = {
             "severity": attributes.get("severity", ""),
-            "cognitive_level": attributes.get("cognitive_level", ""),
+            "cognitive_level": cognitive_labels.get(cognitive_key, cognitive_key),
             "sensory_preference": attributes.get("sensory_preference", ""),
             "learning_pace": attributes.get("learning_pace", ""),
             "constraints": json.dumps(
@@ -69,6 +107,10 @@ class ForgeService:
             "extra": json.dumps(request.extra, ensure_ascii=False) if request.extra else "无",
         }
         system_prompt = render(template_key, mapping)
+        # 多障碍：以主障碍模板为主体，叠加其余障碍的适配要点
+        extras = self._extra_layer_requirements(attributes, self._primary_disability(attributes))
+        if extras:
+            system_prompt = f"{system_prompt}\n\n【多障碍叠加要求】\n{extras}"
         messages = [
             {"role": "system", "content": system_prompt},
             {

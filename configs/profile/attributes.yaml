@@ -1,7 +1,17 @@
 cognitive_level_order:
   - preschool
-  - primary_low
-  - primary_high
+  - primary_1
+  - primary_2
+  - primary_3
+  - primary_4
+  - primary_5
+  - primary_6
+  - junior_1
+  - junior_2
+  - junior_3
+  - senior_1
+  - senior_2
+  - senior_3
   - vocational
 
 attributes:
@@ -16,7 +26,7 @@ attributes:
   cognitive_level:
     type: enum
     required: true
-    values: [preschool, primary_low, primary_high, vocational]
+    values: [preschool, primary_1, primary_2, primary_3, primary_4, primary_5, primary_6, junior_1, junior_2, junior_3, senior_1, senior_2, senior_3, vocational]
   sensory_preference:
     type: enum
     required: false
@@ -35,3 +45,20 @@ learning_pace_index:
   fast: 0.85
   medium: 0.6
   slow: 0.35
+
+# 认知等级中文名（用于 Prompt 展示，避免直接出现英文键）
+cognitive_level_labels:
+  preschool: 学前
+  primary_1: 小学一年级
+  primary_2: 小学二年级
+  primary_3: 小学三年级
+  primary_4: 小学四年级
+  primary_5: 小学五年级
+  primary_6: 小学六年级
+  junior_1: 初中一年级
+  junior_2: 初中二年级
+  junior_3: 初中三年级
+  senior_1: 高中一年级
+  senior_2: 高中二年级
+  senior_3: 高中三年级
+  vocational: 职教

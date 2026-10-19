@@ -18,7 +18,7 @@ from kaleido.profile.framework import FrameworkEngine
 def test_public_dimensions_and_weights_normalized():
     engine = FrameworkEngine.load()
     framework = engine.build(
-        "visual", "moderate", "primary_low", "medium", ["language"], "fw_test"
+        "visual", "moderate", "primary_3", "medium", ["language"], "fw_test"
     )
     # 当前阶段仅两个公共维度：课堂参与、练习质量
     assert set(framework.dimensions) == {"participation", "practice"}
@@ -31,7 +31,7 @@ def test_public_dimensions_and_weights_normalized():
 def test_dimension_indexes_within_range():
     engine = FrameworkEngine.load()
     framework = engine.build(
-        "hearing", "mild", "primary_high", "fast", ["social"], "fw_test"
+        "hearing", "mild", "primary_5", "fast", ["social"], "fw_test"
     )
     # 每个维度都有 0~1 的指数，保留两位小数
     assert set(framework.dimension_indexes) == {"participation", "practice"}
@@ -44,7 +44,7 @@ def test_dimension_indexes_within_range():
 
 def test_severe_lowers_indexes():
     engine = FrameworkEngine.load()
-    mild = engine.build("visual", "mild", "primary_high", "fast", [], "fw_test")
+    mild = engine.build("visual", "mild", "primary_5", "fast", [], "fw_test")
     severe = engine.build("visual", "severe", "preschool", "slow", [], "fw_test")
     assert mild.dimension_indexes["practice"] > severe.dimension_indexes["practice"]
 
@@ -60,7 +60,7 @@ def test_public_indicators_present_for_all():
 def test_severe_compresses_and_bumps_frequency():
     engine = FrameworkEngine.load()
     framework = engine.build(
-        "intellectual", "severe", "primary_low", "slow", [], "fw_test"
+        "intellectual", "severe", "primary_3", "slow", [], "fw_test"
     )
     for indicator in framework.indicators:
         for obs in indicator.observations:

@@ -20,7 +20,7 @@ SAMPLES = [
         "attributes": {
             "disabilities": ["visual"],
             "severity": "moderate",
-            "cognitive_level": "primary_low",
+            "cognitive_level": "primary_3",
             "sensory_preference": None,
             "rehab_goals": ["language", "cognitive"],
             "learning_pace": "slow",
@@ -31,7 +31,7 @@ SAMPLES = [
         "attributes": {
             "disabilities": ["hearing"],
             "severity": "mild",
-            "cognitive_level": "primary_high",
+            "cognitive_level": "primary_5",
             "sensory_preference": None,
             "rehab_goals": ["social"],
             "learning_pace": "medium",
@@ -42,7 +42,7 @@ SAMPLES = [
         "attributes": {
             "disabilities": ["intellectual"],
             "severity": "severe",
-            "cognitive_level": "primary_low",
+            "cognitive_level": "primary_3",
             "sensory_preference": None,
             "rehab_goals": ["sensory_integration"],
             "learning_pace": "slow",
@@ -121,7 +121,7 @@ def demo_preview(service: ProfileService) -> None:
         StudentAttributesInput(
             disabilities=["intellectual"],
             severity="mild",
-            cognitive_level="primary_high",
+            cognitive_level="primary_5",
             rehab_goals=["cognitive"],
             learning_pace="medium",
         )
@@ -130,7 +130,7 @@ def demo_preview(service: ProfileService) -> None:
         StudentAttributesInput(
             disabilities=["intellectual"],
             severity="severe",
-            cognitive_level="primary_high",
+            cognitive_level="primary_5",
             rehab_goals=["cognitive"],
             learning_pace="medium",
         )

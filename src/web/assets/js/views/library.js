@@ -8,6 +8,7 @@ import { api } from "../core/api.js";
 import { el, clear, placeholder, panel } from "../core/dom.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { confirmDialog } from "../core/dialog.js";
+import { openContextMenu } from "../core/contextmenu.js";
 import { DISABILITY, RESOURCE_STATUS, label, formatTime } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
 import { ATTRIBUTE_OPTIONS } from "./framework.js";
@@ -162,7 +163,10 @@ export function createView(root) {
         type: "button",
         "data-resource-id": item.resource_id,
         style: `animation-delay:${Math.min(index, 12) * 30}ms`,
-        on: { click: (event) => showDetail(item.resource_id, event.currentTarget) },
+        on: {
+          click: (event) => showDetail(item.resource_id, event.currentTarget),
+          contextmenu: (event) => openContextMenu(event, resourceMenu(item)),
+        },
       },
       [
         el("span", { class: "avatar", text: (typeName || "?").slice(0, 1) }),
@@ -227,6 +231,36 @@ export function createView(root) {
       ),
       panel("内容", el("div", { class: "detail-md" }, [md])),
     ]);
+  }
+
+  /** 资源右键菜单项。 */
+  function resourceMenu(item) {
+    return [
+      {
+        label: "查看详情",
+        onSelect: () =>
+          showDetail(
+            item.resource_id,
+            listBox.querySelector(`[data-resource-id="${item.resource_id}"]`)
+          ),
+      },
+      { label: "复制 ID", onSelect: () => copyText(item.resource_id) },
+      null,
+      { label: "通过", onSelect: () => setStatus(item.resource_id, "approved") },
+      { label: "退回", onSelect: () => setStatus(item.resource_id, "rejected") },
+      null,
+      { label: "删除", danger: true, onSelect: () => removeResource(item) },
+    ];
+  }
+
+  /** 复制文本到剪贴板。 */
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toastSuccess("已复制到剪贴板");
+    } catch (err) {
+      toastError("复制失败，请手动复制");
+    }
   }
 
   /** 更新资源审核状态（通过 / 退回）。 */

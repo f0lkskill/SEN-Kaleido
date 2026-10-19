@@ -22,7 +22,7 @@ def test_reindex_after_index_loss(tmp_path):
             "attributes": {
                 "disabilities": ["visual"],
                 "severity": "mild",
-                "cognitive_level": "primary_low",
+                "cognitive_level": "primary_3",
             },
         },
     )

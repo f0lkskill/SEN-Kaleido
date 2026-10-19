@@ -18,11 +18,21 @@ export const SEVERITY = {
   severe: "重度",
 };
 
-/** 认知等级。 */
+/** 认知等级（细化到年级）。 */
 export const COGNITIVE_LEVEL = {
   preschool: "学前",
-  primary_low: "小学低段",
-  primary_high: "小学高段",
+  primary_1: "小学一年级",
+  primary_2: "小学二年级",
+  primary_3: "小学三年级",
+  primary_4: "小学四年级",
+  primary_5: "小学五年级",
+  primary_6: "小学六年级",
+  junior_1: "初中一年级",
+  junior_2: "初中二年级",
+  junior_3: "初中三年级",
+  senior_1: "高中一年级",
+  senior_2: "高中二年级",
+  senior_3: "高中三年级",
   vocational: "职教",
 };
 

@@ -6,7 +6,7 @@
       "attributes": {
         "disabilities": ["visual"],
         "severity": "mild",
-        "cognitive_level": "primary_high",
+        "cognitive_level": "primary_5",
         "rehab_goals": ["language"],
         "learning_pace": "medium"
       }
@@ -17,7 +17,7 @@
       "attributes": {
         "disabilities": ["visual"],
         "severity": "moderate",
-        "cognitive_level": "primary_low",
+        "cognitive_level": "primary_3",
         "rehab_goals": ["language", "cognitive"],
         "learning_pace": "slow"
       }
@@ -28,7 +28,7 @@
       "attributes": {
         "disabilities": ["visual"],
         "severity": "severe",
-        "cognitive_level": "primary_low",
+        "cognitive_level": "primary_3",
         "rehab_goals": ["sensory_integration"],
         "learning_pace": "slow"
       }
@@ -39,7 +39,7 @@
       "attributes": {
         "disabilities": ["hearing"],
         "severity": "mild",
-        "cognitive_level": "primary_high",
+        "cognitive_level": "primary_5",
         "rehab_goals": ["social"],
         "learning_pace": "medium"
       }
@@ -50,7 +50,7 @@
       "attributes": {
         "disabilities": ["hearing"],
         "severity": "moderate",
-        "cognitive_level": "primary_low",
+        "cognitive_level": "primary_3",
         "rehab_goals": ["language", "social"],
         "learning_pace": "slow"
       }
@@ -72,7 +72,7 @@
       "attributes": {
         "disabilities": ["intellectual"],
         "severity": "mild",
-        "cognitive_level": "primary_low",
+        "cognitive_level": "primary_3",
         "rehab_goals": ["cognitive"],
         "learning_pace": "medium"
       }
@@ -83,7 +83,7 @@
       "attributes": {
         "disabilities": ["intellectual"],
         "severity": "moderate",
-        "cognitive_level": "primary_low",
+        "cognitive_level": "primary_3",
         "rehab_goals": ["cognitive", "language"],
         "learning_pace": "slow"
       }
@@ -94,7 +94,7 @@
       "attributes": {
         "disabilities": ["intellectual"],
         "severity": "severe",
-        "cognitive_level": "primary_low",
+        "cognitive_level": "primary_3",
         "rehab_goals": ["sensory_integration"],
         "learning_pace": "slow"
       }
@@ -105,7 +105,7 @@
       "attributes": {
         "disabilities": ["autism"],
         "severity": "mild",
-        "cognitive_level": "primary_high",
+        "cognitive_level": "primary_5",
         "rehab_goals": ["social"],
         "learning_pace": "medium"
       }
@@ -138,7 +138,7 @@
       "attributes": {
         "disabilities": ["visual", "intellectual"],
         "severity": "moderate",
-        "cognitive_level": "primary_low",
+        "cognitive_level": "primary_3",
         "rehab_goals": ["sensory_integration", "cognitive"],
         "learning_pace": "slow"
       }
@@ -154,7 +154,7 @@
         "attributes": {
           "disabilities": ["visual"],
           "severity": "moderate",
-          "cognitive_level": "primary_low",
+          "cognitive_level": "primary_3",
           "learning_pace": "slow"
         }
       }
@@ -168,7 +168,7 @@
         "attributes": {
           "disabilities": ["visual"],
           "severity": "moderate",
-          "cognitive_level": "primary_low",
+          "cognitive_level": "primary_3",
           "sensory_preference": "mixed",
           "learning_pace": "slow"
         }
@@ -183,7 +183,7 @@
         "attributes": {
           "disabilities": ["visual", "intellectual"],
           "severity": "moderate",
-          "cognitive_level": "primary_low",
+          "cognitive_level": "primary_3",
           "rehab_goals": ["language"],
           "learning_pace": "slow"
         }
@@ -198,7 +198,7 @@
         "attributes": {
           "disabilities": [],
           "severity": "mild",
-          "cognitive_level": "primary_low",
+          "cognitive_level": "primary_3",
           "learning_pace": "slow"
         }
       }
@@ -212,7 +212,7 @@
         "attributes": {
           "disabilities": ["adhd"],
           "severity": "mild",
-          "cognitive_level": "primary_low",
+          "cognitive_level": "primary_3",
           "learning_pace": "slow"
         }
       }
@@ -226,7 +226,7 @@
         "attributes": {
           "disabilities": ["visual"],
           "severity": "extreme",
-          "cognitive_level": "primary_low",
+          "cognitive_level": "primary_3",
           "learning_pace": "slow"
         }
       }
@@ -240,7 +240,7 @@
         "attributes": {
           "disabilities": ["visual"],
           "severity": "mild",
-          "cognitive_level": "primary_low",
+          "cognitive_level": "primary_3",
           "rehab_goals": ["dance"],
           "learning_pace": "slow"
         }

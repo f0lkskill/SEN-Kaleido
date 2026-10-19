@@ -29,7 +29,7 @@ def test_resolve_defaults_sensory():
         StudentAttributesInput(
             disabilities=["visual"],
             severity="moderate",
-            cognitive_level="primary_low",
+            cognitive_level="primary_3",
             learning_pace="slow",
         ),
     )
@@ -46,7 +46,7 @@ def test_explicit_sensory_overrides_default():
         StudentAttributesInput(
             disabilities=["visual"],
             severity="moderate",
-            cognitive_level="primary_low",
+            cognitive_level="primary_3",
             sensory_preference="mixed",
             learning_pace="slow",
         ),
@@ -63,7 +63,7 @@ def test_invalid_enum_raises():
             StudentAttributesInput(
                 disabilities=["visual"],
                 severity="unknown",
-                cognitive_level="primary_low",
+                cognitive_level="primary_3",
                 learning_pace="slow",
             ),
         )
@@ -78,7 +78,7 @@ def test_invalid_rehab_goal_raises():
             StudentAttributesInput(
                 disabilities=["visual"],
                 severity="mild",
-                cognitive_level="primary_low",
+                cognitive_level="primary_3",
                 rehab_goals=["dance"],
                 learning_pace="slow",
             ),

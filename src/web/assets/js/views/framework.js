@@ -323,7 +323,7 @@ export function buildAttributesForm(prefix) {
       select("learning_pace", ATTRIBUTE_OPTIONS.learning_pace, { required: true }),
     ]),
     el("div", { class: "field" }, [
-      el("label", { for: `${prefix}-sensory`, text: "感官偏好（留空则按主障碍推导）" }),
+      el("label", { for: `${prefix}-sensory`, text: "感官偏好" }),
       select("sensory_preference", ATTRIBUTE_OPTIONS.sensory_preference, {
         includeBlank: true,
       }),

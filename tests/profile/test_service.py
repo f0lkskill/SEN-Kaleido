@@ -29,7 +29,7 @@ def _input(**overrides) -> StudentAttributesInput:
     data = {
         "disabilities": ["visual"],
         "severity": "moderate",
-        "cognitive_level": "primary_low",
+        "cognitive_level": "primary_3",
         "rehab_goals": ["language"],
         "learning_pace": "slow",
     }

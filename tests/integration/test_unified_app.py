@@ -96,7 +96,7 @@ def test_profile_route_available(tmp_path):
         "attributes": {
             "disabilities": ["visual"],
             "severity": "mild",
-            "cognitive_level": "primary_low",
+            "cognitive_level": "primary_3",
             "learning_pace": "medium",
         },
     }
@@ -125,7 +125,7 @@ def test_forge_generate_via_task(tmp_path, monkeypatch):
             "attributes": {
                 "disabilities": ["hearing"],
                 "severity": "moderate",
-                "cognitive_level": "primary_high",
+                "cognitive_level": "primary_5",
                 "learning_pace": "slow",
             },
             "resource_type": "exercise",

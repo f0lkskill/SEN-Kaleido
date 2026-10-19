@@ -492,6 +492,51 @@ details.disclosure > summary {
   margin-top: var(--space-3);
 }
 
+/* ---- 右键菜单 ---- */
+.context-menu {
+  position: fixed;
+  z-index: 90;
+  min-width: 150px;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  animation: overlay-in 0.12s ease both;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.context-menu-item.is-danger {
+  color: var(--color-danger);
+}
+
+.context-menu-item:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.context-menu-sep {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--color-border);
+}
+
 .selected-student .student-card {
   cursor: default;
 }

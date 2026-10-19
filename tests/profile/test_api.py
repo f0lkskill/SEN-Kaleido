@@ -74,7 +74,7 @@ def _payload(name="小明"):
         "attributes": {
             "disabilities": ["visual"],
             "severity": "moderate",
-            "cognitive_level": "primary_low",
+            "cognitive_level": "primary_3",
             "rehab_goals": ["language"],
             "learning_pace": "slow",
         },
@@ -127,7 +127,7 @@ def test_list_and_preview_and_meta(tmp_path):
         {
             "disabilities": ["hearing"],
             "severity": "mild",
-            "cognitive_level": "primary_high",
+            "cognitive_level": "primary_5",
             "learning_pace": "medium",
         },
     )

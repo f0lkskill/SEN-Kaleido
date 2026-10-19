@@ -293,7 +293,7 @@ configs/profile/
   "attributes": {
     "disabilities": ["visual"],
     "severity": "moderate",
-    "cognitive_level": "primary_low",
+    "cognitive_level": "primary_3",
     "sensory_preference": null,
     "rehab_goals": ["language", "cognitive"],
     "learning_pace": "slow"
@@ -314,7 +314,7 @@ configs/profile/
     "attributes": {
       "disabilities": ["visual"],
       "severity": "moderate",
-      "cognitive_level": "primary_low",
+      "cognitive_level": "primary_3",
       "sensory_preference": "audio_first",
       "rehab_goals": ["language", "cognitive"],
       "learning_pace": "slow"

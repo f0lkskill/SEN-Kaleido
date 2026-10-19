@@ -16,7 +16,7 @@ from kaleido.forge.prompts import load_template, render
 
 MAPPING = {
     "severity": "moderate",
-    "cognitive_level": "primary_low",
+    "cognitive_level": "primary_3",
     "sensory_preference": "audio_first",
     "learning_pace": "slow",
     "constraints": '{"format": "voice_first"}',

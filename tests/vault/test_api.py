@@ -123,7 +123,7 @@ def test_students_namespace_uses_config(tmp_path):
             "attributes": {
                 "disabilities": ["visual"],
                 "severity": "mild",
-                "cognitive_level": "primary_low",
+                "cognitive_level": "primary_3",
             },
         },
     )
