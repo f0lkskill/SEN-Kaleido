@@ -20,8 +20,7 @@ collections:
     id_prefix: r
     id_zerofill: 5
     index_fields:
-      - type
-      - tags
+      - resource_type
       - disability
       - status
   feedback:

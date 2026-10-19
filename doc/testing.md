@@ -99,22 +99,34 @@ tests/fixtures/
 
 > 成功标准：`tests/profile/*` 在 vault 改造后**不改动**即全绿，即视为对接成功。
 
-## 五、端到端（`tests/e2e/`，后续）
+## 五、`kaleido-forge` 测试（`tests/forge/`）
+
+> 状态：已实现，全部通过（`StubClient` 离线）。
+
+| 文件 | 覆盖点 |
+|---|---|
+| `test_llm_client.py` | 桩调用、配置工厂、缺密钥、请求构造、重试与错误映射 |
+| `test_prompts.py` | 四类模板渲染、约束注入、缺失占位、缺失模板 |
+| `test_service.py` | 画像/属性两种来源、Prompt 拼装、落库、筛选 |
+| `test_api.py` | 生成、详情、列表、非法请求、资源类型 |
+
+## 六、端到端（`tests/e2e/`，后续）
 
 - 建档 → 生成（桩 `llm_client`）→ 质检 → 落库 → 匹配 全链路。
 - 用本地测试集灌入，产出可复现的样例资源。
 
-## 六、运行方式
+## 七、运行方式
 
 ```powershell
 pytest -q                                   # 全部（跳过 live）
 pytest -q tests/vault tests/integration     # 仅 vault 与对接
+pytest -q tests/forge                       # 仅 forge
 pytest -q tests/live                        # 真实联调（需 API Key，默认跳过）
 ```
 
 pytest 配置（`pyproject.toml`）：`pythonpath=src`；`tests/live` 通过 `-m live` 选择性运行。
 
-## 七、质量门（本地 / CI）
+## 八、质量门（本地 / CI）
 
 - `ruff check` 通过。
 - `pyright` 0 error。

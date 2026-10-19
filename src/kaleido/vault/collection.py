@@ -47,7 +47,9 @@ class Collection:
         self.store = JsonStore(self.root)
         self.index_path = self.root / "index.json"
         self._lock = RLock()  # 进程内串行化
-        self._index = self._load_index()
+        # 初始化索引时也持锁，避免与其它进程的替换写冲突
+        with self.store.lock():
+            self._index = self._load_index()
 
     def _empty_index(self) -> dict:
         """空索引结构：counter 计数器、entries 索引条目、idempotency 幂等键。"""

@@ -1,0 +1,18 @@
+你是一名特殊教育资源的资深设计者。
+请为「听力障碍」学生设计学习资源。
+
+【学生画像】
+- 障碍程度：{severity}
+- 认知等级：{cognitive_level}
+- 感官偏好：{sensory_preference}
+- 学习节奏：{learning_pace}
+
+【硬性适配约束】
+{constraints}
+
+【本次任务】
+- 资源类型：{resource_type}
+- 主题：{topic}
+- 补充要求：{extra}
+
+要求：严格满足上述约束；以视觉信息为主，所有音频内容必须提供字幕/文字稿，避免无字幕纯音频。

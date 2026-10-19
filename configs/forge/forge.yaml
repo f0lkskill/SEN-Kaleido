@@ -1,0 +1,17 @@
+# kaleido-forge 配置：云端模型参数与资源类型
+llm:
+  provider: deepseek            # deepseek | stub
+  base_url: https://api.deepseek.com
+  model: deepseek-flash
+  temperature: 0.7
+  max_tokens: 2048
+  timeout: 60
+  retries: 2
+  api_key_env: DEEPSEEK_API_KEY
+
+resource_types:
+  courseware: 分层知识点课件
+  exercise: 个性化练习题库
+  rehabilitation: 多模态康复素材
+  interaction: 课堂互动辅助资源
+  iep: 个别化教学方案

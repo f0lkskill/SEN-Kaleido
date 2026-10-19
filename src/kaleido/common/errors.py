@@ -51,3 +51,10 @@ class StorageError(KaleidoError):
 
     code = 1005
     http_status = 500
+
+
+class UpstreamError(KaleidoError):
+    """上游（如云端大模型）调用失败（HTTP 502）。"""
+
+    code = 1006
+    http_status = 502
