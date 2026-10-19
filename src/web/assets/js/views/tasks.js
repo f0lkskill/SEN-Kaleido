@@ -5,7 +5,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder } from "../core/dom.js";
+import { el, clear, placeholder, enhanceDisclosure } from "../core/dom.js";
 import {
   TASK_STATUS,
   TASK_STATUS_CLASS,
@@ -230,18 +230,22 @@ export function createView(root) {
         class: "meta",
         text: `尝试 ${item.attempts}/${item.max_attempts} · 创建 ${formatTime(item.created_at)} · 更新 ${formatTime(item.updated_at)}`,
       }),
-      el("details", { class: "disclosure" }, [
-        el("summary", { text: "任务参数" }),
-        el("pre", { class: "output", text: JSON.stringify(item.payload, null, 2) }),
-      ]),
+      enhanceDisclosure(
+        el("details", { class: "disclosure" }, [
+          el("summary", { text: "任务参数" }),
+          el("pre", { class: "output", text: JSON.stringify(item.payload, null, 2) }),
+        ])
+      ),
     ]);
 
     if (item.result) {
       body.append(
-        el("details", { class: "disclosure" }, [
-          el("summary", { text: "执行结果" }),
-          el("pre", { class: "output", text: JSON.stringify(item.result, null, 2) }),
-        ])
+        enhanceDisclosure(
+          el("details", { class: "disclosure" }, [
+            el("summary", { text: "执行结果" }),
+            el("pre", { class: "output", text: JSON.stringify(item.result, null, 2) }),
+          ])
+        )
       );
     }
     if (item.error) {
@@ -258,7 +262,7 @@ export function createView(root) {
       );
     }
 
-    return el("details", { class: "list-item disclosure" }, [header, body]);
+    return enhanceDisclosure(el("details", { class: "list-item disclosure" }, [header, body]));
   }
 
   /** 取消任务。 */

@@ -4,7 +4,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder } from "../core/dom.js";
+import { el, clear, placeholder, enhanceDisclosure } from "../core/dom.js";
 import {
   DISABILITY,
   RESOURCE_STATUS,
@@ -115,16 +115,18 @@ export function createView(root) {
     }
   }
 
-  /** 单条资源。 */
+  /** 单条资源（展开/收起带高度过渡）。 */
   function resourceItem(item) {
-    return el("details", { class: "list-item disclosure" }, [
-      el("summary", {}, [
-        `[${label(DISABILITY, item.disability)}] ${item.topic} `,
-        el("span", { class: "badge badge-muted", text: label(RESOURCE_STATUS, item.status) }),
-      ]),
-      el("p", { class: "meta", text: `ID：${item.resource_id} · 模型：${item.model || "-"} · ${formatTime(item.updated_at)}` }),
-      el("pre", { class: "output", text: item.content || "（空内容）" }),
-    ]);
+    return enhanceDisclosure(
+      el("details", { class: "list-item disclosure" }, [
+        el("summary", {}, [
+          `[${label(DISABILITY, item.disability)}] ${item.topic} `,
+          el("span", { class: "badge badge-muted", text: label(RESOURCE_STATUS, item.status) }),
+        ]),
+        el("p", { class: "meta", text: `ID：${item.resource_id} · 模型：${item.model || "-"} · ${formatTime(item.updated_at)}` }),
+        el("pre", { class: "output", text: item.content || "（空内容）" }),
+      ])
+    );
   }
 
   build();

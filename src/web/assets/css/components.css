@@ -879,13 +879,11 @@ details.collapse[open] > summary::after {
   content: "收起";
 }
 
-details.collapse[open] .collapse-body {
-  animation: reveal 0.28s ease both;
-}
-
-@keyframes reveal {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: none; }
+/* 折叠内容容器：高度过渡由 enhanceDisclosure() 驱动，展开/收起均有动画 */
+.disclosure-body {
+  overflow: hidden;
+  height: 0;
+  transition: height 0.26s ease;
 }
 
 /* ---- 详情面板收起动画（作用于每次重建的 .detail-body） ---- */

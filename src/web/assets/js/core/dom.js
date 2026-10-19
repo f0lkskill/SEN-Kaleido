@@ -56,3 +56,64 @@ export function qs(selector, root = document) {
 export function placeholder(text, kind = "empty") {
   return el("div", { class: kind, text });
 }
+
+/**
+ * 让原生 <details> 支持平滑的展开 / 收起高度过渡。
+ * 原理：把 summary 之后的内容包进高度过渡容器，拦截点击手动控制 open 时机，
+ * 收起时先播放过渡、结束再关闭，避免内容瞬间消失。
+ * @param {HTMLDetailsElement} details 目标元素
+ * @returns {HTMLDetailsElement}
+ */
+export function enhanceDisclosure(details) {
+  const summary = details.querySelector("summary");
+  if (!summary) return details;
+
+  // 把 summary 之后的所有内容移入动画容器
+  const body = document.createElement("div");
+  body.className = "disclosure-body";
+  while (summary.nextSibling) body.append(summary.nextSibling);
+  details.append(body);
+
+  details.open = false;
+  body.style.height = "0px";
+
+  summary.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (details.dataset.danim === "1") return;
+    details.dataset.danim = "1";
+
+    const expanding = !details.open;
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      body.removeEventListener("transitionend", onEnd);
+      body.style.height = expanding ? "auto" : "0px";
+      details.open = expanding;
+      details.dataset.danim = "0";
+    };
+    const onEnd = (e) => {
+      if (e.target === body) settle();
+    };
+    body.addEventListener("transitionend", onEnd);
+    // 兜底：过渡事件未回调（内容为空或动效被禁用）时也要落定
+    const timer = window.setTimeout(settle, 400);
+
+    if (expanding) {
+      // 展开：先置 0 再过渡到内容高度
+      details.open = true;
+      body.style.height = "0px";
+      requestAnimationFrame(() => {
+        body.style.height = `${body.scrollHeight}px`;
+      });
+    } else {
+      // 收起：先固定当前高度，再过渡到 0，结束后真正关闭
+      body.style.height = `${body.scrollHeight}px`;
+      requestAnimationFrame(() => {
+        body.style.height = "0px";
+      });
+    }
+  });
+  return details;
+}

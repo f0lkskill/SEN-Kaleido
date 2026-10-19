@@ -4,7 +4,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder } from "../core/dom.js";
+import { el, clear, placeholder, enhanceDisclosure } from "../core/dom.js";
 import { label, formatTime } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
 import { buildAttributesForm, readAttributes } from "./framework.js";
@@ -137,10 +137,12 @@ export function createView(root, hooks = {}) {
           el("span", { class: "badge badge-warning", text: `状态：${result.status}` }),
         ]),
         el("pre", { class: "output", text: result.content || "（空内容）" }),
-        el("details", { class: "disclosure" }, [
-          el("summary", { text: "查看使用的系统提示词" }),
-          el("pre", { class: "output", text: result.prompt || "" }),
-        ])
+        enhanceDisclosure(
+          el("details", { class: "disclosure" }, [
+            el("summary", { text: "查看使用的系统提示词" }),
+            el("pre", { class: "output", text: result.prompt || "" }),
+          ])
+        )
       );
       toastSuccess("生成完成（草稿）");
       if (hooks.onGenerated) hooks.onGenerated();

@@ -6,7 +6,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder } from "../core/dom.js";
+import { el, clear, placeholder, enhanceDisclosure } from "../core/dom.js";
 import {
   DISABILITY,
   SEVERITY,
@@ -62,12 +62,14 @@ export function createView(root) {
     // ---- 工具条：筛选 ----
     filterDisability = filterSelect("disability", ATTRIBUTE_OPTIONS.disability);
     filterCognitive = filterSelect("cognitive_level", ATTRIBUTE_OPTIONS.cognitive_level);
+    // 选择即筛选：下拉变化立刻触发刷新
+    filterDisability.addEventListener("change", refresh);
+    filterCognitive.addEventListener("change", refresh);
     totalBadge = el("span", { class: "badge badge-muted", text: "共 0 人" });
 
     const toolbar = el("div", { class: "toolbar" }, [
       el("div", { class: "field" }, [el("label", { text: "障碍类型" }), filterDisability]),
       el("div", { class: "field" }, [el("label", { text: "认知等级" }), filterCognitive]),
-      el("button", { class: "btn", type: "button", text: "筛选", on: { click: refresh } }),
       el("div", { class: "spacer" }),
       totalBadge,
     ]);
@@ -186,22 +188,39 @@ export function createView(root) {
     return form;
   }
 
-  /** 关闭详情面板，播放收起动画后恢复列表全宽。 */
+  /** 关闭详情面板：用 Web Animations API 播放收起动画后恢复列表全宽。 */
   function closeDetail() {
     if (detailBox.hidden) return;
     layout.classList.remove("narrowed");
-    detailBox.classList.add("leaving");
     activeId = null;
     for (const item of listBox.querySelectorAll(".student-card")) {
       item.classList.remove("active");
     }
-    if (closeTimer) window.clearTimeout(closeTimer);
-    closeTimer = window.setTimeout(() => {
-      detailBox.classList.remove("leaving");
+
+    const finish = () => {
+      if (closeTimer) {
+        window.clearTimeout(closeTimer);
+        closeTimer = null;
+      }
       detailBox.hidden = true;
       clear(detailBox);
-      closeTimer = null;
-    }, 200);
+    };
+
+    const body = detailBox.querySelector(".detail-body");
+    if (body && typeof body.animate === "function") {
+      const anim = body.animate(
+        [
+          { opacity: 1, transform: "translateX(0)" },
+          { opacity: 0, transform: "translateX(28px)" },
+        ],
+        { duration: 240, easing: "ease-in", fill: "forwards" }
+      );
+      anim.onfinish = finish;
+      // 兜底：动画事件未回调时也要收起
+      closeTimer = window.setTimeout(finish, 420);
+    } else {
+      finish();
+    }
   }
 
   /** 拉取并渲染学生列表（会同时收起详情面板，卡片依次入场）。 */
@@ -264,7 +283,7 @@ export function createView(root) {
       el("div", { class: "detail-head" }, [
         el("div", { class: "detail-id" }, [
           el("span", { class: "avatar avatar-lg", text: firstChar(item.name) }),
-          el("h3", { text: `${item.name} · 档案详情` }),
+          el("h3", { text: `${item.name}` }),
         ]),
         el("div", { class: "detail-actions" }, [
           el("button", {
@@ -288,10 +307,12 @@ export function createView(root) {
       el("h4", { text: "维度与学习节奏关系" }),
       renderFlow(attributes),
       // 评价标准默认隐藏，点击展开查看观测点与评分等级
-      el("details", { class: "collapse" }, [
-        el("summary", {}, [el("span", { text: "评价标准与观测点" })]),
-        el("div", { class: "collapse-body" }, [renderFramework(item.framework)]),
-      ]),
+      enhanceDisclosure(
+        el("details", { class: "collapse" }, [
+          el("summary", {}, [el("span", { text: "评价标准与观测点" })]),
+          el("div", { class: "collapse-body" }, [renderFramework(item.framework)]),
+        ])
+      ),
       el("p", { class: "meta detail-meta", text: `更新时间：${formatTime(item.updated_at)}` }),
     ]);
   }
