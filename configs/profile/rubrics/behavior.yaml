@@ -1,0 +1,19 @@
+key: behavior
+name: 行为改善
+levels:
+  - level: 1
+    label: 未达成
+    description: 目标行为问题持续存在，影响课堂
+    evidence: 需课堂观察记录
+  - level: 2
+    label: 初步
+    description: 在辅助下可减少目标行为
+    evidence: 需课堂观察与教师评语
+  - level: 3
+    label: 基本
+    description: 目标行为明显减少，可自我调节
+    evidence: 需阶段性记录对比
+  - level: 4
+    label: 熟练
+    description: 目标行为基本消失，情绪稳定
+    evidence: 需连续阶段记录

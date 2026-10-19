@@ -1,0 +1,31 @@
+cognitive_level_order:
+  - preschool
+  - primary_low
+  - primary_high
+  - vocational
+
+attributes:
+  disability:
+    type: enum
+    required: true
+    values: [visual, hearing, intellectual, autism]
+  severity:
+    type: enum
+    required: true
+    values: [mild, moderate, severe]
+  cognitive_level:
+    type: enum
+    required: true
+    values: [preschool, primary_low, primary_high, vocational]
+  sensory_preference:
+    type: enum
+    required: false
+    values: [visual_first, audio_first, tactile_aided, mixed]
+  rehab_goals:
+    type: list
+    required: false
+    values: [language, sensory_integration, social, cognitive]
+  learning_pace:
+    type: enum
+    required: true
+    values: [fast, medium, slow]

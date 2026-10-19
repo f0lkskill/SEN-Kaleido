@@ -1,0 +1,19 @@
+key: knowledge
+name: 知识掌握
+levels:
+  - level: 1
+    label: 未达成
+    description: 无法完成目标任务，需全程辅助
+    evidence: 需至少一条课堂观察记录
+  - level: 2
+    label: 初步
+    description: 在提示下可部分完成目标任务
+    evidence: 需题目记录与教师评语
+  - level: 3
+    label: 基本
+    description: 可独立完成大部分目标任务
+    evidence: 需答题正确率不低于 60%
+  - level: 4
+    label: 熟练
+    description: 可稳定独立完成并迁移到新任务
+    evidence: 需连续两次达标记录

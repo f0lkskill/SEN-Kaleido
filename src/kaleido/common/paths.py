@@ -1,0 +1,14 @@
+"""项目路径定位。
+
+默认使用项目根目录下的 ``configs/`` 与 ``data/``；
+可通过环境变量 ``SEN_KALEIDO_CONFIG_DIR`` / ``SEN_KALEIDO_DATA_DIR`` 覆盖，
+便于测试使用临时目录、部署时指向其它磁盘位置。
+"""
+
+import os
+from pathlib import Path
+
+# paths.py 位于 <root>/src/kaleido/common/paths.py，向上四级即项目根目录
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+CONFIG_DIR = Path(os.environ.get("SEN_KALEIDO_CONFIG_DIR", PROJECT_ROOT / "configs"))
+DATA_DIR = Path(os.environ.get("SEN_KALEIDO_DATA_DIR", PROJECT_ROOT / "data"))

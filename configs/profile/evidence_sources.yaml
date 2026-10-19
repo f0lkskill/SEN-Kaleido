@@ -1,0 +1,42 @@
+evidence_sources:
+  item_response:
+    name: 试题作答
+    modality: structured
+    processed_by: auto_or_human
+    cost: low
+  classroom_observation:
+    name: 课堂观察
+    modality: structured
+    processed_by: human
+    cost: low
+  video_event:
+    name: 视频事件
+    modality: raw_media
+    processed_by: human_or_llm
+    requires_segmentation: true
+    cost: high
+  work_sample:
+    name: 作品/作业样本
+    modality: artifact
+    processed_by: human
+    cost: medium
+  teacher_rating:
+    name: 教师评分
+    modality: structured
+    processed_by: human
+    cost: low
+  parent_feedback:
+    name: 家长反馈
+    modality: text
+    processed_by: human_or_llm
+    cost: medium
+  rehab_record:
+    name: 康复师记录
+    modality: structured
+    processed_by: human
+    cost: medium
+  system_log:
+    name: 系统埋点
+    modality: structured
+    processed_by: auto
+    cost: low

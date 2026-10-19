@@ -1,0 +1,47 @@
+student_types:
+  visual:
+    name: 视力障碍
+    parent: null
+    tags: [sensory, visual]
+    defaults:
+      sensory_preference: audio_first
+    constraints:
+      format: voice_first
+      sentence_length_max: 15
+      avoid_visual_ref: true
+    prompt_template: visual_layer
+
+  hearing:
+    name: 听力障碍
+    parent: null
+    tags: [sensory, auditory]
+    defaults:
+      sensory_preference: visual_first
+    constraints:
+      require_caption: true
+      visual_priority: true
+    prompt_template: hearing_layer
+
+  intellectual:
+    name: 智力障碍
+    parent: null
+    tags: [cognitive]
+    defaults:
+      sensory_preference: mixed
+    constraints:
+      step_by_step: true
+      add_emoji: true
+      sentence_length_max: 12
+    prompt_template: intellectual_layer
+
+  autism:
+    name: 自闭症
+    parent: null
+    tags: [developmental, social]
+    defaults:
+      sensory_preference: mixed
+    constraints:
+      short_sentence: true
+      simple_vocab: true
+      visual_aid: true
+    prompt_template: autism_layer

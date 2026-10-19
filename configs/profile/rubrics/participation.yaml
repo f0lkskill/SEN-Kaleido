@@ -1,0 +1,19 @@
+key: participation
+name: 课堂参与
+levels:
+  - level: 1
+    label: 未达成
+    description: 几乎不参与课堂活动
+    evidence: 需课堂观察记录
+  - level: 2
+    label: 初步
+    description: 偶尔在引导下参与
+    evidence: 需课堂观察记录
+  - level: 3
+    label: 基本
+    description: 能主动参与多数课堂活动
+    evidence: 需连续观察记录
+  - level: 4
+    label: 熟练
+    description: 主动且稳定参与并能带动同伴
+    evidence: 需课堂观察与教师评语
