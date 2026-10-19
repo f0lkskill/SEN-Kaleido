@@ -92,6 +92,8 @@ export function createView(root) {
         window.clearTimeout(closeTimer);
         closeTimer = null;
       }
+      // 收起动画期间若已重新选中资源，则不再收起（避免清空新面板）
+      if (activeId) return;
       detailBox.hidden = true;
       clear(detailBox);
     };
