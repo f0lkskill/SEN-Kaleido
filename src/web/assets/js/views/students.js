@@ -144,7 +144,7 @@ export function createView(root) {
       el("div", { class: "field" }, [el("label", { text: "学生姓名/化名" }), nameInput]),
       attrsForm,
       el("label", { class: "check" }, [frameworkCheck, "同时生成评价框架"]),
-      el("div", { style: "margin-top:16px" }, [
+      el("div", { class: "form-actions" }, [
         el("button", { class: "btn btn-primary", type: "submit", text: "建档" }),
       ]),
     ]);

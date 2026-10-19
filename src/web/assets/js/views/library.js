@@ -1,16 +1,13 @@
 /**
- * views/library.js —— 资源库视图
- * 按资源类型/障碍类型/状态筛选，列表查看生成资源并展开正文。
+ * views/library.js —— 资源库视图（左右分栏：左资源单，右详情）
+ * 左侧按条件筛选并列出资源，选中后右侧展示完整正文（Markdown 渲染）、
+ * 元信息标签与生成模板信息。
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder, enhanceDisclosure } from "../core/dom.js";
-import {
-  DISABILITY,
-  RESOURCE_STATUS,
-  label,
-  formatTime,
-} from "../core/format.js";
+import { el, clear, placeholder } from "../core/dom.js";
+import { renderMarkdown } from "../core/markdown.js";
+import { DISABILITY, RESOURCE_STATUS, label, formatTime } from "../core/format.js";
 import { toastError } from "../core/toast.js";
 import { ATTRIBUTE_OPTIONS } from "./framework.js";
 
@@ -32,53 +29,48 @@ export function createView(root) {
   let typeFilter;
   let disabilityFilter;
   let statusFilter;
-  let resourceSelect;
   let listBox;
+  let detailBox;
+  let layout;
   let counter;
+  let typeMap = {}; // 资源类型键 -> 中文名
+  let closeTimer = null;
 
   function build() {
     clear(root);
-    resourceSelect = el("select", { name: "resource_type_filter" });
-    typeFilter = resourceSelect;
+    typeFilter = el("select", { name: "resource_type_filter" });
     disabilityFilter = filterSelect("disability", ATTRIBUTE_OPTIONS.disability);
     statusFilter = filterSelect("status", STATUS_OPTIONS);
-    listBox = el("div", { class: "list" });
+    listBox = el("div", { class: "student-list" });
+    detailBox = el("div", { class: "student-detail", hidden: true });
+    layout = el("div", { class: "student-layout" }, [listBox, detailBox]);
     counter = el("span", { class: "badge badge-muted", text: "共 0 条" });
 
     const toolbar = el("div", { class: "toolbar" }, [
-      el("div", { class: "field" }, [
-        el("label", { text: "资源类型" }),
-        typeFilter,
-      ]),
-      el("div", { class: "field" }, [
-        el("label", { text: "障碍类型" }),
-        disabilityFilter,
-      ]),
-      el("div", { class: "field" }, [
-        el("label", { text: "状态" }),
-        statusFilter,
-      ]),
-      el("button", {
-        class: "btn",
-        type: "button",
-        text: "刷新",
-        on: { click: refresh },
-      }),
+      el("div", { class: "field" }, [el("label", { text: "资源类型" }), typeFilter]),
+      el("div", { class: "field" }, [el("label", { text: "障碍类型" }), disabilityFilter]),
+      el("div", { class: "field" }, [el("label", { text: "状态" }), statusFilter]),
       el("div", { class: "spacer" }),
       counter,
+      el("button", { class: "btn", type: "button", text: "刷新", on: { click: refresh } }),
     ]);
 
-    const card = el("section", { class: "card" }, [toolbar, listBox]);
+    // 选择即筛选
+    typeFilter.addEventListener("change", refresh);
+    disabilityFilter.addEventListener("change", refresh);
+    statusFilter.addEventListener("change", refresh);
+
+    const card = el("section", { class: "card" }, [toolbar, layout]);
     root.append(card);
   }
 
-  /** 加载资源类型下拉。 */
+  /** 加载资源类型（用于下拉与中文名映射）。 */
   async function loadTypes() {
     try {
-      const types = await api.resourceTypes();
+      typeMap = await api.resourceTypes();
       clear(typeFilter);
       typeFilter.append(el("option", { value: "", text: "全部" }));
-      for (const [value, text] of Object.entries(types)) {
+      for (const [value, text] of Object.entries(typeMap)) {
         typeFilter.append(el("option", { value, text }));
       }
     } catch (err) {
@@ -86,8 +78,40 @@ export function createView(root) {
     }
   }
 
+  /** 收起详情面板（带回弹动画）。 */
+  function closeDetail() {
+    if (detailBox.hidden) return;
+    layout.classList.remove("narrowed");
+    for (const node of listBox.querySelectorAll(".student-card")) {
+      node.classList.remove("active");
+    }
+    const finish = () => {
+      if (closeTimer) {
+        window.clearTimeout(closeTimer);
+        closeTimer = null;
+      }
+      detailBox.hidden = true;
+      clear(detailBox);
+    };
+    const body = detailBox.querySelector(".detail-body");
+    if (body && typeof body.animate === "function") {
+      const anim = body.animate(
+        [
+          { opacity: 1, transform: "translateX(0)" },
+          { opacity: 0, transform: "translateX(28px)" },
+        ],
+        { duration: 240, easing: "ease-in", fill: "forwards" }
+      );
+      anim.onfinish = finish;
+      closeTimer = window.setTimeout(finish, 420);
+    } else {
+      finish();
+    }
+  }
+
   /** 拉取资源列表。 */
   async function refresh() {
+    closeDetail();
     clear(listBox);
     listBox.append(placeholder("正在加载…", "loading"));
     try {
@@ -103,7 +127,7 @@ export function createView(root) {
         listBox.append(placeholder("暂无资源，请先在「资源生成」中生成。"));
         return;
       }
-      for (const item of data.items) listBox.append(resourceItem(item));
+      data.items.forEach((item, index) => listBox.append(resourceCard(item, index)));
     } catch (err) {
       clear(listBox);
       listBox.append(placeholder(`加载失败：${err.message}`));
@@ -111,18 +135,84 @@ export function createView(root) {
     }
   }
 
-  /** 单条资源（展开/收起带高度过渡）。 */
-  function resourceItem(item) {
-    return enhanceDisclosure(
-      el("details", { class: "list-item disclosure" }, [
-        el("summary", {}, [
-          `[${label(DISABILITY, item.disability)}] ${item.topic} `,
-          el("span", { class: "badge badge-muted", text: label(RESOURCE_STATUS, item.status) }),
+  /** 单条资源卡片。 */
+  function resourceCard(item, index) {
+    const typeName = typeMap[item.resource_type] || item.resource_type;
+    return el(
+      "button",
+      {
+        class: "student-card",
+        type: "button",
+        style: `animation-delay:${Math.min(index, 12) * 30}ms`,
+        on: { click: (event) => showDetail(item.resource_id, event.currentTarget) },
+      },
+      [
+        el("span", { class: "avatar", text: (typeName || "?").slice(0, 1) }),
+        el("span", { class: "student-card-body" }, [
+          el("h4", { text: item.topic }),
+          el("div", { class: "badge-row" }, [
+            el("span", { class: "badge badge-info", text: typeName }),
+            el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
+            el("span", { class: "badge badge-warning", text: label(RESOURCE_STATUS, item.status) }),
+          ]),
         ]),
-        el("p", { class: "meta", text: `ID：${item.resource_id} · 模型：${item.model || "-"} · ${formatTime(item.updated_at)}` }),
-        el("pre", { class: "output", text: item.content || "（空内容）" }),
-      ])
+      ]
     );
+  }
+
+  /** 组装资源详情（Markdown 正文 + 元信息标签）。 */
+  function renderDetail(item) {
+    const typeName = typeMap[item.resource_type] || item.resource_type;
+    const md = el("div", { class: "md" });
+    md.innerHTML = renderMarkdown(item.content || "");
+
+    return el("section", { class: "detail-body" }, [
+      el("div", { class: "detail-head" }, [
+        el("div", { class: "detail-id" }, [
+          el("span", { class: "avatar avatar-lg", text: (typeName || "?").slice(0, 1) }),
+          el("h3", { text: item.topic }),
+        ]),
+        el("div", { class: "detail-actions" }, [
+          el("button", { class: "btn btn-sm", type: "button", text: "收起", on: { click: closeDetail } }),
+        ]),
+      ]),
+      el("div", { class: "badge-row" }, [
+        el("span", { class: "badge badge-muted", text: `ID：${item.resource_id}` }),
+        el("span", { class: "badge badge-info", text: typeName }),
+        el("span", { class: "badge badge-muted", text: `模型：${item.model || "-"}` }),
+        el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
+        el("span", { class: "badge badge-warning", text: label(RESOURCE_STATUS, item.status) }),
+        el("span", { class: "badge badge-muted", text: formatTime(item.updated_at) }),
+      ]),
+      el("div", { class: "detail-md" }, [md]),
+    ]);
+  }
+
+  /** 展示资源详情。 */
+  async function showDetail(resourceId, cardEl) {
+    if (closeTimer) {
+      window.clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+    detailBox.hidden = false;
+    layout.classList.add("narrowed");
+    clear(detailBox);
+    detailBox.append(placeholder("正在加载…", "loading"));
+    if (cardEl) {
+      for (const node of listBox.querySelectorAll(".student-card")) {
+        node.classList.remove("active");
+      }
+      cardEl.classList.add("active");
+    }
+    try {
+      const item = await api.getResource(resourceId);
+      clear(detailBox);
+      detailBox.append(renderDetail(item));
+    } catch (err) {
+      clear(detailBox);
+      detailBox.append(placeholder(`加载失败：${err.message}`));
+      toastError(err.message);
+    }
   }
 
   build();

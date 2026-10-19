@@ -134,6 +134,19 @@ function indexColor(value) {
   return `hsl(${hue}, 68%, 42%)`;
 }
 
+/** 依据维度指数与框架评分等级，推断当前达到的等级名称。 */
+function dimLevel(framework, dim, value) {
+  const indicators = (framework && framework.indicators) || [];
+  const indicator = indicators.find((item) => item.dimension === dim);
+  const observation = indicator && (indicator.observations || [])[0];
+  const rubrics = (observation && observation.rubrics) || [];
+  if (!rubrics.length) return "";
+  const levels = [...rubrics].sort((a, b) => a.level - b.level);
+  const ratio = Math.max(0, Math.min(1, Number(value) || 0));
+  const index = Math.round(ratio * (levels.length - 1));
+  return levels[index].label || "";
+}
+
 /** 构造带指数气泡的节点属性。 */
 function indexNodeAttrs(baseClass, value, tip) {
   return {
@@ -197,9 +210,22 @@ export function renderFlow(attributes, framework) {
     { class: "flow-base" },
     dims.map((dim) => {
       const value = Number(indexes[dim] ?? 0);
-      return el("div", indexNodeAttrs("flow-node", value, `${label(DIMENSION, dim)}指数`), [
+      const node = el("div", indexNodeAttrs("flow-node", value, `${label(DIMENSION, dim)}指数`), [
         el("span", { text: label(DIMENSION, dim) }),
       ]);
+      const cell = el("div", { class: "flow-cell" }, [node]);
+      // 常驻评分等级标签，颜色与指数一致
+      const level = dimLevel(framework, dim, value);
+      if (level) {
+        cell.append(
+          el("span", {
+            class: "flow-level",
+            style: `--index-color:${indexColor(value)}`,
+            text: level,
+          })
+        );
+      }
+      return cell;
     })
   );
 
@@ -337,12 +363,14 @@ export function createView(root) {
 
     const card = el("section", { class: "card" }, [
       form,
-      el("button", {
-        class: "btn btn-primary",
-        type: "button",
-        text: "预览",
-        on: { click: preview },
-      }),
+      el("div", { class: "form-actions" }, [
+        el("button", {
+          class: "btn btn-primary",
+          type: "button",
+          text: "预览",
+          on: { click: preview },
+        }),
+      ]),
       el("div", { style: "margin-top:16px" }, [output]),
     ]);
     root.append(card);

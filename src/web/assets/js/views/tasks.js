@@ -75,7 +75,7 @@ export function createView(root) {
         ]),
       ]),
       el("label", { class: "check" }, [deferCheck, "仅在闲时执行"]),
-      el("div", { style: "margin-top:16px" }, [
+      el("div", { class: "form-actions" }, [
         el("button", {
           class: "btn btn-primary",
           type: "button",
