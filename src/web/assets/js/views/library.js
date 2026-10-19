@@ -7,6 +7,7 @@
 import { api } from "../core/api.js";
 import { el, clear, placeholder, panel } from "../core/dom.js";
 import { renderMarkdown } from "../core/markdown.js";
+import { confirmDialog } from "../core/dialog.js";
 import { DISABILITY, RESOURCE_STATUS, label, formatTime } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
 import { ATTRIBUTE_OPTIONS } from "./framework.js";
@@ -239,9 +240,15 @@ export function createView(root) {
     }
   }
 
-  /** 删除资源。 */
+  /** 删除资源（自定义确认对话框）。 */
   async function removeResource(item) {
-    if (!window.confirm(`确认删除资源「${item.topic}」？此操作不可撤销。`)) return;
+    const ok = await confirmDialog({
+      title: "删除资源",
+      message: `确认删除资源「${item.topic}」？此操作不可撤销。`,
+      confirmText: "删除",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.deleteResource(item.resource_id);
       toastSuccess("已删除");

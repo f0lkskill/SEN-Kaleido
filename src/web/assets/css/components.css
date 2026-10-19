@@ -985,6 +985,23 @@ details.disclosure > summary {
   margin: 0;
 }
 
+/* 小尺寸模态（确认框） */
+.modal.modal-sm {
+  width: min(420px, 100%);
+}
+
+.modal-text {
+  margin: 0 0 var(--space-5);
+  color: var(--color-text);
+  line-height: 1.7;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
 @keyframes overlay-in {
   from { opacity: 0; }
   to { opacity: 1; }

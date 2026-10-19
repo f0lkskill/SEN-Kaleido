@@ -17,6 +17,7 @@ import {
   setEvidenceSources,
 } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
+import { confirmDialog } from "../core/dialog.js";
 import {
   buildAttributesForm,
   readAttributes,
@@ -363,9 +364,15 @@ export function createView(root) {
     }
   }
 
-  /** 删除学生档案。 */
+  /** 删除学生档案（自定义确认对话框）。 */
   async function remove(item) {
-    if (!window.confirm(`确认删除「${item.name}」的档案？此操作不可撤销。`)) return;
+    const ok = await confirmDialog({
+      title: "删除档案",
+      message: `确认删除「${item.name}」的档案？此操作不可撤销。`,
+      confirmText: "删除",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.deleteStudent(item.profile_id);
       toastSuccess("已删除");
