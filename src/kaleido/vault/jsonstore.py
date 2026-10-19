@@ -104,6 +104,8 @@ class JsonStore:
         在 Windows 上 ``os.replace`` 可能因目标文件被其它进程/服务瞬时占用
         而抛出 ``PermissionError``（WinError 5），此处做有限次退避重试。
         """
+        # 目录可能被外部清理（如重置 data/），写入前确保存在，杜绝 Errno 2
+        path.parent.mkdir(parents=True, exist_ok=True)
         tmp_name: str | None = None
         try:
             fd, tmp_name = tempfile.mkstemp(
@@ -147,6 +149,8 @@ class JsonStore:
     @contextmanager
     def lock(self) -> Iterator[None]:
         """获取进程内共享锁 + 跨进程文件锁。"""
+        # 锁文件所在目录可能被外部清理，加锁前确保存在，避免 Errno 2
+        self.root.mkdir(parents=True, exist_ok=True)
         with (
             self._thread_lock,
             portalocker.Lock(str(self.lock_path), timeout=self.lock_timeout),
