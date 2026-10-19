@@ -18,6 +18,11 @@
 - 需要云模型的测试一律桩化（`llm_client` 可注入），CI 不联网。
 - 测试与本地测试集共用同一套 fixtures，避免「测试数据」与「联调数据」两套口径。
 
+**直接运行**：每个 `test_*.py` 顶部会把项目根与 `src` 加入模块搜索路径，末尾带
+`if __name__ == "__main__": pytest.main([__file__])`，因此既可用 `pytest` 收集，
+也可 `python tests/<module>/test_xxx.py` 单独直跑（无需先 `pip install`）。
+`tests/conftest.py` 提供 pytest 下的同等路径兜底。
+
 ## 二、本地测试集（fixtures）
 
 ### 2.1 目录结构（已实现）
@@ -110,21 +115,41 @@ tests/fixtures/
 | `test_service.py` | 画像/属性两种来源、Prompt 拼装、落库、筛选 |
 | `test_api.py` | 生成、详情、列表、非法请求、资源类型 |
 
-## 六、端到端（`tests/e2e/`，后续）
+## 六、`kaleido-tasks` 测试（`tests/tasks/`）
+
+> 状态：已实现，全部通过（后台线程 + 注入时钟，离线）。
+
+| 文件 | 覆盖点 |
+|---|---|
+| `test_schedule.py` | 闲时窗口、跨零点、周末、节假日、无配置默认高峰 |
+| `test_service.py` | 执行成功、未注册类型拒绝、失败重试后标记失败、取消、闲时调度、列表过滤 |
+| `test_api.py` | 提交、查询、列表、类型查询、非法类型 400 |
+
+## 七、统一服务对接测试（`tests/integration/test_unified_app.py`）
+
+> 状态：已实现，全部通过。
+
+- 根路径返回前端 `index.html`；`assets` 静态资源可访问；`/api/*` 不会被当作静态文件。
+- 三模块 API（profile / vault / forge / tasks）在合并应用中均可用。
+- `forge.generate` 已注册为任务类型；提交任务 → 后台执行 → 结果落 `resources`（桩客户端）。
+
+## 八、端到端（`tests/e2e/`，后续）
 
 - 建档 → 生成（桩 `llm_client`）→ 质检 → 落库 → 匹配 全链路。
 - 用本地测试集灌入，产出可复现的样例资源。
 
-## 七、运行方式
+## 九、运行方式
 
 ```powershell
 pytest -q                                   # 全部（跳过 live）
+python tests/profile/test_attributes.py     # 单文件直跑
 pytest -q tests/vault tests/integration     # 仅 vault 与对接
-pytest -q tests/forge                       # 仅 forge
+pytest -q tests/forge tests/tasks           # 仅 forge 与 tasks
 pytest -q tests/live                        # 真实联调（需 API Key，默认跳过）
 ```
 
 pytest 配置（`pyproject.toml`）：`pythonpath=src`；`tests/live` 通过 `-m live` 选择性运行。
+当前规模：**111 项全部通过**。
 
 ## 八、质量门（本地 / CI）
 

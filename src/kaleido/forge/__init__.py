@@ -5,16 +5,16 @@
 """
 
 from kaleido.forge.llm_client import DeepSeekClient, LLMClient, LLMResult, StubClient, create_client
-from kaleido.forge.models import GenerateRequest, GeneratedResource
+from kaleido.forge.models import GeneratedResource, GenerateRequest
 from kaleido.forge.service import ForgeService
 
 __all__ = [
+    "DeepSeekClient",
     "ForgeService",
     "GenerateRequest",
     "GeneratedResource",
     "LLMClient",
     "LLMResult",
-    "DeepSeekClient",
     "StubClient",
     "create_client",
 ]

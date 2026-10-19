@@ -19,14 +19,14 @@ from kaleido.profile.models.student import (
 from kaleido.profile.models.taxonomy import StudentType
 
 __all__ = [
-    "StudentType",
-    "StudentAttributesInput",
-    "StudentAttributes",
     "CreateStudentRequest",
-    "UpdateStudentRequest",
-    "Rubric",
-    "ObservationItem",
-    "Indicator",
     "EvaluationFramework",
+    "Indicator",
+    "ObservationItem",
+    "Rubric",
+    "StudentAttributes",
+    "StudentAttributesInput",
     "StudentEvaluationProfile",
+    "StudentType",
+    "UpdateStudentRequest",
 ]

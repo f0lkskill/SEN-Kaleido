@@ -95,7 +95,7 @@ SEN-Kaleido 是面向特殊教育的模块化生成式 AI 引擎。它将多维�
 | 语言 | Python 3.10+ |
 | Web 服务 | Bottle + waitress（多线程 WSGI） |
 | 前端 | 原生 HTML + JS 静态客户端 |
-| 模板 | Jinja2 |
+| 模板 | 纯文本占位模板（`prompts/*.txt`，不引入重型模板引擎） |
 | LLM 接入 | `requests` 直调 DeepSeek `deepseek-flash`（OpenAI 兼容接口） |
 | 知识增强 | 本地 JSON 知识库 + 关键词/向量检索 |
 | 质量校验 | 规则引擎 + `deepseek-flash` 评分 Prompt |
@@ -104,6 +104,29 @@ SEN-Kaleido 是面向特殊教育的模块化生成式 AI 引擎。它将多维�
 | 存储 | 本地 JSON 文档库（分片 + 文件锁） |
 | 异步任务 | 内存队列 + 后台线程，任务状态持久化到 JSON |
 | 工程 | ruff / pytest |
+
+## 快速开始
+
+```powershell
+# 1. 安装（建议虚拟环境）
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -e .
+
+# 2. 运行统一服务（API + 前端静态页，默认 0.0.0.0:8080）
+#    真实调用需设置 DEEPSEEK_API_KEY；本地联调可用离线桩：
+$env:SEN_KALEIDO_LLM_PROVIDER = "stub"
+python -m kaleido.api.app
+```
+
+浏览器打开 `http://<基站IP>:8080/` 即可使用（学生档案 / 评价框架 / 资源生成 / 资源库 / 任务队列）。
+
+```powershell
+# 3. 测试与质量门
+pytest -q                 # 全部测试（离线）
+python tests/profile/test_attributes.py   # 单个测试文件亦可直跑
+ruff check                # 静态检查
+pyright                   # 类型检查
+```
 
 ## 预想目录结构
 

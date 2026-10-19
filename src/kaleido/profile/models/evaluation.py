@@ -59,7 +59,7 @@ class StudentEvaluationProfile(BaseModel):
 
 
 # StudentAttributes 定义在 student.py，此处延迟导入以打破模块循环依赖
-from kaleido.profile.models.student import StudentAttributes  # noqa: E402
+from kaleido.profile.models.student import StudentAttributes
 
 # 字符串前向引用需要重新构建模型
 StudentEvaluationProfile.model_rebuild()

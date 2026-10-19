@@ -11,8 +11,9 @@ for _path in (ROOT, ROOT / "src"):
 
 import json
 import sys
+from collections.abc import Callable
 from io import BytesIO
-from typing import Any, Callable
+from typing import Any
 
 from kaleido.vault.api import create_app
 from kaleido.vault.vault import Vault

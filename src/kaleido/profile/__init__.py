@@ -11,9 +11,9 @@ from kaleido.profile.service import ProfileService
 from kaleido.profile.taxonomy import Taxonomy
 
 __all__ = [
+    "AttributeSchema",
+    "FrameworkEngine",
     "ProfileService",
     "StudentRepository",
     "Taxonomy",
-    "AttributeSchema",
-    "FrameworkEngine",
 ]

@@ -4,8 +4,7 @@
 占位；缺失字段渲染为空字符串，避免因个别属性缺省导致渲染失败。
 """
 
-from functools import lru_cache
-from pathlib import Path
+from functools import cache
 
 from kaleido.common.errors import ConfigError
 from kaleido.common.paths import PROJECT_ROOT
@@ -20,7 +19,7 @@ class _SafeDict(dict):
         return ""
 
 
-@lru_cache(maxsize=None)
+@cache
 def load_template(template_key: str) -> str:
     """按模板键读取模板文本（带缓存）。"""
     path = PROMPTS_DIR / f"{template_key}.txt"

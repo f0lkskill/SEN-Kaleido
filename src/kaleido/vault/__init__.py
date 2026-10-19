@@ -9,4 +9,4 @@ from kaleido.vault.jsonstore import JsonStore
 from kaleido.vault.models import CollectionSpec
 from kaleido.vault.vault import Vault
 
-__all__ = ["Vault", "Collection", "JsonStore", "CollectionSpec"]
+__all__ = ["Collection", "CollectionSpec", "JsonStore", "Vault"]

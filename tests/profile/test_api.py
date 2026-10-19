@@ -11,8 +11,9 @@ for _path in (ROOT, ROOT / "src"):
 
 import json
 import sys
+from collections.abc import Callable
 from io import BytesIO
-from typing import Any, Callable
+from typing import Any
 
 from kaleido.profile.api import create_app
 from kaleido.profile.repository import StudentRepository
@@ -117,10 +118,10 @@ def test_list_and_preview_and_meta(tmp_path):
     call = _setup(tmp_path)
     call("POST", "/api/v1/students", _payload())
 
-    status, body = call("GET", "/api/v1/students", query="page=1&size=10")
+    _status, body = call("GET", "/api/v1/students", query="page=1&size=10")
     assert body["data"]["total"] == 1
 
-    status, body = call(
+    _status, body = call(
         "POST",
         "/api/v1/evaluation/framework",
         {
@@ -132,10 +133,10 @@ def test_list_and_preview_and_meta(tmp_path):
     )
     assert body["data"]["framework"]["prompt_template_key"] == "hearing_layer"
 
-    status, body = call("GET", "/api/v1/evaluation/dimensions")
+    _status, body = call("GET", "/api/v1/evaluation/dimensions")
     assert "knowledge" in body["data"]["dimensions"]
 
-    status, body = call("GET", "/api/v1/evaluation/rubric/knowledge")
+    _status, body = call("GET", "/api/v1/evaluation/rubric/knowledge")
     assert body["data"]["levels"]
 
 if __name__ == "__main__":
