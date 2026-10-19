@@ -8,10 +8,12 @@
 import json
 import os
 import tempfile
+import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Lock, RLock
-from typing import Any, Iterator
+from typing import Any
 
 import portalocker
 
@@ -20,6 +22,11 @@ from kaleido.common.errors import NotFoundError, StorageError
 # 同一路径在进程内共享一把可重入锁，保证多线程/多实例串行
 _registry_guard = Lock()
 _path_locks: dict[str, RLock] = {}
+
+# Windows 上 os.replace 可能因杀毒/索引服务或其它进程瞬时持有目标文件而报
+# WinError 5（拒绝访问），这类冲突是短暂且可重试的，故加入退避重试。
+_REPLACE_ATTEMPTS = 20
+_REPLACE_DELAY = 0.02
 
 
 def _path_lock(path: Path) -> RLock:
@@ -57,16 +64,26 @@ class JsonStore:
         return self.read_path(self.path_for(doc_id))
 
     def read_path(self, path: Path) -> Any:
-        """读取指定路径的 JSON 文件。"""
+        """读取指定路径的 JSON 文件，对瞬时占用做重试。"""
         if not path.exists():
             raise NotFoundError(f"文档不存在: {path.name}")
-        try:
-            with path.open("r", encoding="utf-8") as handle:
-                return json.load(handle)
-        except json.JSONDecodeError as exc:
-            raise StorageError(f"文档解析失败: {path}: {exc}") from exc
-        except OSError as exc:
-            raise StorageError(f"读取失败: {path}: {exc}") from exc
+        last_error: OSError | None = None
+        for _ in range(_REPLACE_ATTEMPTS):
+            try:
+                with path.open("r", encoding="utf-8") as handle:
+                    return json.load(handle)
+            except json.JSONDecodeError as exc:
+                raise StorageError(f"文档解析失败: {path}: {exc}") from exc
+            except FileNotFoundError as exc:
+                # 文件正被原子替换的间隙可能短暂消失，重试
+                last_error = exc
+            except PermissionError as exc:
+                # Windows: 文件正被其它句柄占用，重试
+                last_error = exc
+            except OSError as exc:
+                raise StorageError(f"读取失败: {path}: {exc}") from exc
+            time.sleep(_REPLACE_DELAY)
+        raise StorageError(f"读取失败: {path}: {last_error}")
 
     def write_atomic(self, doc_id: str, payload: Any) -> None:
         """加锁原子写入文档。"""
@@ -82,7 +99,11 @@ class JsonStore:
         self._write(path, payload)
 
     def _write(self, path: Path, payload: Any) -> None:
-        """写入唯一临时文件后 ``os.replace``，保证原子性且避免同名冲突。"""
+        """写入唯一临时文件后 ``os.replace``，保证原子性且避免同名冲突。
+
+        在 Windows 上 ``os.replace`` 可能因目标文件被其它进程/服务瞬时占用
+        而抛出 ``PermissionError``（WinError 5），此处做有限次退避重试。
+        """
         tmp_name: str | None = None
         try:
             fd, tmp_name = tempfile.mkstemp(
@@ -90,7 +111,18 @@ class JsonStore:
             )
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 json.dump(payload, handle, ensure_ascii=False, indent=2)
-            os.replace(tmp_name, path)
+            last_error: PermissionError | None = None
+            for _ in range(_REPLACE_ATTEMPTS):
+                try:
+                    os.replace(tmp_name, path)
+                    last_error = None
+                    break
+                except PermissionError as exc:
+                    # 目标被瞬时占用，稍后重试
+                    last_error = exc
+                    time.sleep(_REPLACE_DELAY)
+            if last_error is not None:
+                raise last_error
             tmp_name = None
         except OSError as exc:
             raise StorageError(f"写入失败: {path}: {exc}") from exc
@@ -115,9 +147,11 @@ class JsonStore:
     @contextmanager
     def lock(self) -> Iterator[None]:
         """获取进程内共享锁 + 跨进程文件锁。"""
-        with self._thread_lock:
-            with portalocker.Lock(str(self.lock_path), timeout=self.lock_timeout):
-                yield
+        with (
+            self._thread_lock,
+            portalocker.Lock(str(self.lock_path), timeout=self.lock_timeout),
+        ):
+            yield
 
     def list_ids(self) -> list[str]:
         """列出所有文档 ID（排除索引文件与临时文件）。"""

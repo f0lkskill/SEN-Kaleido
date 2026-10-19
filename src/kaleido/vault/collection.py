@@ -6,10 +6,12 @@
 """
 
 import json
+import time
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from threading import RLock
-from typing import Any, Iterator
+from typing import Any
 
 from kaleido.vault.jsonstore import JsonStore
 from kaleido.vault.models import CollectionSpec
@@ -56,19 +58,35 @@ class Collection:
         return {"counter": 0, "entries": {}, "idempotency": {}}
 
     def _load_index(self) -> dict:
-        """读取索引文件；缺失或损坏时回退为空索引。"""
+        """读取索引文件；缺失或损坏时回退为空索引。
+
+        注意：Windows 上索引文件可能正被原子替换而瞬时不可读（PermissionError），
+        此时必须重试而非直接回退空索引，否则会导致计数器归零、ID 重复。
+        """
         if not self.index_path.exists():
             return self._empty_index()
-        try:
-            with self.index_path.open("r", encoding="utf-8") as handle:
-                data = json.load(handle)
-        except (OSError, json.JSONDecodeError):
-            return self._empty_index()
-        if not isinstance(data, dict):
-            return self._empty_index()
-        for key, value in self._empty_index().items():
-            data.setdefault(key, value)
-        return data
+        for _ in range(20):
+            try:
+                with self.index_path.open("r", encoding="utf-8") as handle:
+                    data = json.load(handle)
+            except PermissionError:
+                # 瞬时占用，稍后重试
+                time.sleep(0.02)
+                continue
+            except FileNotFoundError:
+                # 替换间隙文件短暂消失，稍后重试
+                time.sleep(0.02)
+                continue
+            except json.JSONDecodeError:
+                # 内容损坏（原子写不应产生）则回退空索引
+                return self._empty_index()
+            if not isinstance(data, dict):
+                return self._empty_index()
+            for key, value in self._empty_index().items():
+                data.setdefault(key, value)
+            return data
+        # 多次仍不可读时保守回退，避免直接崩溃
+        return self._empty_index()
 
     def _write_index(self) -> None:
         """加锁持久化索引。"""
@@ -81,12 +99,11 @@ class Collection:
 
     def next_id(self) -> str:
         """分配下一个自增 ID（跨进程安全：重读索引后递增再落盘）。"""
-        with self._lock:
-            with self.store.lock():
-                self._index = self._load_index()
-                counter = int(self._index.get("counter", 0)) + 1
-                self._index["counter"] = counter
-                self.store.write_unlocked(self.index_path, self._index)
+        with self._lock, self.store.lock():
+            self._index = self._load_index()
+            counter = int(self._index.get("counter", 0)) + 1
+            self._index["counter"] = counter
+            self.store.write_unlocked(self.index_path, self._index)
         return f"{self.spec.id_prefix}_{counter:0{self.spec.id_zerofill}d}"
 
     def put(
