@@ -1,0 +1,409 @@
+/* ============================================================
+   components.css —— 通用组件
+   按钮 / 表单 / 卡片 / 表格 / 标签 / 提示 / 任务队列 / 分页等。
+   所有交互元素均保证足够点击尺寸（≥40px）与清晰焦点态。
+   ============================================================ */
+
+/* ---- 卡片 ---- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-5);
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.card-header h2,
+.card-header h3 {
+  margin: 0;
+}
+
+.card-hint {
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
+}
+
+/* ---- 网格 ---- */
+.grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-students {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+@media (max-width: 720px) {
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- 按钮 ---- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 42px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-body);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn-danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.btn-sm {
+  min-height: 34px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-small);
+}
+
+/* 标签导航按钮 */
+.tab {
+  min-height: 42px;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-body);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--color-surface);
+}
+
+.tab[aria-selected="true"] {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+/* 设置中的分段按钮 */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.seg button {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-small);
+  cursor: pointer;
+}
+
+.seg button:last-child {
+  border-right: none;
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* ---- 表单 ---- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.field label {
+  font-weight: 600;
+  font-size: var(--font-small);
+}
+
+.field .req {
+  color: var(--color-danger);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 720px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-body);
+}
+
+textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-small);
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---- 表格 ---- */
+.table-wrap {
+  overflow-x: auto;
+}
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-small);
+}
+
+table.data th,
+table.data td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+table.data th {
+  background: var(--color-surface-alt);
+  font-weight: 700;
+}
+
+/* ---- 标签/徽章 ---- */
+.badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-size: var(--font-small);
+  line-height: 1.6;
+}
+
+.badge-success { background: #d8f3e5; color: var(--color-success); }
+.badge-danger { background: #fadbd8; color: var(--color-danger); }
+.badge-warning { background: #fdf0d5; color: var(--color-warning); }
+.badge-muted { background: var(--color-surface-alt); color: var(--color-text-muted); }
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---- 列表 ---- */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.list-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+}
+
+.list-item h4 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-body);
+}
+
+/* ---- 元信息小字 ---- */
+.meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
+}
+
+/* ---- 预格式化内容（生成结果 / Prompt） ---- */
+pre.output {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+  font-size: var(--font-small);
+  max-height: 420px;
+  overflow: auto;
+}
+
+details.disclosure {
+  margin-top: var(--space-3);
+}
+
+details.disclosure > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: var(--space-2) 0;
+}
+
+/* ---- 空态与加载态 ---- */
+.empty,
+.loading {
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+/* ---- 分页 ---- */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+/* ---- 提示条（全局） ---- */
+.toast {
+  position: fixed;
+  right: var(--space-5);
+  bottom: var(--space-5);
+  max-width: 360px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-text);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 50;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.error {
+  background: var(--color-danger);
+}
+
+.toast.success {
+  background: var(--color-success);
+}
+
+/* ---- 任务状态色 ---- */
+.status {
+  font-weight: 600;
+}
+.status-pending { color: var(--color-text-muted); }
+.status-running { color: var(--color-primary); }
+.status-succeeded { color: var(--color-success); }
+.status-failed { color: var(--color-danger); }
+.status-cancelled { color: var(--color-warning); }
+
+/* ---- 工具条 ---- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.toolbar .field {
+  margin-bottom: 0;
+  min-width: 160px;
+}
+
+.spacer {
+  flex: 1;
+}

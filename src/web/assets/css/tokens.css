@@ -1,0 +1,75 @@
+/* ============================================================
+   tokens.css —— 设计变量
+   集中定义颜色、字号、间距、圆角、阴影等，供其余样式复用。
+   无障碍要点：字号支持档位切换，颜色对比度默认满足 WCAG AA。
+   ============================================================ */
+
+:root {
+  /* ---- 主色与语义色 ---- */
+  --color-bg: #f4f6fb;            /* 页面背景 */
+  --color-surface: #ffffff;       /* 卡片/面板底色 */
+  --color-surface-alt: #eef2f9;   /* 次级底色 */
+  --color-border: #d4dcea;        /* 边框 */
+  --color-text: #1b2536;          /* 正文 */
+  --color-text-muted: #5b6880;    /* 次要文字 */
+  --color-primary: #2f6df0;       /* 主色（按钮/强调） */
+  --color-primary-dark: #2354c4;  /* 主色按下态 */
+  --color-primary-soft: #e4edff;  /* 主色浅底 */
+  --color-success: #1f8f5f;       /* 成功 */
+  --color-danger: #c0392b;        /* 危险/删除 */
+  --color-warning: #b7791f;       /* 警告 */
+  --color-focus: #ff8a00;         /* 键盘焦点外框 */
+
+  /* ---- 字号基准：由 data-fontsize 覆盖，适配弱视与低龄用户 ---- */
+  --font-scale: 1;
+  --font-body: calc(1rem * var(--font-scale));
+  --font-small: calc(0.85rem * var(--font-scale));
+  --font-large: calc(1.15rem * var(--font-scale));
+  --font-title: calc(1.6rem * var(--font-scale));
+  --font-heading: calc(1.2rem * var(--font-scale));
+
+  /* ---- 间距与圆角 ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* ---- 阴影 ---- */
+  --shadow-sm: 0 1px 2px rgba(27, 37, 54, 0.08);
+  --shadow-md: 0 4px 16px rgba(27, 37, 54, 0.10);
+
+  /* ---- 布局 ---- */
+  --max-width: 1180px;
+}
+
+/* 字号档位切换：大字 / 特大字，便于弱视学生与教师远距离阅读 */
+html[data-fontsize="large"] {
+  --font-scale: 1.15;
+}
+
+html[data-fontsize="xlarge"] {
+  --font-scale: 1.35;
+}
+
+/* 高对比度模式：提升文字与背景对比，降低色彩依赖 */
+html[data-contrast="high"] {
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f2f2f2;
+  --color-border: #000000;
+  --color-text: #000000;
+  --color-text-muted: #222222;
+  --color-primary: #0033aa;
+  --color-primary-dark: #001f6b;
+  --color-primary-soft: #dbe4ff;
+  --color-success: #0a5c39;
+  --color-danger: #8f1d12;
+  --color-warning: #7a5200;
+  --shadow-sm: none;
+  --shadow-md: none;
+}

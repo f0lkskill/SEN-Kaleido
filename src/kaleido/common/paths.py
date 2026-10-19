@@ -12,3 +12,5 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 CONFIG_DIR = Path(os.environ.get("SEN_KALEIDO_CONFIG_DIR", PROJECT_ROOT / "configs"))
 DATA_DIR = Path(os.environ.get("SEN_KALEIDO_DATA_DIR", PROJECT_ROOT / "data"))
+# 前端静态资源目录（HTML / CSS / JS 与后端脚本相互独立）
+WEB_DIR = Path(os.environ.get("SEN_KALEIDO_WEB_DIR", PROJECT_ROOT / "src" / "web"))

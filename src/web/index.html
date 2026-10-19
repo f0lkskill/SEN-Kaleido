@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-fontsize="normal" data-contrast="normal">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEN-Kaleido · 特殊教育生成式资源引擎</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="assets/css/tokens.css" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/layout.css" />
+    <link rel="stylesheet" href="assets/css/components.css" />
+  </head>
+  <body>
+    <!-- 键盘用户可跳过导航直达主内容 -->
+    <a class="skip-link" href="#main">跳到主内容</a>
+
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◎</span>
+        <div>
+          <h1 class="brand-title">SEN-Kaleido</h1>
+          <p class="brand-sub">特殊教育生成式智能学习资源引擎</p>
+        </div>
+      </div>
+
+      <!-- 无障碍显示设置：字号与对比度 -->
+      <div class="settings" id="settings" role="group" aria-label="无障碍显示设置">
+        <span class="settings-label" id="fontsize-label">字号</span>
+        <div class="seg" role="group" aria-labelledby="fontsize-label">
+          <button type="button" data-fontsize="normal" aria-pressed="true">标准</button>
+          <button type="button" data-fontsize="large" aria-pressed="false">大</button>
+          <button type="button" data-fontsize="xlarge" aria-pressed="false">特大</button>
+        </div>
+        <span class="settings-label" id="contrast-label">对比度</span>
+        <div class="seg" role="group" aria-labelledby="contrast-label">
+          <button type="button" data-contrast="normal" aria-pressed="true">标准</button>
+          <button type="button" data-contrast="high" aria-pressed="false">高</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 标签导航与视图容器由 app.js 构建 -->
+    <nav class="tabbar" id="tabbar" role="tablist" aria-label="主导航"></nav>
+    <main class="main" id="main" tabindex="-1"></main>
+
+    <!-- 全局提示条，作为无障碍 live region -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script type="module" src="assets/js/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,98 @@
+/* ============================================================
+   layout.css —— 页面骨架与自适应布局
+   结构：顶栏（品牌+显示设置） → 标签导航 → 主内容区 → 提示条。
+   在窄屏（教室平板/小屏）自动换行，保证触控与键盘均可用。
+   ============================================================ */
+
+/* ---- 站点头部 ---- */
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: var(--font-heading);
+}
+
+.brand-sub {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
+}
+
+/* ---- 显示设置（无障碍） ---- */
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-label {
+  font-size: var(--font-small);
+  color: var(--color-text-muted);
+}
+
+/* ---- 标签导航 ---- */
+.tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* ---- 主内容 ---- */
+.main {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--space-5);
+}
+
+.view[hidden] {
+  display: none;
+}
+
+/* ---- 自适应：窄屏时压缩内边距、堆叠工具条 ---- */
+@media (max-width: 720px) {
+  .site-header,
+  .tabbar,
+  .main {
+    padding: var(--space-3);
+  }
+
+  :root {
+    --max-width: 100%;
+  }
+}

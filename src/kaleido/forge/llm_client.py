@@ -94,7 +94,12 @@ class StubClient:
 
 
 def create_client(config: dict) -> LLMClient:
-    """按配置创建客户端；``provider=stub`` 时返回离线桩。"""
-    if config.get("provider") == "stub":
+    """按配置创建客户端；``provider=stub`` 时返回离线桩。
+
+    允许用环境变量 ``SEN_KALEIDO_LLM_PROVIDER`` 临时覆盖配置，
+    便于无密钥时以桩客户端做本地前端联调。
+    """
+    provider = os.environ.get("SEN_KALEIDO_LLM_PROVIDER") or config.get("provider")
+    if provider == "stub":
         return StubClient()
     return DeepSeekClient(config)
