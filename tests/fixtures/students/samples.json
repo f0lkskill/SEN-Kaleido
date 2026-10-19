@@ -1,0 +1,225 @@
+{
+  "valid": [
+    {
+      "id": "visual_mild",
+      "name": "视障轻度样例",
+      "attributes": {
+        "disability": "visual",
+        "severity": "mild",
+        "cognitive_level": "primary_high",
+        "rehab_goals": ["language"],
+        "learning_pace": "medium"
+      }
+    },
+    {
+      "id": "visual_moderate",
+      "name": "视障中度样例",
+      "attributes": {
+        "disability": "visual",
+        "severity": "moderate",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["language", "cognitive"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "id": "visual_severe",
+      "name": "视障重度样例",
+      "attributes": {
+        "disability": "visual",
+        "severity": "severe",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["sensory_integration"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "id": "hearing_mild",
+      "name": "听障轻度样例",
+      "attributes": {
+        "disability": "hearing",
+        "severity": "mild",
+        "cognitive_level": "primary_high",
+        "rehab_goals": ["social"],
+        "learning_pace": "medium"
+      }
+    },
+    {
+      "id": "hearing_moderate",
+      "name": "听障中度样例",
+      "attributes": {
+        "disability": "hearing",
+        "severity": "moderate",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["language", "social"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "id": "hearing_severe",
+      "name": "听障重度样例",
+      "attributes": {
+        "disability": "hearing",
+        "severity": "severe",
+        "cognitive_level": "vocational",
+        "rehab_goals": ["social"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "id": "intellectual_mild",
+      "name": "智障轻度样例",
+      "attributes": {
+        "disability": "intellectual",
+        "severity": "mild",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["cognitive"],
+        "learning_pace": "medium"
+      }
+    },
+    {
+      "id": "intellectual_moderate",
+      "name": "智障中度样例",
+      "attributes": {
+        "disability": "intellectual",
+        "severity": "moderate",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["cognitive", "language"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "id": "intellectual_severe",
+      "name": "智障重度样例",
+      "attributes": {
+        "disability": "intellectual",
+        "severity": "severe",
+        "cognitive_level": "primary_low",
+        "rehab_goals": ["sensory_integration"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "id": "autism_mild",
+      "name": "自闭症轻度样例",
+      "attributes": {
+        "disability": "autism",
+        "severity": "mild",
+        "cognitive_level": "primary_high",
+        "rehab_goals": ["social"],
+        "learning_pace": "medium"
+      }
+    },
+    {
+      "id": "autism_moderate",
+      "name": "自闭症中度样例",
+      "attributes": {
+        "disability": "autism",
+        "severity": "moderate",
+        "cognitive_level": "preschool",
+        "rehab_goals": ["social", "language"],
+        "learning_pace": "slow"
+      }
+    },
+    {
+      "id": "autism_severe",
+      "name": "自闭症重度样例",
+      "attributes": {
+        "disability": "autism",
+        "severity": "severe",
+        "cognitive_level": "preschool",
+        "rehab_goals": ["social"],
+        "learning_pace": "slow"
+      }
+    }
+  ],
+  "edge": [
+    {
+      "id": "default_sensory",
+      "note": "缺省感官偏好应由类型默认值推导",
+      "expect": "ok",
+      "student": {
+        "name": "缺省感官",
+        "attributes": {
+          "disability": "visual",
+          "severity": "moderate",
+          "cognitive_level": "primary_low",
+          "learning_pace": "slow"
+        }
+      }
+    },
+    {
+      "id": "explicit_sensory",
+      "note": "显式感官偏好应被尊重",
+      "expect": "ok",
+      "student": {
+        "name": "显式感官",
+        "attributes": {
+          "disability": "visual",
+          "severity": "moderate",
+          "cognitive_level": "primary_low",
+          "sensory_preference": "mixed",
+          "learning_pace": "slow"
+        }
+      }
+    },
+    {
+      "id": "preschool_visual_filter",
+      "note": "学龄前视障应剔除盲文等高于其认知等级的指标",
+      "expect": "ok",
+      "student": {
+        "name": "学龄前视障",
+        "attributes": {
+          "disability": "visual",
+          "severity": "moderate",
+          "cognitive_level": "preschool",
+          "rehab_goals": ["language"],
+          "learning_pace": "slow"
+        }
+      }
+    },
+    {
+      "id": "invalid_disability",
+      "note": "非法障碍类型应报错",
+      "expect": "error",
+      "student": {
+        "name": "非法类型",
+        "attributes": {
+          "disability": "adhd",
+          "severity": "mild",
+          "cognitive_level": "primary_low",
+          "learning_pace": "slow"
+        }
+      }
+    },
+    {
+      "id": "invalid_severity",
+      "note": "非法障碍程度应报错",
+      "expect": "error",
+      "student": {
+        "name": "非法程度",
+        "attributes": {
+          "disability": "visual",
+          "severity": "extreme",
+          "cognitive_level": "primary_low",
+          "learning_pace": "slow"
+        }
+      }
+    },
+    {
+      "id": "invalid_goal",
+      "note": "非法康复目标应报错",
+      "expect": "error",
+      "student": {
+        "name": "非法目标",
+        "attributes": {
+          "disability": "visual",
+          "severity": "mild",
+          "cognitive_level": "primary_low",
+          "rehab_goals": ["dance"],
+          "learning_pace": "slow"
+        }
+      }
+    }
+  ]
+}

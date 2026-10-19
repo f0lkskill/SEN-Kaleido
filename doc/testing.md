@@ -20,24 +20,16 @@
 
 ## 二、本地测试集（fixtures）
 
-### 2.1 目录结构
+### 2.1 目录结构（已实现）
 
 ```
 tests/fixtures/
-├── students/
-│   ├── visual.json
-│   ├── hearing.json
-│   ├── intellectual.json
-│   ├── autism.json
-│   └── edge_cases.json          # 多重障碍、缺省感官偏好、非法枚举等
-├── expected/
-│   └── frameworks/              # 金标准：4 类型 × 3 程度 = 12 份
-│       ├── visual_mild_primary_low.json
-│       ├── visual_moderate_primary_low.json
-│       ├── ...
-│       └── autism_severe_preschool.json
-└── resources/                   # 供 forge / match 后续使用的样例资源
+├── __init__.py                  # 加载工具：load_student_samples()
+└── students/
+    └── samples.json             # valid(12：4 类型×3 程度) + edge(边界/非法)
 ```
+
+> 预留（后续模块）：`expected/frameworks/`（金标准快照）、`resources/`（forge/match 样例资源）。
 
 ### 2.2 学生样例 schema
 
@@ -81,6 +73,8 @@ tests/fixtures/
 
 ## 三、`kaleido-vault` 测试（`tests/vault/`）
 
+> 状态：已实现，全部通过。
+
 | 文件 | 覆盖点 |
 |---|---|
 | `test_jsonstore.py` | 原子写（临时文件 + replace）、文件锁、读不存在抛错、损坏文件隔离 |
@@ -91,6 +85,8 @@ tests/fixtures/
 | `test_api.py` | 通用 REST 增删改查、错误码 |
 
 ## 四、profile ↔ vault 对接测试（`tests/integration/test_profile_vault.py`）
+
+> 状态：已实现，全部通过。
 
 1. **建档案落盘**：`ProfileService.create_student` → 断言 `data/students/p_0001.json` 存在、结构正确；`index.json` 含 entry 与 idempotency。
 2. **重启读取**：丢弃 `ProfileService` 与 `Vault` 实例，重新构造后 `get_student` 能读回同一档案。

@@ -1,0 +1,35 @@
+# kaleido-vault 配置：集合（命名空间）定义
+# defaults 会与各集合定义合并；集合字段见 src/kaleido/vault/models.py::CollectionSpec
+data_dir: data
+defaults:
+  id_zerofill: 4
+  idempotent: false
+  envelope: true
+collections:
+  students:
+    id_prefix: p
+    id_zerofill: 4
+    envelope: false        # 兼容 profile 现有裸文档结构，零迁移
+    idempotent: true
+    index_fields:
+      - name
+      - attributes.disability
+      - attributes.severity
+      - attributes.cognitive_level
+  resources:
+    id_prefix: r
+    id_zerofill: 5
+    index_fields:
+      - type
+      - tags
+      - disability
+      - status
+  feedback:
+    id_prefix: f
+    id_zerofill: 5
+  tasks:
+    id_prefix: t
+    id_zerofill: 5
+  knowledge:
+    id_prefix: k
+    id_zerofill: 4

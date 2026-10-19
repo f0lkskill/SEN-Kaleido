@@ -386,10 +386,15 @@ def create_student():
 
 ### 10.6 与 vault 的落盘
 
+存储实现已下沉到 `kaleido-vault`，`repository.py` 现为**薄适配器**：
+
+- 集合：`students`（`envelope=false`，裸文档，与既有数据零迁移）。
 - 每个学生一个分片：`data/students/p_0001.json`
-- 索引文件：`data/students/index.json`（`profile_id → 障碍类型/认知等级`，供列表筛选走内存）
-- 写入经 `repository` 单写线程 + `portalocker` 文件锁，避免多教室并发丢数据
-- 读取优先走内存索引，未命中再读分片
+- 索引文件：`data/students/index.json`（`entries` 存 `name / attributes.disability / attributes.severity / attributes.cognitive_level`，`idempotency` 存幂等键，`counter` 存自增）
+- 写入经 vault 的 `portalocker` 文件锁 + 原子替换，避免多教室并发丢数据
+- 列表查询只读内存索引；`get` 未命中分片再读文件
+
+详见 `doc/modules/kaleido-vault.md` 第八节。
 
 ### 10.7 教室机 JS 调用示例
 

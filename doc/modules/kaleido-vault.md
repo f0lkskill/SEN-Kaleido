@@ -238,3 +238,13 @@ class StudentRepository:
 - profile 改造后**单测不改动全绿**。
 - 并发写不丢数据、重启可读、索引可重建。
 - 对接测试与本地测试集落地，`pytest` 全绿，`pyright` 0 error，`ruff` 通过。
+
+## 十三、实现状态（已落地）
+
+- **代码**：`src/kaleido/vault/{models,jsonstore,collection,vault,api}.py`；配置 `configs/vault/vault.yaml`。
+- **通用配置加载**：`src/kaleido/common/config.py`（供 vault 复用）。
+- **profile 改造**：`profile/repository.py` 已成为 vault 适配器，`students` 集合采用 `envelope=false`，**现有数据零迁移**。
+- **测试**：`tests/vault/`（jsonstore / collection / vault / concurrency / recovery / api）、`tests/integration/test_profile_vault.py`。
+- **本地测试集**：`tests/fixtures/students/samples.json`（valid 矩阵 + edge 边界/非法）、`tests/profile/test_fixtures.py`。
+- **脚本**：`scripts/seed_data.py`（本地联调灌数据）。
+- **结果**：`pytest` 72 项全绿，`pyright` 0 error。
