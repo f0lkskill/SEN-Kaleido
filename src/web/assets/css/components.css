@@ -801,13 +801,6 @@ details.disclosure > summary {
   letter-spacing: 0.06em;
 }
 
-/* ---- 背景粒子画布 ---- */
-.particles {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
 
 /* ---- 评价框架可视化 ---- */
 .framework {
