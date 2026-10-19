@@ -133,6 +133,51 @@ student_types:
 - **观测点**：指标的可观测行为，是数据采集的落点，明确"看什么、记什么"。
 - **评分标准（Rubric）**：等级描述（如 未达成/初步/基本/熟练 四级）+ 观测证据要求，保证不同教师评价口径一致。
 
+### 6.1 数据来源的定义（以观测点倒推证据）
+
+原则：**先定"评什么"，再定"用什么证明"**，而不是拿一堆视频/试题去问系统能评什么。未声明证据来源的观测点是**不可评价的空指标**。
+
+每个观测点必须声明 `evidence_sources`，只有登记过的来源才会被 `kaleido-loop` 采集。
+
+证据类型枚举（配置维护）：
+
+| key | 说明 | 加工方式 |
+|---|---|---|
+| `item_response` | 试题作答 | 客观题自动判分；主观题人工 / LLM 辅助 |
+| `classroom_observation` | 课堂观察 | 教师勾选 + 评语 |
+| `video_event` | 视频事件 | 原始视频先切段为"时间戳 + 行为标签" |
+| `work_sample` | 作品 / 作业样本 | 人工或辅助 |
+| `teacher_rating` | 教师评分 | 结构化 |
+| `parent_feedback` | 家长反馈 | 文本 → 结构化 |
+| `rehab_record` | 康复师记录 | 结构化 |
+| `system_log` | 系统埋点 | 自动（播放时长 / 点击 / 错题率） |
+
+关键限制：
+
+- 课堂录像、视频是**原始媒体**，禁止直接送模型"猜"，必须先转为**结构化事件**（时间戳 + 行为标签）再作为证据。
+- 视频成本高、合规敏感，**只在关键指标启用**，不能全量采集。
+- 试题作答、系统埋点等天然结构化、低成本的来源可常态化使用。
+
+示例：
+
+| 指标 | 观测点 | 证据来源 | 方式 |
+|---|---|---|---|
+| 知识掌握 | 10 以内加减法正确率 | `item_response` | 量化（自动） |
+| 课堂参与 | 主动举手/回应次数 | `classroom_observation` / `video_event` | 量化 |
+| 行为改善 | 刻板行为持续时间 | `classroom_observation` + `video_event` | 量化 + 质性 |
+| 身心康复 | 听到名字转头 | `rehab_record` | 质性 |
+
+### 6.2 是否使用大模型（LLM）
+
+| 环节 | 是否用 LLM | 原因 |
+|---|---|---|
+| 属性 → 标签向量 | 不用，规则/枚举 | 障碍类型→约束是专家确定的映射，须可解释、可复现 |
+| 评价框架生成 | 不用，配置 + 规则 | 评什么、怎么评必须稳定、可复核 |
+| 非结构化输入 → 属性抽取 | 可用（辅助） | 老师口述、访谈、观察笔记 → 结构化字段，需教师确认 |
+| 开放题评分 / 视频事件分析 | 可用（辅助，归 `kaleido-loop`） | 质性数据辅助分析，需教师确认 |
+
+结论：本模块主体**规则驱动、无 LLM**，保证可解释、可复现、零推理成本；LLM 仅用于边界处的自然语言抽取与质性数据辅助分析，且遵循"AI 建议 + 教师确认"。
+
 ## 七、框架生成引擎（个性化）
 
 ```
@@ -174,8 +219,9 @@ class Rubric(BaseModel):
 class ObservationItem(BaseModel):
     key: str
     name: str
-    method: str            # quantitative / qualitative
-    frequency: str         # per_lesson / weekly / phase
+    method: str                  # quantitative / qualitative
+    frequency: str               # per_lesson / weekly / phase
+    evidence_sources: list[str]  # 证据类型，见 6.1 枚举
     rubrics: list[Rubric]
 
 class Indicator(BaseModel):
@@ -206,6 +252,7 @@ class StudentEvaluationProfile(BaseModel):
 configs/profile/
 ├── student_types.yaml         类型树
 ├── attributes.yaml            属性维度与取值
+├── evidence_sources.yaml      证据类型枚举
 ├── evaluation_frameworks.yaml 各类型评价维度/指标模板
 └── rubrics/                   评分标准
     ├── knowledge.yaml
