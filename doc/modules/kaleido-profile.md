@@ -1,217 +1,402 @@
 # kaleido-profile 模块开发规划
 
 > 所属项目：SEN-Kaleido
-> 模块定位：学情画像层（闭环输入层）
-> 文档版本：v1.0
+> 模块定位：学生评价模型（学情画像层 / 闭环输入层）
+> 文档版本：v2.0
 > 状态：规划中（作为项目开发起点）
 
 ---
 
 ## 一、模块概述
 
-`kaleido-profile` 是整个 SEN-Kaleido 闭环的**输入层**与**数据契约层**。它负责把特殊学生的非结构化描述（障碍类型、程度、认知水平、感官偏好、康复目标等）转化为下游所有模块可计算的**标准化学情标签向量**。
+`kaleido-profile` 是整个 SEN-Kaleido 闭环的**输入层**与**数据契约层**，承担**学生评价模型**的构建。它不止定义"学生是谁"，还定义"如何评价这个学生"：
 
-下游 `forge`（生成）、`facet`（质检）、`match`（匹配）、`loop`（反馈）全部以本模块输出的标签向量作为输入契约。因此本模块必须最先开发、最稳定、最可测。
+- **画像视角**：把特殊学生的障碍类型、程度、认知水平、感官偏好、康复目标等转化为标准化的学生实例。
+- **评价视角**：为学生生成个性化的**评价内容框架**（评价维度 → 指标 → 观测点 → 评分标准），供课堂数据采集与效果验证使用。
+
+整个模块围绕一个中心组织：**学生评价本体（Student Evaluation Ontology）**，分为类型层、属性层、评价框架层三层，评价框架由引擎按前两层实例化生成。
+
+下游 `forge`、`facet`、`match`、`loop` 全部以本模块输出的学生实例与评价框架作为输入契约，因此本模块必须最先开发、最稳定、最可测。
 
 ## 二、目标与范围
 
 ### 2.1 本模块做什么
 
-- 定义学生画像的数据模型与维度枚举。
-- 以配置文件驱动各维度的取值与映射规则。
-- 通过分层规则引擎，由障碍类型与程度推导默认适配约束与 Prompt 模板键。
-- 输出统一 JSON 标签向量，持久化到 `kaleido-vault`。
-- 提供增删查改与"规则推导"接口供基站与其他模块调用。
+- 定义学生类型分类体系（类型层）。
+- 定义学生多维属性（属性层），含静态属性与动态基线快照。
+- 定义评价内容框架：评价维度、指标、观测点、评分标准（评价框架层）。
+- 由分层规则引擎按"类型 + 属性"实例化出个性化评价框架。
+- 输出统一 JSON 学生实例（含评价框架），持久化到 `kaleido-vault`。
+- 提供增删查改、框架预览、评分标准查询等接口。
 
 ### 2.2 本模块不做什么
 
 - 不调用云端大模型（零外部依赖）。
 - 不生成任何学习资源（属于 `forge`）。
 - 不做推荐排序（属于 `match`）。
+- 不执行课堂数据采集与统计（属于 `loop`，本模块只提供采集清单即评价框架）。
 - 不制定特教专业标准，只负责把已确定的规则工程化、可配置化。
 
-## 三、数据模型设计
+## 三、架构总览：一个中心 + 三层
 
-### 3.1 维度枚举
-
-| 枚举 | 取值 |
-|---|---|
-| 障碍类型 `DisabilityType` | `visual` 视力障碍 / `hearing` 听力障碍 / `intellectual` 智力障碍 / `autism` 自闭症 |
-| 障碍程度 `SeverityLevel` | `mild` 轻度 / `moderate` 中度 / `severe` 重度 |
-| 认知等级 `CognitiveLevel` | `preschool` 学前 / `primary_low` 小学低段 / `primary_high` 小学高段 / `vocational` 职教 |
-| 感官偏好 `SensoryPreference` | `visual_first` 视觉优先 / `audio_first` 听觉优先 / `tactile_aided` 触觉辅助 / `mixed` 图文结合 |
-| 康复目标 `RehabGoal` | `language` 语言 / `sensory_integration` 感统 / `social` 社交 / `cognitive` 认知训练（可多选） |
-| 学习节奏 `LearningPace` | `fast` 快 / `medium` 中 / `slow` 慢 |
-
-### 3.2 核心实体 `StudentProfile`
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `profile_id` | str | 画像唯一 ID |
-| `name` | str | 学生姓名/化名 |
-| `disability` | DisabilityType | 障碍类型（必填） |
-| `severity` | SeverityLevel | 障碍程度 |
-| `cognitive_level` | CognitiveLevel | 认知等级 |
-| `sensory_preference` | SensoryPreference | 感官偏好（可缺省，由规则推导） |
-| `rehab_goals` | list[RehabGoal] | 康复目标（可多选） |
-| `learning_pace` | LearningPace | 学习节奏 |
-| `adaptation_constraints` | dict | 由规则引擎推导的适配约束 |
-| `prompt_template_key` | str | 关联的 Prompt 模板键 |
-| `created_at` / `updated_at` | str | 时间戳 |
-
-### 3.3 输出标签向量示例
-
-```json
-{
-  "profile_id": "p_0001",
-  "disability": "visual",
-  "severity": "moderate",
-  "cognitive_level": "primary_low",
-  "sensory_preference": "audio_first",
-  "rehab_goals": ["language", "cognitive"],
-  "learning_pace": "slow",
-  "adaptation_constraints": {
-    "format": "voice_first",
-    "sentence_length_max": 15,
-    "avoid_visual_ref": true
-  },
-  "prompt_template_key": "visual_layer"
-}
+```
+        ┌───────────────────────────────────────────────┐
+        │        学生评价本体 (Evaluation Ontology)        │
+        └───────────────────────────────────────────────┘
+             │                │                    │
+     ┌───────┴──────┐  ┌──────┴──────┐  ┌──────────┴────────┐
+     │  ① 类型层     │  │  ② 属性层    │  │  ③ 评价框架层       │
+     │  StudentType │  │ Attributes  │  │ EvaluationFramework│
+     │  障碍分类体系  │  │  多维属性    │  │ 维度→指标→观测点→标准│
+     └───────┬──────┘  └──────┬──────┘  └──────────┬────────┘
+             └────────┬───────┘                    │
+                      │       框架生成引擎           │
+                      │  (类型+属性 → 个性化评价框架) │
+                      └────────────┬───────────────┘
+                                   │
+                    StudentEvaluationProfile（学生实例 + 专属评价框架）
 ```
 
-## 四、配置驱动设计
+三层解耦：**类型层**是分类体系，**属性层**是一个学生的多维数据，**评价框架层**是"评价什么、怎么评、按什么标准评"。评价框架不写死，由引擎根据前两层实例化。
 
-所有维度取值与映射规则放在 `configs/profile/` 下，教师与教研人员可不改代码调整参数。
+## 四、① 类型层（StudentType）
 
-### 4.1 `configs/profile/disability_rules.yaml`
+配置驱动的分类体系，支持扩展、多重障碍与共病：
 
 ```yaml
-visual:
-  name: 视力障碍
-  defaults:
-    sensory_preference: audio_first
-  constraints:
-    format: voice_first
-    sentence_length_max: 15
-    avoid_visual_ref: true
-  prompt_template: visual_layer
-
-hearing:
-  name: 听力障碍
-  defaults:
-    sensory_preference: visual_first
-  constraints:
-    require_caption: true
-    visual_priority: true
-  prompt_template: hearing_layer
-
-intellectual:
-  name: 智力障碍
-  defaults:
-    sensory_preference: mixed
-  constraints:
-    step_by_step: true
-    add_emoji: true
-    sentence_length_max: 12
-  prompt_template: intellectual_layer
-
-autism:
-  name: 自闭症
-  defaults:
-    sensory_preference: mixed
-  constraints:
-    short_sentence: true
-    simple_vocab: true
-    visual_aid: true
-  prompt_template: autism_layer
+student_types:
+  visual:
+    name: 视力障碍
+    parent: null
+    tags: [sensory, visual]
+  hearing:
+    name: 听力障碍
+    tags: [sensory, auditory]
+  intellectual:
+    name: 智力障碍
+    tags: [cognitive]
+  autism:
+    name: 自闭症
+    tags: [developmental, social]
 ```
 
-### 4.2 配置加载规则
+关键点：类型不是孤立枚举，而是带 `parent` 与 `tags` 的树/图，支持组合类型表达"多重障碍"，新增类型只改配置。
 
-- 启动时加载并校验配置，配置缺失字段时报错。
-- 支持按障碍类型 + 程度覆盖约束（程度越重，约束越严格）。
-- 配置热更新：提供重载接口，便于试点中调参。
+## 五、② 属性层（Attributes）
 
-## 五、规则引擎设计
+| 类别 | 维度 | 示例 |
+|---|---|---|
+| 静态 | 障碍程度 | 轻度 / 中度 / 重度 |
+| 静态 | 认知等级 | 学前 / 小学低段 / 小学高段 / 职教 |
+| 静态 | 感官偏好 | 视觉优先 / 听觉优先 / 触觉辅助 / 图文结合 |
+| 静态 | 康复目标 | 语言 / 感统 / 社交 / 认知（多选） |
+| 静态 | 学习节奏 | 快 / 中 / 慢 |
+| 动态 | 能力基线 | 当前识字量、理解水平等 |
+| 动态 | 病史 / 辅具 | 助听器、盲杖等（可选、脱敏） |
 
-**输入**：障碍类型、程度、认知等级、可选感官偏好。
-**输出**：`adaptation_constraints` + `prompt_template_key`。
+动态属性是评价的**起点快照**，与 `loop` 采集的课后数据形成前后对照。
 
-**推导流程**：
-1. 按 `disability` 载入基础约束与模板键。
-2. 按 `severity` 叠加严格化规则（如 `severe` 时 `sentence_length_max` 进一步收紧）。
-3. 若用户显式指定 `sensory_preference`，覆盖默认值；否则采用配置默认。
-4. 按 `cognitive_level` 调整词汇难度与步骤粒度。
-5. 合并 `rehab_goals` 生成附加约束标签。
+## 六、③ 评价框架层（核心）
 
-**原则**：规则可解释、可追溯，每次推导保留命中规则记录，便于教师理解"为什么得到这些约束"。
+采用**四级树结构**：
 
-## 六、接口设计
+```
+评价维度 Dimension
+  └─ 指标 Indicator
+       └─ 观测点 ObservationItem
+            └─ 评分标准 Rubric
+```
+
+- **维度**：顶层分类，采用申报书的**四维评价体系**——知识掌握、课堂参与、行为改善、身心康复，再叠加**障碍特异维度**。
+- **指标**：维度下的可评价能力项，随障碍类型不同：
+  - 视障：听觉理解、盲文识字、定向行走、听触觉注意
+  - 听障：口语/手语表达、书面表达、视觉注意
+  - 智障：生活自理、指令理解、步骤执行
+  - 自闭：社交互动、情绪调节、刻板行为改善
+- **观测点**：指标的可观测行为，是数据采集的落点，明确"看什么、记什么"。
+- **评分标准（Rubric）**：等级描述（如 未达成/初步/基本/熟练 四级）+ 观测证据要求，保证不同教师评价口径一致。
+
+## 七、框架生成引擎（个性化）
+
+```
+输入 StudentEvaluationProfile
+      │
+      ├─ 按 student_type.tags 选取适用维度与指标
+      ├─ 按 severity 裁剪指标数量/难度（越重越细化、等级越少）
+      ├─ 按 rehab_goals 对相关指标加权
+      ├─ 按 cognitive_level 调整观测点表述
+      └─ 输出 个性化评价框架（指标清单 + 权重 + 观测频率 + 评分方式）
+```
+
+评价方式同时支持**量化**（计数/时长/得分）与**质性**（观察描述/等级），对应课题"量化与质性结合法"。观测频率可按每课/每周/每阶段配置。`severity=severe` 时，指标会被拆得更细、等级从四级降到三级，避免评价压力过大。
+
+## 八、数据模型（Pydantic）
+
+```python
+class StudentType(BaseModel):        # 类型层
+    key: str
+    name: str
+    parent: str | None
+    tags: list[str]
+
+class StudentAttributes(BaseModel):  # 属性层
+    disability: str
+    severity: str
+    cognitive_level: str
+    sensory_preference: str | None
+    rehab_goals: list[str] = []
+    learning_pace: str
+    baseline: dict | None = None
+
+class Rubric(BaseModel):
+    level: int
+    label: str
+    description: str
+    evidence: str
+
+class ObservationItem(BaseModel):
+    key: str
+    name: str
+    method: str            # quantitative / qualitative
+    frequency: str         # per_lesson / weekly / phase
+    rubrics: list[Rubric]
+
+class Indicator(BaseModel):
+    key: str
+    name: str
+    dimension: str
+    observations: list[ObservationItem]
+
+class EvaluationFramework(BaseModel):
+    framework_id: str
+    dimensions: list[str]
+    indicators: list[Indicator]
+    weights: dict[str, float]
+    prompt_template_key: str
+
+class StudentEvaluationProfile(BaseModel):
+    profile_id: str
+    name: str
+    attributes: StudentAttributes
+    framework: EvaluationFramework
+    created_at: str | None
+    updated_at: str | None
+```
+
+## 九、配置驱动设计
+
+```
+configs/profile/
+├── student_types.yaml         类型树
+├── attributes.yaml            属性维度与取值
+├── evaluation_frameworks.yaml 各类型评价维度/指标模板
+└── rubrics/                   评分标准
+    ├── knowledge.yaml
+    ├── participation.yaml
+    ├── behavior.yaml
+    └── rehabilitation.yaml
+```
+
+- 启动时加载并校验配置，缺失字段报错。
+- 支持按障碍类型 + 程度叠加覆盖（程度越重约束越严格）。
+- 提供热重载接口，便于试点中调参。
+- 配置纳入版本管理，重载保留历史快照。
+
+## 十、接口设计（API 对接）
+
+### 10.1 通用约定
+
+- **Base URL**：`http://<基站IP>:8080/api/v1`
+- **请求头**：`Content-Type: application/json; charset=utf-8`；`X-Auth-Token: <token>`
+- **鉴权**：由 `kaleido-guard` 签发 token，教师机首次访问配对一次后本地保存；局域网内可配置关闭，默认开启。
+- **统一响应包裹**：`{ "code": 0, "message": "ok", "data": { } }`
+- **时间格式**：ISO8601，如 `2026-10-19T12:00:00+08:00`
+- **幂等**：创建接口支持 `client_request_id` 去重。
+
+### 10.2 端点清单
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/profile` | 新建画像，返回含推导约束的标签向量 |
-| GET | `/api/profile/{profile_id}` | 查询单个画像 |
-| GET | `/api/profile` | 列表 / 按障碍类型、认知等级筛选 |
-| PUT | `/api/profile/{profile_id}` | 更新画像并重新推导 |
-| POST | `/api/profile/{profile_id}/derive` | 仅按当前输入重新推导约束 |
-| POST | `/api/profile/reload-config` | 热重载配置文件 |
+| POST | `/students` | 建立学生 + 属性，返回实例化评价框架 |
+| GET | `/students/{profile_id}` | 查询学生及评价框架 |
+| GET | `/students` | 列表 / 按障碍类型、认知等级筛选，分页 |
+| PUT | `/students/{profile_id}` | 更新属性并重新生成框架 |
+| DELETE | `/students/{profile_id}` | 删除学生 |
+| GET | `/evaluation/dimensions` | 查询维度体系 |
+| POST | `/evaluation/framework` | 按属性生成框架（不落库，仅预览） |
+| GET | `/evaluation/rubric/{indicator}` | 查询指标评分标准 |
+| POST | `/profile/reload-config` | 热重载配置文件 |
 
-接口由 `kaleido-api`（Bottle）统一挂载，本模块只提供路由处理函数。
+### 10.3 请求 / 响应示例
 
-## 七、模块内目录结构
+`POST /students` 请求：
+
+```json
+{
+  "client_request_id": "req-8f2c",
+  "name": "小明",
+  "attributes": {
+    "disability": "visual",
+    "severity": "moderate",
+    "cognitive_level": "primary_low",
+    "sensory_preference": null,
+    "rehab_goals": ["language", "cognitive"],
+    "learning_pace": "slow"
+  },
+  "generate_framework": true
+}
+```
+
+响应 `201`：
+
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "profile_id": "p_0001",
+    "name": "小明",
+    "attributes": {
+      "disability": "visual",
+      "severity": "moderate",
+      "cognitive_level": "primary_low",
+      "sensory_preference": "audio_first",
+      "rehab_goals": ["language", "cognitive"],
+      "learning_pace": "slow"
+    },
+    "framework": {
+      "framework_id": "fw_p_0001",
+      "dimensions": ["knowledge", "participation", "behavior", "rehabilitation"],
+      "indicators": [
+        { "key": "auditory_attention", "name": "听觉注意", "dimension": "rehabilitation" }
+      ],
+      "weights": {
+        "knowledge": 0.3,
+        "participation": 0.2,
+        "behavior": 0.2,
+        "rehabilitation": 0.3
+      },
+      "prompt_template_key": "visual_layer"
+    },
+    "created_at": "2026-10-19T12:00:00+08:00"
+  }
+}
+```
+
+注意：`sensory_preference` 传入 `null` 时返回的是规则推导值 `audio_first`——**入参可缺省，出参必完整**。
+
+### 10.4 错误码
+
+| code | HTTP | 含义 |
+|---|---|---|
+| 0 | 200/201 | 成功 |
+| 1001 | 400 | 参数校验失败（字段缺失/取值非法） |
+| 1002 | 404 | 学生不存在 |
+| 1003 | 409 | `client_request_id` 重复（幂等去重） |
+| 1004 | 500 | 配置缺失或非法 |
+| 1005 | 500 | 存储写入失败 |
+
+错误响应仍用同一包裹，例如：`{ "code": 1001, "message": "attributes.disability 取值非法", "data": null }`
+
+### 10.5 Bottle 路由实现要点
+
+```python
+from bottle import Bottle, request, response
+
+app = Bottle()
+
+@app.post("/api/v1/students")
+def create_student():
+    payload = request.json or {}
+    try:
+        result = service.create_student(payload)
+    except ValidationError as e:
+        response.status = 400
+        return {"code": 1001, "message": str(e), "data": None}
+    response.status = 201
+    return {"code": 0, "message": "ok", "data": result}
+```
+
+- 路由只做参数解析与异常映射，业务在 `service.py`。
+- 统一异常中间件把 `ValidationError / NotFound / ConfigError` 映射为上述错误码。
+
+### 10.6 与 vault 的落盘
+
+- 每个学生一个分片：`data/students/p_0001.json`
+- 索引文件：`data/students/index.json`（`profile_id → 障碍类型/认知等级`，供列表筛选走内存）
+- 写入经 `repository` 单写线程 + `portalocker` 文件锁，避免多教室并发丢数据
+- 读取优先走内存索引，未命中再读分片
+
+### 10.7 教室机 JS 调用示例
+
+```javascript
+const res = await fetch("/api/v1/students", {
+  method: "POST",
+  headers: { "Content-Type": "application/json", "X-Auth-Token": token },
+  body: JSON.stringify({ name, attributes, generate_framework: true })
+});
+const { code, message, data } = await res.json();
+if (code !== 0) { alert(message); return; }
+```
+
+## 十一、模块内目录结构
 
 ```
 src/kaleido/profile/
 ├── __init__.py
-├── models.py         数据模型与枚举
-├── config_loader.py  配置加载与校验
-├── rules.py          分层规则引擎
-├── service.py        业务逻辑（组合规则与存储）
-├── repository.py     持久化访问（对接 kaleido-vault）
-└── api.py            Bottle 路由处理函数
+├── models/
+│   ├── taxonomy.py      类型体系实体
+│   ├── student.py       学生与属性实体
+│   └── evaluation.py    评价框架实体
+├── config_loader.py     配置加载与校验
+├── taxonomy.py          类型层加载
+├── attributes.py        属性层校验与规范化
+├── framework.py         评价框架生成引擎
+├── repository.py        持久化（对接 kaleido-vault）
+├── service.py           业务逻辑
+└── api.py               Bottle 路由处理函数
 ```
 
-## 八、任务拆解（开发步骤）
+## 十二、与下游模块的关系
+
+- **`kaleido-loop`**：直接消费评价框架的观测点做数据采集与统计，评价框架 = 采集清单，支持前后测对照。
+- **`kaleido-forge` / `kaleido-match`**：用属性层做资源适配；评价框架的指标可反向指导生成重点。
+- **`kaleido-facet`**：质量评价与评价框架共用 `rubrics/` 标准体系，保证"资源质量"与"学生评价"口径一致。
+
+## 十三、任务拆解（开发步骤）
 
 | 步骤 | 内容 | 产出 |
 |---|---|---|
-| 1 | 定义数据模型与枚举 | `models.py` |
-| 2 | 实现配置加载与校验 | `config_loader.py`、`configs/profile/*.yaml` |
-| 3 | 实现分层规则引擎 | `rules.py` |
-| 4 | 实现存储访问（JSON 落盘 + 加锁） | `repository.py` |
-| 5 | 实现业务服务层 | `service.py` |
-| 6 | 挂载 API 路由 | `api.py` |
-| 7 | 编写单元测试（覆盖四大障碍类型） | `tests/profile/` |
-| 8 | 编写使用说明 | 本文档补充"快速开始" |
+| 1 | 类型层：定义类型树与加载 | `models/taxonomy.py`、`taxonomy.py`、`student_types.yaml` |
+| 2 | 属性层：校验与规范化 | `models/student.py`、`attributes.py`、`attributes.yaml` |
+| 3 | 评价框架实体与 Rubric 体系 | `models/evaluation.py`、`configs/profile/rubrics/*.yaml` |
+| 4 | 框架生成引擎 | `framework.py`、`evaluation_frameworks.yaml` |
+| 5 | 存储访问（JSON 分片 + 加锁 + 索引） | `repository.py` |
+| 6 | 业务服务层 | `service.py` |
+| 7 | API 路由与异常映射 | `api.py` |
+| 8 | 单元测试（覆盖四大障碍类型） | `tests/profile/` |
 
-## 九、测试计划
+## 十四、测试计划
 
-- **枚举与模型**：字段校验、必填项、非法取值。
-- **配置加载**：正常加载、缺字段报错、热重载。
-- **规则引擎**：四大障碍类型 × 三种程度，断言推导出的约束符合预期；显式偏好覆盖默认值。
-- **接口**：创建/查询/更新/推导全链路。
-- **持久化**：并发写加锁不丢数据、重启后可读取。
+- **类型层**：类型树加载、组合类型、非法类型。
+- **属性层**：字段校验、必填项、非法取值、缺省推导。
+- **框架引擎**：四大障碍类型 × 三种程度，断言生成的维度/指标/权重正确；`severe` 时指标细粒度与等级数符合预期。
+- **接口**：创建/查询/更新/删除/预览/评分标准全链路，错误码正确。
+- **持久化**：并发写加锁不丢数据、重启后可读取、索引与分片一致。
 
-## 十、依赖与接口契约
-
-- 依赖 `kaleido-common`（配置加载、日志、公共数据模型基类）。
-- 依赖 `kaleido-vault`（JSON 文档库读写）。
-- **对外契约**：稳定输出 3.3 节定义的标签向量结构，字段只增不删，变更需版本化。
-- 不依赖任何云端服务，可离线运行与测试。
-
-## 十一、风险与对策
+## 十五、风险与对策
 
 | 风险 | 对策 |
 |---|---|
-| 维度定义与特教专家意见不一致 | 全部走配置文件，专家可复核；预留维度扩展 |
-| 程度叠加规则复杂导致难维护 | 规则显式化、可追溯，编写规则命中日志 |
+| 维度/指标定义与特教专家意见不一致 | 全部走配置，专家可复核；预留维度与指标扩展 |
+| 评价框架过重、教师负担大 | 按程度裁剪指标数量与等级；支持观测频率可调 |
+| 程度叠加规则复杂难维护 | 规则显式化、可追溯，编写规则命中日志 |
 | 下游误用不完整画像 | 提供校验接口，缺关键字段时返回明确错误 |
 | 配置被随意改动 | 配置纳入版本管理，重载保留历史快照 |
 
-## 十二、完成定义（DoD）
+## 十六、完成定义（DoD）
 
-- 数据模型、配置加载、规则引擎、存储、API、测试全部完成。
-- 四大障碍类型的标签向量推导结果经特教教师抽样确认。
+- 类型层、属性层、评价框架层、生成引擎、存储、API、测试全部完成。
+- 四大障碍类型的评价框架生成结果经特教教师抽样确认。
 - 通过 ruff 检查与 pytest 全绿。
-- 输出标签向量结构与下游模块（forge）达成一致。
+- 学生实例与评价框架结构与下游模块（forge、loop）达成一致并冻结为契约。
