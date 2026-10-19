@@ -5,7 +5,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder } from "../core/dom.js";
+import { el, clear, placeholder, panel } from "../core/dom.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { DISABILITY, RESOURCE_STATUS, label, formatTime } from "../core/format.js";
 import { toastError } from "../core/toast.js";
@@ -109,8 +109,8 @@ export function createView(root) {
     }
   }
 
-  /** 拉取资源列表。 */
-  async function refresh() {
+  /** 拉取资源列表（autoSelect 为真时默认展示第一条）。 */
+  async function refresh(autoSelect = false) {
     closeDetail();
     clear(listBox);
     listBox.append(placeholder("正在加载…", "loading"));
@@ -128,6 +128,10 @@ export function createView(root) {
         return;
       }
       data.items.forEach((item, index) => listBox.append(resourceCard(item, index)));
+      if (autoSelect) {
+        const first = listBox.querySelector(".student-card");
+        if (first) showDetail(data.items[0].resource_id, first);
+      }
     } catch (err) {
       clear(listBox);
       listBox.append(placeholder(`加载失败：${err.message}`));
@@ -160,31 +164,36 @@ export function createView(root) {
     );
   }
 
-  /** 组装资源详情（Markdown 正文 + 元信息标签）。 */
+  /** 组装资源详情（标题为资源类型，Markdown 正文 + 元信息标签）。 */
   function renderDetail(item) {
     const typeName = typeMap[item.resource_type] || item.resource_type;
     const md = el("div", { class: "md" });
     md.innerHTML = renderMarkdown(item.content || "");
 
+    const head = el("div", { class: "detail-head" }, [
+      el("div", { class: "detail-id" }, [
+        el("span", { class: "avatar avatar-lg", text: (typeName || "?").slice(0, 1) }),
+        el("h3", { text: typeName }),
+      ]),
+      el("div", { class: "detail-actions" }, [
+        el("button", { class: "btn btn-sm", type: "button", text: "收起", on: { click: closeDetail } }),
+      ]),
+    ]);
+
     return el("section", { class: "detail-body" }, [
-      el("div", { class: "detail-head" }, [
-        el("div", { class: "detail-id" }, [
-          el("span", { class: "avatar avatar-lg", text: (typeName || "?").slice(0, 1) }),
-          el("h3", { text: item.topic }),
-        ]),
-        el("div", { class: "detail-actions" }, [
-          el("button", { class: "btn btn-sm", type: "button", text: "收起", on: { click: closeDetail } }),
-        ]),
-      ]),
-      el("div", { class: "badge-row" }, [
-        el("span", { class: "badge badge-muted", text: `ID：${item.resource_id}` }),
-        el("span", { class: "badge badge-info", text: typeName }),
-        el("span", { class: "badge badge-muted", text: `模型：${item.model || "-"}` }),
-        el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
-        el("span", { class: "badge badge-warning", text: label(RESOURCE_STATUS, item.status) }),
-        el("span", { class: "badge badge-muted", text: formatTime(item.updated_at) }),
-      ]),
-      el("div", { class: "detail-md" }, [md]),
+      panel(null, head),
+      panel(
+        "资源信息",
+        el("div", { class: "badge-row" }, [
+          el("span", { class: "badge badge-muted", text: `主题：${item.topic}` }),
+          el("span", { class: "badge badge-muted", text: `ID：${item.resource_id}` }),
+          el("span", { class: "badge badge-muted", text: `模型：${item.model || "-"}` }),
+          el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
+          el("span", { class: "badge badge-warning", text: label(RESOURCE_STATUS, item.status) }),
+          el("span", { class: "badge badge-muted", text: formatTime(item.updated_at) }),
+        ])
+      ),
+      panel("内容", el("div", { class: "detail-md" }, [md])),
     ]);
   }
 
@@ -221,9 +230,9 @@ export function createView(root) {
     refresh() {
       refresh();
     },
-    /** 首次进入时加载类型并拉取列表。 */
+    /** 首次进入时加载类型、拉取列表并默认展示第一条。 */
     init() {
-      loadTypes().then(refresh);
+      loadTypes().then(() => refresh(true));
     },
   };
 }

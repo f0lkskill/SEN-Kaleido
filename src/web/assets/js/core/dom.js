@@ -58,6 +58,25 @@ export function placeholder(text, kind = "empty") {
 }
 
 /**
+ * 生成一个"板块"容器：可选小标题 + 内容。
+ * 用于把表单/详情按语义分区，样式克制（细分隔线 + 小标题）。
+ * @param {string|null} title 板块小标题
+ * @param {Node|Node[]} body 内容
+ * @param {Object} [options] 选项：className
+ * @returns {HTMLElement}
+ */
+export function panel(title, body, { className = "" } = {}) {
+  const node = el("section", { class: `panel ${className}`.trim() });
+  if (title) node.append(el("h3", { class: "panel-title", text: title }));
+  const content = el("div", { class: "panel-body" });
+  for (const child of [].concat(body)) {
+    if (child) content.append(child);
+  }
+  node.append(content);
+  return node;
+}
+
+/**
  * 让原生 <details> 支持平滑的展开 / 收起高度过渡。
  * 原理：把 summary 之后的内容包进高度过渡容器，拦截点击手动控制 open 时机，
  * 收起时先播放过渡、结束再关闭，避免内容瞬间消失。

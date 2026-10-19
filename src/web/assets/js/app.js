@@ -8,6 +8,7 @@ import { qs, el, clear } from "./core/dom.js";
 import { loadSettings, bindSettingsControls } from "./core/settings.js";
 import { initToast, toastError } from "./core/toast.js";
 import { initErrorCapture, log } from "./core/log.js";
+import { initParticles } from "./core/particles.js";
 
 import * as studentsView from "./views/students.js";
 import * as frameworkView from "./views/framework.js";
@@ -105,6 +106,7 @@ function activate(id) {
 document.addEventListener("DOMContentLoaded", () => {
   initErrorCapture();
   log.info("SEN-Kaleido 前端已加载");
+  initParticles(document.getElementById("particles"));
   initToast();
   loadSettings();
   bindSettingsControls(qs("#settings"));

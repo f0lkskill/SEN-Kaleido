@@ -5,7 +5,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder, enhanceDisclosure } from "../core/dom.js";
+import { el, clear, placeholder, enhanceDisclosure, panel } from "../core/dom.js";
 import {
   TASK_STATUS,
   TASK_STATUS_CLASS,
@@ -56,25 +56,27 @@ export function createView(root) {
 
     // ---- 提交表单 ----
     const submitCard = el("section", { class: "card" }, [
-      el("div", { class: "field" }, [
-        el("label", { text: "任务类型" }),
-        typeSelect,
-      ]),
-      el("div", { class: "field" }, [
-        el("label", { text: "任务参数（JSON）" }),
-        payloadInput,
-      ]),
-      el("div", { class: "field-row" }, [
+      panel("任务设置", [
         el("div", { class: "field" }, [
-          el("label", { text: "优先级" }),
-          priorityInput,
+          el("label", { text: "任务类型" }),
+          typeSelect,
         ]),
         el("div", { class: "field" }, [
-          el("label", { text: "最大尝试次数" }),
-          attemptsInput,
+          el("label", { text: "任务参数（JSON）" }),
+          payloadInput,
         ]),
+        el("div", { class: "field-row" }, [
+          el("div", { class: "field" }, [
+            el("label", { text: "优先级（越大越先执行）" }),
+            priorityInput,
+          ]),
+          el("div", { class: "field" }, [
+            el("label", { text: "最大尝试次数" }),
+            attemptsInput,
+          ]),
+        ]),
+        el("label", { class: "check" }, [deferCheck, "仅在闲时执行"]),
       ]),
-      el("label", { class: "check" }, [deferCheck, "仅在闲时执行"]),
       el("div", { class: "form-actions" }, [
         el("button", {
           class: "btn btn-primary",
@@ -108,6 +110,10 @@ export function createView(root) {
       el("div", { class: "spacer" }),
       counter,
     ]);
+
+    // 筛选改动即时刷新
+    filterStatus.addEventListener("change", refresh);
+    filterType.addEventListener("change", refresh);
 
     const listCard = el("section", { class: "card" }, [toolbar, listBox]);
 

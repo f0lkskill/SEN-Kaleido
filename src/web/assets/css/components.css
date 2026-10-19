@@ -748,6 +748,67 @@ details.disclosure > summary {
   margin: var(--space-4) 0;
 }
 
+/* Markdown 表格 */
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-small);
+}
+
+.md-table th,
+.md-table td {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+}
+
+.md-table th {
+  background: var(--color-surface-alt);
+  font-weight: 700;
+}
+
+.md-table tr:nth-child(even) td {
+  background: var(--color-surface-alt);
+}
+
+/* 正文与上方标题留出间距 */
+.detail-md {
+  margin-top: var(--space-4);
+}
+
+/* ---- 板块：克制的分节样式（细分隔线 + 小标题） ---- */
+.panel {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.panel:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.panel + .panel {
+  margin-top: var(--space-4);
+}
+
+.panel-title {
+  margin: 0 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* ---- 背景粒子画布 ---- */
+.particles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
 /* ---- 评价框架可视化 ---- */
 .framework {
   margin-top: var(--space-2);

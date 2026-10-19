@@ -1,7 +1,7 @@
 /**
  * core/markdown.js —— 极简 Markdown → HTML
- * 支持标题、粗体/斜体、行内代码、代码块、有序/无序列表、引用、链接与分隔线。
- * 先对文本做 HTML 转义以避免 XSS；不追求完整规范，足以呈现模型输出。
+ * 支持标题、粗体/斜体、行内代码、代码块、有序/无序列表、引用、链接、
+ * 分隔线与标准表格。先对文本做 HTML 转义以避免 XSS；够用于呈现模型输出。
  */
 
 /** HTML 转义，防止注入。 */
@@ -23,6 +23,21 @@ function inline(text) {
     '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
   );
   return out;
+}
+
+/** 是否为表格分隔行（形如 | --- | --- |）。 */
+function isTableSeparator(line) {
+  return line.includes("-") && /^\s*\|?[\s:|-]+\|?\s*$/.test(line);
+}
+
+/** 拆分表格一行为单元格。 */
+function splitRow(line) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
 }
 
 /**
@@ -51,8 +66,10 @@ export function renderMarkdown(source) {
     }
   };
 
-  for (const line of lines) {
-    // 代码块围栏
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+
+    // 代码块围栏（保留内部空白，用于示意排版）
     if (/^\s*```/.test(line)) {
       if (inCode) {
         html.push(`<pre class="md-code"><code>${escapeHtml(codeLines.join("\n"))}</code></pre>`);
@@ -71,6 +88,31 @@ export function renderMarkdown(source) {
 
     if (/^\s*$/.test(line)) {
       closeList();
+      continue;
+    }
+
+    // 表格：当前行含 |，且下一行是分隔行
+    if (line.includes("|") && isTableSeparator(lines[i + 1] || "")) {
+      closeList();
+      const header = splitRow(line);
+      const rows = [];
+      let j = i + 2;
+      while (j < lines.length && lines[j].includes("|") && !/^\s*$/.test(lines[j])) {
+        rows.push(splitRow(lines[j]));
+        j += 1;
+      }
+      const head = header.map((cell) => `<th>${inline(cell)}</th>`).join("");
+      const bodyRows = rows
+        .map((row) => {
+          const cells = [];
+          for (let c = 0; c < header.length; c += 1) cells.push(`<td>${inline(row[c] || "")}</td>`);
+          return `<tr>${cells.join("")}</tr>`;
+        })
+        .join("");
+      html.push(
+        `<table class="md-table"><thead><tr>${head}</tr></thead><tbody>${bodyRows}</tbody></table>`
+      );
+      i = j - 1;
       continue;
     }
 

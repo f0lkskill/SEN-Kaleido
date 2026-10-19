@@ -6,7 +6,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder, enhanceDisclosure } from "../core/dom.js";
+import { el, clear, placeholder, enhanceDisclosure, panel } from "../core/dom.js";
 import {
   DISABILITY,
   SEVERITY,
@@ -215,7 +215,7 @@ export function createView(root) {
   }
 
   /** 拉取并渲染学生列表（会同时收起详情面板，卡片依次入场）。 */
-  async function refresh() {
+  async function refresh(autoSelect = false) {
     // 记录滚动位置并在渲染后恢复，避免列表清空重建时页面跳到顶部
     const scrollY = window.scrollY;
     closeDetail();
@@ -233,6 +233,11 @@ export function createView(root) {
         listBox.append(placeholder("暂无学生档案，点击右上角新建。"));
       } else {
         data.items.forEach((item, index) => listBox.append(studentCard(item, index)));
+        // 首次进入默认展示第一位学生
+        if (autoSelect) {
+          const first = listBox.querySelector(".student-card");
+          if (first) showDetail(data.items[0].profile_id, first);
+        }
       }
     } catch (err) {
       clear(listBox);
@@ -271,42 +276,44 @@ export function createView(root) {
     return button;
   }
 
-  /** 组装详情内容。 */
+  /** 组装详情内容（按板块分区）。 */
   function buildDetail(item) {
     const attributes = item.attributes;
-    return el("section", { class: "detail-body" }, [
-      el("div", { class: "detail-head" }, [
-        el("div", { class: "detail-id" }, [
-          el("span", { class: "avatar avatar-lg", text: firstChar(item.name) }),
-          el("h3", { text: `${item.name}` }),
-        ]),
-        el("div", { class: "detail-actions" }, [
-          el("button", {
-            class: "btn btn-sm",
-            type: "button",
-            text: "收起",
-            on: { click: closeDetail },
-          }),
-          el("button", {
-            class: "btn btn-danger btn-sm",
-            type: "button",
-            text: "删除档案",
-            on: { click: () => remove(item) },
-          }),
-        ]),
+    const head = el("div", { class: "detail-head" }, [
+      el("div", { class: "detail-id" }, [
+        el("span", { class: "avatar avatar-lg", text: firstChar(item.name) }),
+        el("h3", { text: `${item.name}` }),
       ]),
-      el("h4", { text: "学生属性" }),
-      renderAttributes(attributes),
-      el("h4", { text: "学习节奏" }),
-      renderLearningPace(attributes),
-      el("h4", { text: "维度与学习节奏关系" }),
-      renderFlow(attributes, item.framework),
-      // 评价标准默认隐藏，点击展开查看观测点与评分等级
-      enhanceDisclosure(
-        el("details", { class: "collapse" }, [
-          el("summary", {}, [el("span", { text: "评价标准与观测点" })]),
-          el("div", { class: "collapse-body" }, [renderFramework(item.framework)]),
-        ])
+      el("div", { class: "detail-actions" }, [
+        el("button", {
+          class: "btn btn-sm",
+          type: "button",
+          text: "收起",
+          on: { click: closeDetail },
+        }),
+        el("button", {
+          class: "btn btn-danger btn-sm",
+          type: "button",
+          text: "删除档案",
+          on: { click: () => remove(item) },
+        }),
+      ]),
+    ]);
+
+    return el("section", { class: "detail-body" }, [
+      panel(null, head),
+      panel("学生属性", renderAttributes(attributes)),
+      panel("学习节奏", renderLearningPace(attributes)),
+      panel("维度与学习节奏关系", renderFlow(attributes, item.framework)),
+      panel(
+        "评价标准与观测点",
+        // 评价标准默认隐藏，点击展开查看观测点与评分等级
+        enhanceDisclosure(
+          el("details", { class: "collapse" }, [
+            el("summary", {}, [el("span", { text: "展开查看观测点与评分等级" })]),
+            el("div", { class: "collapse-body" }, [renderFramework(item.framework)]),
+          ])
+        )
       ),
       el("p", { class: "meta detail-meta", text: `更新时间：${formatTime(item.updated_at)}` }),
     ]);
@@ -371,10 +378,10 @@ export function createView(root) {
   build();
 
   return {
-    /** 首次进入：加载元数据并自动筛选一次。 */
+    /** 首次进入：加载元数据、自动筛选一次并默认展示第一位。 */
     async init() {
       await loadEvidenceSources();
-      refresh();
+      await refresh(true);
     },
     refresh,
   };

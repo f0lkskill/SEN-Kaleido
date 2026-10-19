@@ -239,7 +239,7 @@ export function renderFlow(attributes, framework) {
 /** 渲染已规范化的属性概览（分组卡片，值用中文标签）。 */
 export function renderAttributes(attributes) {
   const rows = [
-    ["障碍类型", labels(DISABILITY, attributes.disabilities), true],
+    ["障碍类型", labels(DISABILITY, attributes.disabilities)],
     ["障碍程度", label(SEVERITY, attributes.severity)],
     ["认知等级", label(COGNITIVE_LEVEL, attributes.cognitive_level)],
     ["感官偏好", label(SENSORY, attributes.sensory_preference)],

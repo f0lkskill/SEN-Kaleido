@@ -4,7 +4,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder, enhanceDisclosure } from "../core/dom.js";
+import { el, clear, placeholder, enhanceDisclosure, panel } from "../core/dom.js";
 import { label, formatTime } from "../core/format.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { toastSuccess, toastError } from "../core/toast.js";
@@ -42,24 +42,28 @@ export function createView(root, hooks = {}) {
 
     // 左：信息表单；右：生成结果
     const infoCard = el("section", { class: "card" }, [
-      el("div", { class: "field" }, [
-        el("label", { text: "学生来源" }),
-        studentSelect,
-      ]),
-      tempWrapper,
-      el("div", { class: "field-row" }, [
+      panel("学生来源", [
         el("div", { class: "field" }, [
-          el("label", { text: "资源类型" }),
-          resourceSelect,
+          el("label", { text: "选择学生" }),
+          studentSelect,
+        ]),
+        tempWrapper,
+      ]),
+      panel("生成设置", [
+        el("div", { class: "field-row" }, [
+          el("div", { class: "field" }, [
+            el("label", { text: "资源类型" }),
+            resourceSelect,
+          ]),
+          el("div", { class: "field" }, [
+            el("label", { text: "教学主题" }),
+            topicInput,
+          ]),
         ]),
         el("div", { class: "field" }, [
-          el("label", { text: "教学主题" }),
-          topicInput,
+          el("label", { text: "补充要求（可选）" }),
+          extraInput,
         ]),
-      ]),
-      el("div", { class: "field" }, [
-        el("label", { text: "补充要求（可选）" }),
-        extraInput,
       ]),
       el("div", { class: "form-actions" }, [
         el("button", {
@@ -166,6 +170,8 @@ export function createView(root, hooks = {}) {
         if (event.type === "reasoning") {
           reasoningBox.hidden = false;
           reasoningPre.textContent += event.text;
+          // 思考内容自动滚动到底部
+          reasoningPre.scrollTop = reasoningPre.scrollHeight;
         } else if (event.type === "content") {
           // 开始出正文：收起思考过程并切换状态文案（模拟对话体验）
           if (!reasoningBox.hidden && reasoningBox.open) reasoningBox.open = false;
