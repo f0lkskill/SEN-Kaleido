@@ -47,47 +47,14 @@ function select(name, options, { required = false, includeBlank = false } = {}) 
   return node;
 }
 
-/** 把 0~1 的权重渲染为进度条。 */
-function meter(value) {
-  const percent = Math.round(Number(value || 0) * 100);
-  return el("div", { class: "meter", role: "img", "aria-label": `权重 ${percent}%` }, [
-    el("div", { class: "meter-fill", style: `width:${percent}%` }),
-  ]);
-}
-
 /**
- * 渲染评价框架（可视化结构）。
+ * 渲染评价标准（指标 → 观测点 → 评分等级）。
+ * 不展示维度权重占比，聚焦"达到什么程度算几级"。
  * @param {Object} framework 框架对象
  * @returns {HTMLElement}
  */
 export function renderFramework(framework) {
   const wrap = el("div", { class: "framework" });
-
-  // ---- 维度权重（进度条，直观展示各维度占比） ----
-  const weights = framework.weights || {};
-  const weightBox = el("div", { class: "weight-list" });
-  const entries = Object.entries(weights);
-  if (entries.length === 0) {
-    weightBox.append(el("p", { class: "meta", text: "无" }));
-  } else {
-    for (const [key, value] of entries) {
-      weightBox.append(
-        el("div", { class: "weight-item" }, [
-          el("span", { class: "weight-name", text: label(DIMENSION, key) }),
-          meter(value),
-          el("span", { class: "weight-value", text: `${Math.round(Number(value) * 100)}%` }),
-        ])
-      );
-    }
-  }
-  wrap.append(
-    el("h3", { text: "评价维度与权重" }),
-    el("p", { class: "card-hint", text: "权重越高，该维度在综合评价中占比越大。" }),
-    weightBox
-  );
-
-  // ---- 指标与观测点（分组卡片 + 评分等级展示） ----
-  wrap.append(el("h3", { text: "评价标准与观测点" }));
   const indicators = framework.indicators || [];
   if (indicators.length === 0) {
     wrap.append(placeholder("该框架未包含指标"));
@@ -124,7 +91,7 @@ export function renderFramework(framework) {
         );
       }
 
-      // 评分标准：以等级卡片直观呈现"达到什么程度算几级"
+      // 评分等级：直观呈现"达到什么程度算几级"
       const rubrics = obs.rubrics || [];
       if (rubrics.length) {
         const rubricList = el("div", { class: "rubric-list" });
@@ -141,7 +108,7 @@ export function renderFramework(framework) {
           );
         }
         obsCard.append(el("div", { class: "rubric-box" }, [
-          el("p", { class: "meta", text: "评分标准：" }),
+          el("p", { class: "meta", text: "评分等级：" }),
           rubricList,
         ]));
       }
@@ -151,6 +118,54 @@ export function renderFramework(framework) {
     wrap.append(indicatorCard);
   }
   return wrap;
+}
+
+/** 学习节奏的展示文案（节奏值 → 名称 + 教学提示）。 */
+const PACE_INFO = {
+  fast: { name: "较快", desc: "可适当加快推进速度，增加拓展与挑战性练习。" },
+  medium: { name: "适中", desc: "按常规节奏推进，兼顾理解与练习。" },
+  slow: { name: "较慢", desc: "放慢节奏，增加重复、分解步骤与即时提示。" },
+};
+
+/**
+ * 渲染学习节奏（独立详细展示）。
+ * @param {Object} attributes 规范化属性
+ * @returns {HTMLElement}
+ */
+export function renderLearningPace(attributes) {
+  const info = PACE_INFO[attributes.learning_pace] || {
+    name: label(LEARNING_PACE, attributes.learning_pace),
+    desc: "",
+  };
+  return el("div", { class: "pace-card" }, [
+    el("div", { class: "pace-head" }, [
+      el("span", { class: "pace-key", text: "学习节奏" }),
+      el("span", { class: "pace-badge", text: info.name }),
+    ]),
+    el("p", { class: "pace-desc", text: info.desc }),
+  ]);
+}
+
+/**
+ * 渲染汇集关系图：底部两个评价维度，向上汇集到顶部的学习节奏。
+ * @param {Object} attributes 规范化属性
+ * @returns {HTMLElement}
+ */
+export function renderFlow(attributes) {
+  const info = PACE_INFO[attributes.learning_pace] || {
+    name: label(LEARNING_PACE, attributes.learning_pace),
+  };
+  const dims = ["participation", "practice"];
+  return el("div", { class: "flow" }, [
+    el("div", { class: "flow-node flow-pace", text: `学习节奏：${info.name}` }),
+    el("div", { class: "flow-streams", "aria-hidden": "true" }, [
+      el("span", { class: "flow-dot flow-dot-a" }),
+      el("span", { class: "flow-dot flow-dot-b" }),
+    ]),
+    el("div", { class: "flow-base" }, dims.map((d) =>
+      el("div", { class: "flow-node", text: label(DIMENSION, d) })
+    )),
+  ]);
 }
 
 /** 渲染已规范化的属性概览（分组卡片，值用中文标签）。 */

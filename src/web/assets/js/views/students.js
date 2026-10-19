@@ -1,7 +1,8 @@
 /**
- * views/students.js —— 学生档案视图（左右分栏）
+ * views/students.js —— 学生档案视图（左右分栏 + 二级模态建档）
  * 布局：左侧为档案列表，选中后列表收窄向左、右侧滑出详情面板。
- * 覆盖：建档、筛选、查看详情（属性 + 公共评价标准）、删除。
+ * 详情：属性概览、学习节奏独立展示、维度→学习节奏汇集关系图、
+ *       可折叠的评价标准（默认隐藏）；不含维度权重占比。
  */
 
 import { api } from "../core/api.js";
@@ -22,6 +23,8 @@ import {
   validateAttributes,
   renderFramework,
   renderAttributes,
+  renderLearningPace,
+  renderFlow,
   ATTRIBUTE_OPTIONS,
 } from "./framework.js";
 
@@ -44,7 +47,6 @@ export function createView(root) {
   let layout;
   let detailBox;
   let totalBadge;
-  let createForm;
   let activeId = null; // 当前选中的档案 ID
 
   function build() {
@@ -67,8 +69,6 @@ export function createView(root) {
     detailBox = el("div", { class: "student-detail", hidden: true });
     layout = el("div", { class: "student-layout" }, [listBox, detailBox]);
 
-    createForm = el("div");
-
     const card = el("section", { class: "card" }, [
       el("div", { class: "card-header" }, [
         el("h2", { text: "学生档案" }),
@@ -76,31 +76,62 @@ export function createView(root) {
           class: "btn btn-primary",
           type: "button",
           text: "＋ 新建学生",
-          on: { click: toggleCreate },
+          on: { click: openCreateModal },
         }),
       ]),
       el("p", {
         class: "card-hint",
         text: "从左侧选择一名学生查看详情；建档时录入静态属性，系统据此生成公共评价标准。",
       }),
-      createForm,
       toolbar,
       layout,
     ]);
     root.append(card);
   }
 
-  /** 显示/隐藏建档表单。 */
-  function toggleCreate() {
-    if (createForm.childElementCount > 0) {
-      clear(createForm);
-      return;
-    }
-    buildCreateForm();
+  /** 打开二级模态窗口进行建档。 */
+  function openCreateModal() {
+    const overlay = el("div", {
+      class: "modal-overlay",
+      role: "dialog",
+      "aria-modal": "true",
+      "aria-label": "新建学生",
+    });
+    const dialog = el("div", { class: "modal" });
+
+    const close = () => {
+      overlay.classList.add("leaving");
+      document.removeEventListener("keydown", onKey);
+      setTimeout(() => overlay.remove(), 200);
+    };
+    const onKey = (event) => {
+      if (event.key === "Escape") close();
+    };
+
+    const form = buildCreateForm(close);
+    dialog.append(
+      el("div", { class: "modal-head" }, [
+        el("h3", { text: "新建学生" }),
+        el("button", { class: "btn btn-sm", type: "button", text: "关闭", on: { click: close } }),
+      ]),
+      form
+    );
+    overlay.append(dialog);
+    // 点击遮罩关闭
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) close();
+    });
+    document.addEventListener("keydown", onKey);
+    document.body.append(overlay);
+    const firstInput = form.querySelector("input, select");
+    if (firstInput) firstInput.focus();
   }
 
-  /** 构建建档表单。 */
-  function buildCreateForm() {
+  /**
+   * 构建建档表单。
+   * @param {Function} onDone 建档成功后的回调（用于关闭模态）
+   */
+  function buildCreateForm(onDone) {
     const nameInput = el("input", { type: "text", name: "name", required: true });
     const attrsForm = buildAttributesForm("create");
     const frameworkCheck = el("input", {
@@ -110,7 +141,6 @@ export function createView(root) {
     });
 
     const form = el("form", { class: "create-form" }, [
-      el("h3", { text: "新建学生" }),
       el("div", { class: "field" }, [el("label", { text: "学生姓名/化名" }), nameInput]),
       attrsForm,
       el("label", { class: "check" }, [frameworkCheck, "同时生成评价框架"]),
@@ -139,28 +169,40 @@ export function createView(root) {
           generate_framework: frameworkCheck.checked,
         });
         toastSuccess(`已建档：${profile.name}`);
-        clear(createForm);
+        if (onDone) onDone();
         refresh();
       } catch (err) {
         toastError(err.message);
       }
     });
 
-    createForm.append(form);
+    return form;
   }
 
-  /** 关闭详情面板，恢复列表全宽。 */
+  /** 关闭详情面板，播放收起动画后恢复列表全宽。 */
   function closeDetail() {
+    if (detailBox.hidden) return;
     layout.classList.remove("narrowed");
-    detailBox.hidden = true;
-    clear(detailBox);
+    detailBox.classList.add("leaving");
+    const cleanup = () => {
+      detailBox.classList.remove("leaving");
+      detailBox.hidden = true;
+      clear(detailBox);
+    };
+    detailBox.addEventListener("animationend", cleanup, { once: true });
+    // 兜底：动画事件未触发时也要收起
+    setTimeout(() => {
+      if (!detailBox.hidden) {
+        cleanup();
+      }
+    }, 260);
     activeId = null;
     for (const item of listBox.querySelectorAll(".student-card")) {
       item.classList.remove("active");
     }
   }
 
-  /** 拉取并渲染学生列表（会同时收起详情面板）。 */
+  /** 拉取并渲染学生列表（会同时收起详情面板，卡片依次入场）。 */
   async function refresh() {
     closeDetail();
     clear(listBox);
@@ -177,7 +219,7 @@ export function createView(root) {
         listBox.append(placeholder("暂无学生档案，点击右上角新建。"));
         return;
       }
-      for (const item of data.items) listBox.append(studentCard(item));
+      data.items.forEach((item, index) => listBox.append(studentCard(item, index)));
     } catch (err) {
       clear(listBox);
       listBox.append(placeholder(`加载失败：${err.message}`));
@@ -185,13 +227,14 @@ export function createView(root) {
     }
   }
 
-  /** 单个学生卡片。 */
-  function studentCard(item) {
+  /** 单个学生卡片（带依次入场延时）。 */
+  function studentCard(item, index) {
     const button = el(
       "button",
       {
         class: "student-card",
         type: "button",
+        style: `animation-delay:${Math.min(index, 12) * 30}ms`,
         on: { click: () => showDetail(item.profile_id, button) },
       },
       [
@@ -209,8 +252,45 @@ export function createView(root) {
     return button;
   }
 
+  /** 组装详情内容。 */
+  function buildDetail(item) {
+    const attributes = item.attributes;
+    return el("section", { class: "detail-body" }, [
+      el("div", { class: "detail-head" }, [
+        el("h3", { text: `${item.name} · 档案详情` }),
+        el("div", { class: "detail-actions" }, [
+          el("button", {
+            class: "btn btn-sm",
+            type: "button",
+            text: "收起",
+            on: { click: closeDetail },
+          }),
+          el("button", {
+            class: "btn btn-danger btn-sm",
+            type: "button",
+            text: "删除档案",
+            on: { click: () => remove(item) },
+          }),
+        ]),
+      ]),
+      el("h4", { text: "学生属性" }),
+      renderAttributes(attributes),
+      el("h4", { text: "学习节奏" }),
+      renderLearningPace(attributes),
+      el("h4", { text: "维度与学习节奏关系" }),
+      renderFlow(attributes),
+      // 评价标准默认隐藏，点击展开查看观测点与评分等级
+      el("details", { class: "collapse" }, [
+        el("summary", {}, [el("span", { text: "评价标准与观测点" })]),
+        el("div", { class: "collapse-body" }, [renderFramework(item.framework)]),
+      ]),
+      el("p", { class: "meta", text: `更新时间：${formatTime(item.updated_at)}` }),
+    ]);
+  }
+
   /** 展示学生详情（列表收窄、右侧滑出面板）。 */
   async function showDetail(profileId, cardEl) {
+    detailBox.classList.remove("leaving");
     detailBox.hidden = false;
     layout.classList.add("narrowed");
     clear(detailBox);
@@ -225,32 +305,7 @@ export function createView(root) {
     try {
       const item = await api.getStudent(profileId);
       clear(detailBox);
-      detailBox.append(
-        el("section", { class: "detail-body" }, [
-          el("div", { class: "detail-head" }, [
-            el("h3", { text: `${item.name} · 档案详情` }),
-            el("div", { class: "detail-actions" }, [
-              el("button", {
-                class: "btn btn-sm",
-                type: "button",
-                text: "收起",
-                on: { click: closeDetail },
-              }),
-              el("button", {
-                class: "btn btn-danger btn-sm",
-                type: "button",
-                text: "删除档案",
-                on: { click: () => remove(item) },
-              }),
-            ]),
-          ]),
-          el("h4", { text: "学生属性" }),
-          renderAttributes(item.attributes),
-          el("h4", { text: "公共评价标准" }),
-          renderFramework(item.framework),
-          el("p", { class: "meta", text: `更新时间：${formatTime(item.updated_at)}` }),
-        ])
-      );
+      detailBox.append(buildDetail(item));
     } catch (err) {
       clear(detailBox);
       detailBox.append(placeholder(`加载失败：${err.message}`));
