@@ -8,12 +8,13 @@
 - 生产环境用 ``waitress`` 多线程 WSGI 承载多教室机并发访问。
 """
 
+import os
 from typing import Any, cast
 
-from bottle import Bottle, abort, response, static_file
+from bottle import Bottle, abort, request, response, static_file
 
-from kaleido.common.logging import get_logger
-from kaleido.common.paths import WEB_DIR
+from kaleido.common.logging import get_logger, setup_logging
+from kaleido.common.paths import DATA_DIR, WEB_DIR
 
 logger = get_logger("api")
 from kaleido.forge.models import GenerateRequest
@@ -58,6 +59,19 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
         )
     app.merge(create_tasks_app(task_service))
 
+    # ---- 可选访问日志（默认关闭，设 SEN_KALEIDO_ACCESS_LOG=1 开启） ----
+    if os.environ.get("SEN_KALEIDO_ACCESS_LOG") == "1":
+
+        @app.hook("before_request")
+        def _log_request() -> None:
+            if request.path.startswith("/api/"):
+                logger.debug("%s %s", request.method, request.path)
+
+        @app.hook("after_request")
+        def _log_response() -> None:
+            if request.path.startswith("/api/"):
+                logger.info("%s %s -> %s", request.method, request.path, response.status_code)
+
     # ---- 静态前端：与后端脚本分离，按 assets 分类组织 ----
     @app.get("/")
     def index():
@@ -89,7 +103,14 @@ def serve(host: str = "0.0.0.0", port: int = 8080) -> None:
     """用 waitress 启动整站服务（默认端口 8080）。"""
     from waitress import serve as waitress_serve
 
+    setup_logging()
     logger.info("SEN-Kaleido 服务启动: http://%s:%s", host, port)
+    logger.info("数据目录: %s", DATA_DIR)
+    logger.info(
+        "日志级别: %s；访问日志: %s（设 SEN_KALEIDO_ACCESS_LOG=1 开启）",
+        os.environ.get("SEN_KALEIDO_LOG_LEVEL", "INFO"),
+        os.environ.get("SEN_KALEIDO_ACCESS_LOG", "0"),
+    )
     waitress_serve(create_app(), host=host, port=port)
 
 

@@ -8,6 +8,7 @@ API 层与脚本都只依赖本层，不直接操作配置与存储。
 from datetime import datetime
 
 from kaleido.common.errors import ConflictError
+from kaleido.common.logging import get_logger
 from kaleido.profile.attributes import AttributeSchema
 from kaleido.profile.config_loader import load_config, load_rubric, reload_config
 from kaleido.profile.framework import FrameworkEngine
@@ -22,6 +23,8 @@ from kaleido.profile.taxonomy import Taxonomy
 
 # 带时区的时间格式，便于跨设备统一展示
 _TIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
+
+logger = get_logger("profile.service")
 
 
 def _now() -> str:
@@ -63,6 +66,13 @@ class ProfileService:
             updated_at=now,
         )
         self.repository.save(profile, request.client_request_id)
+        logger.info(
+            "建立档案: id=%s name=%s disabilities=%s cognitive=%s",
+            profile_id,
+            request.name,
+            attributes.disabilities,
+            attributes.cognitive_level,
+        )
         return profile.model_dump()
 
     def get_student(self, profile_id: str) -> dict:
@@ -98,11 +108,13 @@ class ProfileService:
             )
         profile.updated_at = _now()
         self.repository.save(profile)
+        logger.info("更新档案: id=%s", profile_id)
         return profile.model_dump()
 
     def delete_student(self, profile_id: str) -> dict:
         """删除档案。"""
         self.repository.delete(profile_id)
+        logger.info("删除档案: id=%s", profile_id)
         return {"profile_id": profile_id}
 
     def preview_framework(self, attributes: StudentAttributesInput) -> dict:
@@ -144,4 +156,5 @@ class ProfileService:
         self.taxonomy = Taxonomy.load()
         self.schema = AttributeSchema.load()
         self.engine = FrameworkEngine.load()
+        logger.info("热重载配置完成")
         return {"student_types": self.taxonomy.keys()}

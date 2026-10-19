@@ -9,9 +9,12 @@ from bottle import Bottle, request, response
 from pydantic import ValidationError as PydanticValidationError
 
 from kaleido.common.errors import KaleidoError
+from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.tasks.models import CreateTaskRequest
 from kaleido.tasks.service import TaskService
+
+_logger = get_logger("tasks.api")
 
 
 def create_app(service: TaskService | None = None) -> Bottle:
@@ -30,7 +33,8 @@ def create_app(service: TaskService | None = None) -> Bottle:
         except PydanticValidationError as exc:
             response.status = 400
             return fail(1001, str(exc))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
+            _logger.exception("tasks 请求处理失败")
             response.status = 500
             return fail(1000, str(exc))
         response.status = status

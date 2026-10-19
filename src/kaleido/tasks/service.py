@@ -73,12 +73,14 @@ class TaskService:
         if self._threads:
             return
         self._stop.clear()
-        for index in range(max(1, self._worker_count)):
+        count = max(1, self._worker_count)
+        for index in range(count):
             thread = threading.Thread(
                 target=self._worker_loop, name=f"kaleido-task-{index}", daemon=True
             )
             thread.start()
             self._threads.append(thread)
+        logger.info("任务工作线程已启动: %d 个", count)
 
     def shutdown(self, timeout: float = 5.0) -> None:
         """停止后台线程并等待退出。"""
@@ -87,6 +89,7 @@ class TaskService:
         for thread in self._threads:
             thread.join(timeout=timeout)
         self._threads.clear()
+        logger.info("任务工作线程已停止")
 
     # ---- 处理器注册 ----
     def register(self, task_type: str, handler: Handler) -> None:
@@ -122,6 +125,13 @@ class TaskService:
         }
         self.tasks.put(task_id, document)
         self._queue.push(task_id, request.priority)
+        logger.info(
+            "提交任务: id=%s type=%s priority=%s defer_off_peak=%s",
+            task_id,
+            request.task_type,
+            request.priority,
+            request.defer_off_peak,
+        )
         return document
 
     def get(self, task_id: str) -> dict:
@@ -163,6 +173,7 @@ class TaskService:
         document["updated_at"] = self._now()
         document["finished_at"] = self._now()
         self.tasks.put(task_id, document)
+        logger.info("取消任务: id=%s", task_id)
         return document
 
     def wait(self, task_id: str, timeout: float = 5.0, interval: float = 0.05) -> dict:
@@ -204,6 +215,12 @@ class TaskService:
         document["started_at"] = self._now()
         document["updated_at"] = self._now()
         self.tasks.put(task_id, document)
+        logger.info(
+            "开始执行任务: id=%s type=%s attempt=%s",
+            task_id,
+            document.get("task_type"),
+            document.get("attempts"),
+        )
 
         handler = self._handlers.get(document["task_type"])
         try:
@@ -226,6 +243,7 @@ class TaskService:
         document["finished_at"] = self._now()
         document["updated_at"] = self._now()
         self.tasks.put(task_id, document)
+        logger.info("任务执行完成: id=%s", task_id)
 
     def _handle_failure(self, task_id: str, exc: Exception) -> None:
         """失败收尾：未达上限则重新入队，否则标记失败。"""
@@ -238,7 +256,14 @@ class TaskService:
             document["status"] = PENDING
             self.tasks.put(task_id, document)
             self._queue.push(task_id, document.get("priority", 0))
+            logger.warning(
+                "任务失败将重试: id=%s attempt=%s error=%s",
+                task_id,
+                document.get("attempts"),
+                exc,
+            )
             return
         document["status"] = FAILED
         document["finished_at"] = self._now()
         self.tasks.put(task_id, document)
+        logger.error("任务最终失败: id=%s error=%s", task_id, exc)

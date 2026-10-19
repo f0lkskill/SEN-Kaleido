@@ -8,9 +8,12 @@ from bottle import Bottle, request, response
 from pydantic import ValidationError as PydanticValidationError
 
 from kaleido.common.errors import KaleidoError
+from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.forge.models import GenerateRequest
 from kaleido.forge.service import ForgeService
+
+_logger = get_logger("forge.api")
 
 
 def _sse(events: Iterator[dict]) -> Iterator[str]:
@@ -35,7 +38,8 @@ def create_app(service: ForgeService | None = None) -> Bottle:
         except PydanticValidationError as exc:
             response.status = 400
             return fail(1001, str(exc))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
+            _logger.exception("forge 请求处理失败")
             response.status = 500
             return fail(1000, str(exc))
         response.status = status

@@ -9,8 +9,11 @@ from typing import Any, cast
 from bottle import Bottle, request, response
 
 from kaleido.common.errors import ConflictError, KaleidoError
+from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.vault.vault import Vault
+
+_logger = get_logger("vault.api")
 
 
 def create_app(vault: Vault | None = None) -> Bottle:
@@ -26,7 +29,8 @@ def create_app(vault: Vault | None = None) -> Bottle:
         except KaleidoError as exc:
             response.status = exc.http_status
             return fail(exc.code, exc.message)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
+            _logger.exception("vault 请求处理失败")
             response.status = 500
             return fail(1000, str(exc))
         response.status = status

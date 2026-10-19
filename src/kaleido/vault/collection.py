@@ -13,9 +13,11 @@ from pathlib import Path
 from threading import RLock
 from typing import Any
 
+from kaleido.common.logging import get_logger
 from kaleido.vault.jsonstore import JsonStore
 from kaleido.vault.models import CollectionSpec
 
+logger = get_logger("vault")
 _TIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 
 
@@ -145,6 +147,7 @@ class Collection:
                 if idempotency_key and self.spec.idempotent:
                     self._index.setdefault("idempotency", {})[idempotency_key] = doc_id
                 self.store.write_unlocked(self.index_path, self._index)
+        logger.debug("写入文档: %s/%s", self.name, doc_id)
         return doc_id
 
     def get(self, doc_id: str) -> dict:
@@ -165,6 +168,7 @@ class Collection:
                     if value == doc_id:
                         del self._index["idempotency"][key]
                 self.store.write_unlocked(self.index_path, self._index)
+        logger.debug("删除文档: %s/%s", self.name, doc_id)
 
     def find_by_key(self, key: str | None) -> str | None:
         """按幂等键查找文档 ID。"""
@@ -242,3 +246,4 @@ class Collection:
                 self._index = self._load_index()
                 self._index["entries"] = entries
                 self.store.write_unlocked(self.index_path, self._index)
+        logger.info("重建索引: %s（%d 条）", self.name, len(entries))

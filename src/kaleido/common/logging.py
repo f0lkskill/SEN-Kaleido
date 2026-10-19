@@ -5,6 +5,7 @@
 """
 
 import logging
+import os
 from logging.handlers import RotatingFileHandler
 
 from kaleido.common.paths import PROJECT_ROOT
@@ -14,6 +15,12 @@ _configured = False
 LOG_DIR = PROJECT_ROOT / "logs"
 
 
+def _resolve_level() -> int:
+    """从环境变量 ``SEN_KALEIDO_LOG_LEVEL`` 解析日志级别（默认 INFO）。"""
+    name = os.environ.get("SEN_KALEIDO_LOG_LEVEL", "INFO").upper()
+    return getattr(logging, name, logging.INFO)
+
+
 def _configure_root() -> None:
     """首次调用时为 kaleido 根 logger 挂载 handler（幂等）。"""
     global _configured
@@ -21,7 +28,7 @@ def _configure_root() -> None:
         return
     formatter = logging.Formatter(_FORMAT)
     root = logging.getLogger("kaleido")
-    root.setLevel(logging.INFO)
+    root.setLevel(_resolve_level())
 
     # 终端输出：开发/前台运行时可直接观察
     stream = logging.StreamHandler()
@@ -46,6 +53,17 @@ def _configure_root() -> None:
     # 不向全局 root 传播，避免污染调用方日志
     root.propagate = False
     _configured = True
+
+
+def setup_logging(level: str | None = None) -> None:
+    """显式初始化日志系统（幂等）。
+
+    :param level: 覆盖日志级别（如 ``"DEBUG"``）；缺省用环境变量
+        ``SEN_KALEIDO_LOG_LEVEL``，再缺省 INFO。
+    """
+    _configure_root()
+    if level:
+        logging.getLogger("kaleido").setLevel(getattr(logging, level.upper(), logging.INFO))
 
 
 def get_logger(name: str) -> logging.Logger:
