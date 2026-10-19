@@ -1,5 +1,7 @@
 """forge HTTP API（Bottle）。"""
 
+import json
+from collections.abc import Iterator
 from typing import Any, cast
 
 from bottle import Bottle, request, response
@@ -9,6 +11,12 @@ from kaleido.common.errors import KaleidoError
 from kaleido.common.response import fail, ok
 from kaleido.forge.models import GenerateRequest
 from kaleido.forge.service import ForgeService
+
+
+def _sse(events: Iterator[dict]) -> Iterator[str]:
+    """把事件字典序列化为 SSE 文本块（``data: {...}`` + 空行）。"""
+    for event in events:
+        yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
 
 def create_app(service: ForgeService | None = None) -> Bottle:
@@ -42,6 +50,20 @@ def create_app(service: ForgeService | None = None) -> Bottle:
             return svc.generate(GenerateRequest(**payload))
 
         return run(action, status=201)
+
+    @app.post("/api/v1/forge/generate/stream")
+    def generate_stream():
+        """流式生成资源（SSE）：实时返回模型思考与正文增量。"""
+        payload = cast("dict[str, Any]", request.json) or {}
+        try:
+            req = GenerateRequest(**payload)
+        except PydanticValidationError as exc:
+            response.status = 400
+            return fail(1001, str(exc))
+        response.content_type = "text/event-stream; charset=utf-8"
+        response.set_header("Cache-Control", "no-cache")
+        response.set_header("X-Accel-Buffering", "no")
+        return _sse(svc.generate_stream(req))
 
     @app.get("/api/v1/forge/resources")
     def list_resources():

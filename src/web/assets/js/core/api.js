@@ -59,6 +59,65 @@ async function request(path, { method = "GET", body, query } = {}) {
   return payload.data;
 }
 
+/**
+ * 流式请求：POST 后逐块解析 SSE，回调每个事件。
+ * @param {string} path 接口路径
+ * @param {Object} body 请求体
+ * @param {Function} onEvent 事件回调（收到一个已解析的事件对象）
+ */
+async function streamRequest(path, body, onEvent) {
+  log.debug("流式请求 →", path);
+  let response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    log.error("流式请求失败（网络层）:", path, err);
+    const error = new Error("无法连接处理基站，请检查网络或服务状态");
+    error.code = -1;
+    throw error;
+  }
+
+  if (!response.ok || !response.body) {
+    let message = `请求失败(${response.status})`;
+    try {
+      const payload = await response.json();
+      if (payload && payload.message) message = payload.message;
+    } catch (err) {
+      /* 忽略解析失败，沿用默认信息 */
+    }
+    log.error("流式响应错误:", response.status, path, message);
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // SSE 以空行分隔事件块
+    const chunks = buffer.split("\n\n");
+    buffer = chunks.pop();
+    for (const chunk of chunks) {
+      const line = chunk.trim();
+      if (!line.startsWith("data:")) continue;
+      let event;
+      try {
+        event = JSON.parse(line.slice(5).trim());
+      } catch (err) {
+        continue;
+      }
+      onEvent(event);
+    }
+  }
+  log.debug("流式请求结束 ←", path);
+}
+
 /** 业务接口集合。 */
 export const api = {
   // ---- 元数据 ----
@@ -80,6 +139,8 @@ export const api = {
 
   // ---- 资源生成与资源库 ----
   generate: (body) => request("/api/v1/forge/generate", { method: "POST", body }),
+  generateStream: (body, onEvent) =>
+    streamRequest("/api/v1/forge/generate/stream", body, onEvent),
   listResources: (query) => request("/api/v1/forge/resources", { query }),
   getResource: (id) =>
     request(`/api/v1/forge/resources/${encodeURIComponent(id)}`),

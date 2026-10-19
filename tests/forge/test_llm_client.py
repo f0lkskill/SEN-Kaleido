@@ -133,6 +133,40 @@ def test_deepseek_empty_content_raises(monkeypatch):
         client.complete([{"role": "user", "content": "x"}])
 
 
+class FakeStreamResponse:
+    """模拟流式响应：按行产出 SSE 数据。"""
+
+    def __init__(self, lines: list[str]):
+        self._lines = lines
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def iter_lines(self, decode_unicode: bool = False):
+        return iter(self._lines)
+
+
+def test_deepseek_stream_parses_deltas(monkeypatch):
+    monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)
+    monkeypatch.setenv("TEST_KEY", "secret")
+    lines = [
+        'data: {"choices":[{"delta":{"reasoning_content":"想"}}]}',
+        "",
+        'data: {"choices":[{"delta":{"content":"正"}}]}',
+        'data: {"choices":[{"delta":{"content":"文"}}]}',
+        "data: [DONE]",
+    ]
+
+    monkeypatch.setattr(llm_client.requests, "post", lambda *a, **k: FakeStreamResponse(lines))
+    client = DeepSeekClient({"api_key_env": "TEST_KEY", "model": "m"})
+    events = list(client.stream([{"role": "user", "content": "x"}]))
+    assert {"type": "reasoning", "text": "想"} in events
+    assert events[-2:] == [
+        {"type": "content", "text": "正"},
+        {"type": "content", "text": "文"},
+    ]
+
+
 if __name__ == "__main__":
     import pytest
 

@@ -432,6 +432,57 @@ details.disclosure > summary {
   }
 }
 
+/* ---- 加载旋转动画（圆圈转动） ---- */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gen-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-3);
+}
+
+/* 通用加载占位（placeholder(text, "loading")）也带旋转圆圈 */
+.loading::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: var(--space-2);
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: -2px;
+}
+
+/* 生成正文/思考过程：限高滚动，思考过程用弱化色 */
+.output {
+  max-height: 480px;
+  overflow: auto;
+}
+
+.output.reasoning {
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
+}
+
 /* ---- 重点内容更突出 ---- */
 .attr-value {
   font-weight: 600;

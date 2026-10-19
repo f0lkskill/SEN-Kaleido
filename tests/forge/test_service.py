@@ -102,6 +102,58 @@ def test_list_and_filter(tmp_path):
 
     assert service.resource_types()["courseware"] == "分层知识点课件"
 
+class _StreamingStub:
+    """带流式能力的桩：先产出推理，再产出正文。"""
+
+    def __init__(self, content: str = "流式正文"):
+        self.content = content
+        self.model = "stub-stream"
+
+    def complete(self, messages, **overrides):  # pragma: no cover - 不应被调用
+        raise AssertionError("流式路径不应调用 complete")
+
+    def stream(self, messages, **overrides):
+        yield {"type": "reasoning", "text": "思考…"}
+        yield {"type": "content", "text": self.content}
+
+
+def test_generate_stream(tmp_path):
+    profile_service = ProfileService(repository=StudentRepository(tmp_path))
+    service = ForgeService(
+        client=_StreamingStub(),
+        profile_service=profile_service,
+        vault=Vault(data_dir=tmp_path),
+    )
+    events = list(
+        service.generate_stream(
+            GenerateRequest(attributes=_attributes(), resource_type="courseware", topic="x")
+        )
+    )
+    types = [event["type"] for event in events]
+    assert "reasoning" in types
+    assert events[-1]["type"] == "done"
+    assert events[-1]["resource_id"] == "r_00001"
+    assert service.get_resource("r_00001")["content"] == "流式正文"
+
+
+def test_generate_stream_stub_fallback(tmp_path):
+    # StubClient 不带 stream，应退化为一次性产出正文并入库存档
+    service, _, _ = _setup(tmp_path)
+    events = list(
+        service.generate_stream(
+            GenerateRequest(attributes=_attributes(), resource_type="courseware", topic="x")
+        )
+    )
+    assert events[-1]["type"] == "done"
+    assert events[-1]["resource_id"] == "r_00001"
+
+
+def test_generate_stream_error_on_missing_source(tmp_path):
+    service, _, _ = _setup(tmp_path)
+    events = list(service.generate_stream(GenerateRequest(resource_type="courseware", topic="x")))
+    assert events[0]["type"] == "error"
+
+
 if __name__ == "__main__":
     import pytest
 

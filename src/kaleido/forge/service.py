@@ -1,6 +1,7 @@
 """forge 业务服务：把学生画像 + 生成要求组合为 Prompt 并调用模型。"""
 
 import json
+from collections.abc import Iterator
 
 from kaleido.common.config import load_yaml
 from kaleido.common.errors import ValidationError
@@ -110,6 +111,75 @@ class ForgeService:
             len(result.content or ""),
         )
         return {"resource_id": resource_id, "prompt": system_prompt, **document}
+
+    def generate_stream(self, request: GenerateRequest) -> Iterator[dict]:
+        """流式生成资源。
+
+        以事件流形式产出：``reasoning``（模型思考）→ ``content``（正文增量）
+        → ``done``（落库完成，含 resource_id 与系统提示词）；失败产出 ``error``。
+        正文为空时不入库，避免产生"空资源"。
+        """
+        try:
+            attributes = self._resolve_attributes(request)
+            messages, system_prompt = self._build_messages(request, attributes)
+        except Exception as exc:  # noqa: BLE001
+            _logger.warning("流式生成前置校验失败: %s", exc)
+            yield {"type": "error", "message": str(exc)}
+            return
+
+        _logger.info(
+            "开始流式生成: type=%s topic=%s profile=%s",
+            request.resource_type,
+            request.topic,
+            request.profile_id,
+        )
+        parts: list[str] = []
+        stream_method = getattr(self.client, "stream", None)
+        try:
+            if stream_method is None:
+                # 客户端不支持流式（如离线桩）：一次性产出正文
+                result = self.client.complete(messages)
+                parts.append(result.content)
+                yield {"type": "content", "text": result.content}
+            else:
+                for event in stream_method(messages):
+                    if event.get("type") == "content":
+                        parts.append(event.get("text", ""))
+                    yield event
+        except Exception as exc:
+            _logger.exception("流式生成失败")
+            yield {"type": "error", "message": str(exc)}
+            return
+
+        content = "".join(parts).strip()
+        if not content:
+            yield {
+                "type": "error",
+                "message": "模型未返回正文内容（推理可能占满 max_tokens），请重试或提高 max_tokens",
+            }
+            return
+
+        resource_id = self.resources.next_id()
+        document = {
+            "resource_type": request.resource_type,
+            "topic": request.topic,
+            "profile_id": request.profile_id,
+            "disability": self._primary_disability(attributes),
+            "content": content,
+            "prompt_template_key": attributes.get("prompt_template_key", ""),
+            "model": getattr(self.client, "model", ""),
+            "usage": {},
+            "status": "draft",
+        }
+        self.resources.put(resource_id, document)
+        _logger.info("流式生成完成: resource_id=%s content_len=%d", resource_id, len(content))
+        yield {
+            "type": "done",
+            "resource_id": resource_id,
+            "model": document["model"],
+            "status": "draft",
+            "prompt": system_prompt,
+        }
 
     def list_resources(
         self,

@@ -106,7 +106,7 @@ export function createView(root, hooks = {}) {
     }
   }
 
-  /** 执行生成。 */
+  /** 执行生成（流式：实时显示模型思考与正文增量）。 */
   async function doGenerate() {
     const topic = topicInput.value.trim();
     if (!topic) {
@@ -124,37 +124,68 @@ export function createView(root, hooks = {}) {
       payload.attributes = readAttributes(tempForm);
     }
 
+    // 结果区：加载指示 + 思考过程（折叠） + 正文 + 元信息
     clear(output);
-    output.append(placeholder("正在调用云端模型生成，请稍候…", "loading"));
+    const statusEl = el("div", { class: "gen-status" }, [
+      el("span", { class: "spinner" }),
+      el("span", { text: "正在生成，请稍候…" }),
+    ]);
+    const reasoningPre = el("pre", { class: "output reasoning" });
+    const reasoningBox = enhanceDisclosure(
+      el("details", { class: "disclosure" }, [
+        el("summary", { text: "模型思考过程" }),
+        reasoningPre,
+      ])
+    );
+    reasoningBox.hidden = true;
+    const contentPre = el("pre", { class: "output" });
+    const meta = el("div", { class: "badge-row" });
+    const promptBox = el("div");
+    output.append(statusEl, reasoningBox, meta, contentPre, promptBox);
+
     const button = root.querySelector(".btn-primary");
     if (button) button.disabled = true;
+    let hasContent = false;
 
     try {
-      const result = await api.generate(payload);
-      clear(output);
-      output.append(
-        el("h3", { text: "生成结果" }),
-        el("div", { class: "badge-row" }, [
-          el("span", { class: "badge badge-muted", text: `ID：${result.resource_id}` }),
-          el("span", { class: "badge badge-muted", text: `模型：${result.model || "-"}` }),
-          el("span", { class: "badge badge-warning", text: `状态：${result.status}` }),
-        ]),
-        el("pre", { class: "output", text: result.content || "（空内容）" }),
-        enhanceDisclosure(
-          el("details", { class: "disclosure" }, [
-            el("summary", { text: "查看使用的系统提示词" }),
-            el("pre", { class: "output", text: result.prompt || "" }),
-          ])
-        )
-      );
-      toastSuccess("生成完成（草稿）");
-      if (hooks.onGenerated) hooks.onGenerated();
+      await api.generateStream(payload, (event) => {
+        if (event.type === "reasoning") {
+          reasoningBox.hidden = false;
+          reasoningPre.textContent += event.text;
+        } else if (event.type === "content") {
+          hasContent = true;
+          contentPre.textContent += event.text;
+        } else if (event.type === "done") {
+          statusEl.remove();
+          meta.append(
+            el("span", { class: "badge badge-muted", text: `ID：${event.resource_id}` }),
+            el("span", { class: "badge badge-muted", text: `模型：${event.model || "-"}` }),
+            el("span", { class: "badge badge-warning", text: `状态：${event.status}` })
+          );
+          promptBox.append(
+            enhanceDisclosure(
+              el("details", { class: "disclosure" }, [
+                el("summary", { text: "查看使用的系统提示词" }),
+                el("pre", { class: "output", text: event.prompt || "" }),
+              ])
+            )
+          );
+          toastSuccess("生成完成（草稿）");
+          if (hooks.onGenerated) hooks.onGenerated();
+        } else if (event.type === "error") {
+          statusEl.remove();
+          output.append(placeholder(`生成失败：${event.message}`));
+          toastError(event.message);
+        }
+      });
     } catch (err) {
-      clear(output);
+      statusEl.remove();
       output.append(placeholder(`生成失败：${err.message}`));
       toastError(err.message);
     } finally {
       if (button) button.disabled = false;
+      // 既无正文也未收到事件时，移除空的正文块
+      if (!hasContent && contentPre.textContent.trim() === "") contentPre.remove();
     }
   }
 

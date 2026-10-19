@@ -5,8 +5,10 @@
 测试可注入 :class:`StubClient`，无需联网。
 """
 
+import json
 import logging
 import os
+from collections.abc import Iterator
 from typing import Protocol
 
 import requests
@@ -130,6 +132,58 @@ class DeepSeekClient:
                 logger.error("模型调用异常: %s", exc)
                 last_error = exc
         raise UpstreamError(f"云端模型调用失败: {last_error}")
+
+    def stream(self, messages: list[dict[str, str]], **overrides) -> Iterator[dict]:
+        """流式调用 ``/chat/completions``，逐块产出增量。
+
+        产出形如 ``{"type": "reasoning"|"content", "text": str}`` 的事件：
+        推理模型会先持续产出 ``reasoning``（思考过程），随后产出 ``content``（正文）。
+        """
+        payload = {
+            "model": overrides.get("model", self.model),
+            "messages": messages,
+            "temperature": overrides.get("temperature", self.config.get("temperature", 0.7)),
+            "max_tokens": overrides.get("max_tokens", self.config.get("max_tokens", 2048)),
+            "stream": True,
+        }
+        headers = {
+            "Authorization": f"Bearer {self._api_key()}",
+            "Content-Type": "application/json",
+        }
+        url = f"{self.base_url}/chat/completions"
+        response = requests.post(
+            url,
+            json=payload,
+            headers=headers,
+            timeout=(10, self.timeout),
+            stream=True,
+        )
+        response.raise_for_status()
+        for raw in response.iter_lines(decode_unicode=True):
+            if not raw:
+                continue
+            # iter_lines 在不同版本可能返回 bytes 或 str，这里统一转为 str
+            line = raw.decode("utf-8", "ignore") if isinstance(raw, bytes) else raw
+            line = line.strip()
+            if not line.startswith("data:"):
+                continue
+            data = line[len("data:") :].strip()
+            if data == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+            choices = chunk.get("choices") or []
+            if not choices:
+                continue
+            delta = choices[0].get("delta") or {}
+            reasoning = delta.get("reasoning_content")
+            content = delta.get("content")
+            if reasoning:
+                yield {"type": "reasoning", "text": reasoning}
+            if content:
+                yield {"type": "content", "text": content}
 
 
 class StubClient:
