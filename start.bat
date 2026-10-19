@@ -26,11 +26,8 @@ if errorlevel 1 (
   )
 )
 
-rem ---- fall back to offline stub when no API key is present ----
-if "%SEN_KALEIDO_LLM_PROVIDER%"=="" if "%DEEPSEEK_API_KEY%"=="" (
-  set "SEN_KALEIDO_LLM_PROVIDER=stub"
-  echo [info] DEEPSEEK_API_KEY not set, using offline stub client.
-)
+rem ---- note: server auto-falls back to offline stub when no key is configured ----
+if "%DEEPSEEK_API_KEY%"=="" echo [info] DEEPSEEK_API_KEY not set in env; server will use .env or auto-fallback to stub.
 
 rem ---- first run: seed sample data (skip if it already exists) ----
 if not exist "data\students\index.json" (

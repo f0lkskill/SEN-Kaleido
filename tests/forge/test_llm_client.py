@@ -35,12 +35,32 @@ def test_stub_client_records_calls():
     assert client.calls[0]["messages"][0]["content"] == "x"
 
 
-def test_create_client_provider_stub():
+def test_create_client_provider_stub(monkeypatch):
+    # 屏蔽 .env 加载，保证测试环境隔离
+    monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "secret")
     assert isinstance(create_client({"provider": "stub"}), StubClient)
     assert isinstance(create_client({"provider": "deepseek"}), DeepSeekClient)
 
 
+def test_create_client_falls_back_without_key(monkeypatch):
+    # 无密钥时自动回退离线桩，避免启动即失败
+    monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)
+    monkeypatch.delenv("NOKEY", raising=False)
+    assert isinstance(
+        create_client({"provider": "deepseek", "api_key_env": "NOKEY"}), StubClient
+    )
+
+
+def test_api_key_from_config(monkeypatch):
+    # 配置里的 api_key 优先于环境变量
+    monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)
+    client = DeepSeekClient({"api_key": "from-config", "api_key_env": "NOKEY"})
+    assert client.has_credentials()
+
+
 def test_missing_api_key(monkeypatch):
+    monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)
     monkeypatch.delenv("TEST_KEY", raising=False)
     client = DeepSeekClient({"api_key_env": "TEST_KEY"})
     with pytest.raises(ConfigError):
@@ -87,6 +107,31 @@ def test_deepseek_retries_then_upstream_error(monkeypatch):
     with pytest.raises(UpstreamError):
         client.complete([{"role": "user", "content": "x"}])
     assert calls["n"] == 2
+
+def test_deepseek_empty_content_raises(monkeypatch):
+    # 正文为空（推理占满额度/输出截断）时应报错，而不是静默返回空内容
+    monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)
+    monkeypatch.setenv("TEST_KEY", "secret")
+
+    def fake_post(*args, **kwargs):
+        return FakeResponse(
+            {
+                "model": "m",
+                "choices": [
+                    {
+                        "message": {"content": "", "reasoning_content": "思路…"},
+                        "finish_reason": "length",
+                    }
+                ],
+                "usage": {"total_tokens": 5},
+            }
+        )
+
+    monkeypatch.setattr(llm_client.requests, "post", fake_post)
+    client = DeepSeekClient({"api_key_env": "TEST_KEY", "retries": 0})
+    with pytest.raises(UpstreamError):
+        client.complete([{"role": "user", "content": "x"}])
+
 
 if __name__ == "__main__":
     import pytest

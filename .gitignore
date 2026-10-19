@@ -221,3 +221,4 @@ __marimo__/
 
 # SEN-Kaleido runtime data
 data/
+logs/

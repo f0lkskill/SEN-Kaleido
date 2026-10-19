@@ -1,13 +1,17 @@
 """统一日志工具。
 
-为 ``kaleido`` 包提供统一的日志格式与 handler，避免各模块重复配置；
-第三方库与用户脚本的日志互不干扰。
+为 ``kaleido`` 包提供统一的日志格式与 handler（终端 + 本地文件轮转），
+方便在基站上事后排查问题；第三方库与用户脚本的日志互不干扰。
 """
 
 import logging
+from logging.handlers import RotatingFileHandler
+
+from kaleido.common.paths import PROJECT_ROOT
 
 _FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 _configured = False
+LOG_DIR = PROJECT_ROOT / "logs"
 
 
 def _configure_root() -> None:
@@ -15,11 +19,30 @@ def _configure_root() -> None:
     global _configured
     if _configured:
         return
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(_FORMAT))
+    formatter = logging.Formatter(_FORMAT)
     root = logging.getLogger("kaleido")
-    root.addHandler(handler)
     root.setLevel(logging.INFO)
+
+    # 终端输出：开发/前台运行时可直接观察
+    stream = logging.StreamHandler()
+    stream.setFormatter(formatter)
+    root.addHandler(stream)
+
+    # 本地文件输出：轮转保留，便于事后排查
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        file_handler = RotatingFileHandler(
+            LOG_DIR / "kaleido.log",
+            maxBytes=2 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        )
+        file_handler.setFormatter(formatter)
+        root.addHandler(file_handler)
+    except OSError:
+        # 磁盘只读或权限异常时仅保留终端输出，不影响主流程
+        pass
+
     # 不向全局 root 传播，避免污染调用方日志
     root.propagate = False
     _configured = True

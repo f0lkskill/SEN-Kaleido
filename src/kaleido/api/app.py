@@ -10,9 +10,12 @@
 
 from typing import Any, cast
 
-from bottle import Bottle, abort, response, static_file
+from bottle import Bottle, abort, request, response, static_file
 
+from kaleido.common.logging import get_logger
 from kaleido.common.paths import WEB_DIR
+
+logger = get_logger("api")
 from kaleido.forge.models import GenerateRequest
 from kaleido.profile.api import create_app as create_profile_app
 from kaleido.profile.service import ProfileService
@@ -55,6 +58,17 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
         )
     app.merge(create_tasks_app(task_service))
 
+    # ---- 轻量访问日志：只记录 API 调用，便于事后排查（静态资源不记） ----
+    @app.hook("before_request")
+    def _log_request() -> None:
+        if request.path.startswith("/api/"):
+            logger.info("→ %s %s", request.method, request.path)
+
+    @app.hook("after_request")
+    def _log_response() -> None:
+        if request.path.startswith("/api/"):
+            logger.info("← %s %s %s", request.method, request.path, response.status_code)
+
     # ---- 静态前端：与后端脚本分离，按 assets 分类组织 ----
     @app.get("/")
     def index():
@@ -86,6 +100,7 @@ def serve(host: str = "0.0.0.0", port: int = 8080) -> None:
     """用 waitress 启动整站服务（默认端口 8080）。"""
     from waitress import serve as waitress_serve
 
+    logger.info("SEN-Kaleido 服务启动: http://%s:%s", host, port)
     waitress_serve(create_app(), host=host, port=port)
 
 

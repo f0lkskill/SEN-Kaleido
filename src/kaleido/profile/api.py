@@ -12,6 +12,7 @@ from bottle import Bottle, request, response
 from pydantic import ValidationError as PydanticValidationError
 
 from kaleido.common.errors import KaleidoError
+from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.profile.models.student import (
     CreateStudentRequest,
@@ -19,6 +20,8 @@ from kaleido.profile.models.student import (
     UpdateStudentRequest,
 )
 from kaleido.profile.service import ProfileService
+
+_logger = get_logger("profile.api")
 
 
 def create_app(service: ProfileService | None = None) -> Bottle:
@@ -39,8 +42,9 @@ def create_app(service: ProfileService | None = None) -> Bottle:
             # 请求体模型校验失败统一按参数错误处理
             response.status = 400
             return fail(1001, str(exc))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # 兜底，避免异常泄漏到 WSGI 层
+            _logger.exception("profile 请求处理失败")
             response.status = 500
             return fail(1000, str(exc))
         response.status = status

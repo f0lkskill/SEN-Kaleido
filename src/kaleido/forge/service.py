@@ -4,11 +4,14 @@ import json
 
 from kaleido.common.config import load_yaml
 from kaleido.common.errors import ValidationError
+from kaleido.common.logging import get_logger
 from kaleido.forge.llm_client import LLMClient, create_client
 from kaleido.forge.models import GenerateRequest
 from kaleido.forge.prompts import render
 from kaleido.profile.service import ProfileService
 from kaleido.vault import Vault
+
+_logger = get_logger("forge.service")
 
 
 class ForgeService:
@@ -78,6 +81,12 @@ class ForgeService:
         """生成资源并落库（初始状态 draft，等待教师确认）。"""
         attributes = self._resolve_attributes(request)
         messages, system_prompt = self._build_messages(request, attributes)
+        _logger.info(
+            "开始生成资源: type=%s topic=%s profile=%s",
+            request.resource_type,
+            request.topic,
+            request.profile_id,
+        )
         result = self.client.complete(messages)
 
         resource_id = self.resources.next_id()
@@ -93,6 +102,13 @@ class ForgeService:
             "status": "draft",
         }
         self.resources.put(resource_id, document)
+        _logger.info(
+            "生成完成: resource_id=%s model=%s tokens=%s content_len=%d",
+            resource_id,
+            result.model,
+            (result.usage or {}).get("total_tokens"),
+            len(result.content or ""),
+        )
         return {"resource_id": resource_id, "prompt": system_prompt, **document}
 
     def list_resources(

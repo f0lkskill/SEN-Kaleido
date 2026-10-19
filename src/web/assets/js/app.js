@@ -7,6 +7,7 @@
 import { qs, el, clear } from "./core/dom.js";
 import { loadSettings, bindSettingsControls } from "./core/settings.js";
 import { initToast, toastError } from "./core/toast.js";
+import { initBackground } from "./core/background.js";
 
 import * as studentsView from "./views/students.js";
 import * as frameworkView from "./views/framework.js";
@@ -102,6 +103,7 @@ function activate(id) {
 
 /** 页面启动。 */
 document.addEventListener("DOMContentLoaded", () => {
+  initBackground();
   initToast();
   loadSettings();
   bindSettingsControls(qs("#settings"));
