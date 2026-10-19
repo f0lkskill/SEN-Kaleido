@@ -1,4 +1,4 @@
-"""评价框架生成引擎测试：公共指标、权重归一化与重度压缩。"""
+"""评价框架生成引擎测试：公共指标、权重归一化、维度指数与重度压缩。"""
 
 import sys
 from pathlib import Path
@@ -17,7 +17,9 @@ from kaleido.profile.framework import FrameworkEngine
 
 def test_public_dimensions_and_weights_normalized():
     engine = FrameworkEngine.load()
-    framework = engine.build("visual", "moderate", "primary_low", ["language"], "fw_test")
+    framework = engine.build(
+        "visual", "moderate", "primary_low", "medium", ["language"], "fw_test"
+    )
     # 当前阶段仅两个公共维度：课堂参与、练习质量
     assert set(framework.dimensions) == {"participation", "practice"}
     # 权重归一化到 4 位小数，故使用 1e-3 容差
@@ -26,9 +28,30 @@ def test_public_dimensions_and_weights_normalized():
     assert framework.weights["practice"] > framework.weights["participation"]
 
 
+def test_dimension_indexes_within_range():
+    engine = FrameworkEngine.load()
+    framework = engine.build(
+        "hearing", "mild", "primary_high", "fast", ["social"], "fw_test"
+    )
+    # 每个维度都有 0~1 的指数，保留两位小数
+    assert set(framework.dimension_indexes) == {"participation", "practice"}
+    for value in framework.dimension_indexes.values():
+        assert 0.0 <= value <= 1.0
+        assert round(value, 2) == value
+    # 轻度 + 高认知 + 快节奏，指数应偏高
+    assert framework.dimension_indexes["participation"] > 0.6
+
+
+def test_severe_lowers_indexes():
+    engine = FrameworkEngine.load()
+    mild = engine.build("visual", "mild", "primary_high", "fast", [], "fw_test")
+    severe = engine.build("visual", "severe", "preschool", "slow", [], "fw_test")
+    assert mild.dimension_indexes["practice"] > severe.dimension_indexes["practice"]
+
+
 def test_public_indicators_present_for_all():
     engine = FrameworkEngine.load()
-    framework = engine.build("visual", "moderate", "preschool", [], "fw_test")
+    framework = engine.build("visual", "moderate", "preschool", "slow", [], "fw_test")
     keys = {indicator.key for indicator in framework.indicators}
     # 公共指标不随障碍类型/认知等级裁剪
     assert keys == {"class_participation", "practice_quality"}
@@ -36,7 +59,9 @@ def test_public_indicators_present_for_all():
 
 def test_severe_compresses_and_bumps_frequency():
     engine = FrameworkEngine.load()
-    framework = engine.build("intellectual", "severe", "primary_low", [], "fw_test")
+    framework = engine.build(
+        "intellectual", "severe", "primary_low", "slow", [], "fw_test"
+    )
     for indicator in framework.indicators:
         for obs in indicator.observations:
             assert obs.frequency == "per_lesson"
@@ -46,7 +71,7 @@ def test_severe_compresses_and_bumps_frequency():
 def test_unknown_cognitive_level_raises():
     engine = FrameworkEngine.load()
     with pytest.raises(ValidationError):
-        engine.build("visual", "mild", "unknown", [], "fw_test")
+        engine.build("visual", "mild", "unknown", "medium", [], "fw_test")
 
 
 if __name__ == "__main__":

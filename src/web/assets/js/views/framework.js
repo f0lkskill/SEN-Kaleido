@@ -127,20 +127,38 @@ const PACE_INFO = {
   slow: { name: "较慢", desc: "放慢节奏，增加重复、分解步骤与即时提示。" },
 };
 
+/** 指数取值（0~1）映射为颜色：低→红，中→黄，高→绿。 */
+function indexColor(value) {
+  const ratio = Math.max(0, Math.min(1, Number(value) || 0));
+  const hue = Math.round(ratio * 120); // 0=红, 60=黄, 120=绿
+  return `hsl(${hue}, 68%, 42%)`;
+}
+
+/** 构造带指数气泡的节点属性。 */
+function indexNodeAttrs(baseClass, value, tip) {
+  return {
+    class: `${baseClass} index-node`,
+    "data-tip": `${tip} ${Number(value).toFixed(2)}`,
+    style: `--index-color:${indexColor(value)}`,
+  };
+}
+
 /**
- * 渲染学习节奏（独立详细展示）。
+ * 渲染学习节奏（独立详细展示，含精确指数与悬停气泡）。
  * @param {Object} attributes 规范化属性
  * @returns {HTMLElement}
  */
 export function renderLearningPace(attributes) {
+  const value = Number(attributes.pace_index ?? 0);
   const info = PACE_INFO[attributes.learning_pace] || {
     name: label(LEARNING_PACE, attributes.learning_pace),
     desc: "",
   };
-  return el("div", { class: `pace-card pace-${attributes.learning_pace}` }, [
+  return el("div", indexNodeAttrs("pace-card", value, "学习节奏指数"), [
     el("div", { class: "pace-head" }, [
       el("span", { class: "pace-key", text: "学习节奏" }),
       el("span", { class: "pace-badge", text: info.name }),
+      el("span", { class: "pace-index", text: `指数 ${value.toFixed(2)}` }),
     ]),
     el("p", { class: "pace-desc", text: info.desc }),
   ]);
@@ -148,23 +166,48 @@ export function renderLearningPace(attributes) {
 
 /**
  * 渲染汇集关系图：底部两个评价维度，向上汇集到顶部的学习节奏。
+ * 节点按各自指数着色，流动光点颜色与维度指数同步，悬停显示指数气泡。
  * @param {Object} attributes 规范化属性
+ * @param {Object} framework 评价框架（含 dimension_indexes）
  * @returns {HTMLElement}
  */
-export function renderFlow(attributes) {
+export function renderFlow(attributes, framework) {
+  const paceIndex = Number(attributes.pace_index ?? 0);
   const info = PACE_INFO[attributes.learning_pace] || {
     name: label(LEARNING_PACE, attributes.learning_pace),
   };
+  const indexes = (framework && framework.dimension_indexes) || {};
   const dims = ["participation", "practice"];
-  return el("div", { class: `flow pace-${attributes.learning_pace}` }, [
-    el("div", { class: "flow-node flow-pace", text: `学习节奏：${info.name}` }),
-    el("div", { class: "flow-streams", "aria-hidden": "true" }, [
-      el("span", { class: "flow-dot flow-dot-a" }),
-      el("span", { class: "flow-dot flow-dot-b" }),
-    ]),
-    el("div", { class: "flow-base" }, dims.map((d) =>
-      el("div", { class: "flow-node", text: label(DIMENSION, d) })
-    )),
+
+  const paceNode = el("div", indexNodeAttrs("flow-node flow-pace", paceIndex, "学习节奏指数"), [
+    el("span", { text: `学习节奏：${info.name}` }),
+    el("span", { class: "flow-index", text: paceIndex.toFixed(2) }),
+  ]);
+
+  const dots = ["a", "b"].map((suffix, i) => {
+    const color = indexColor(indexes[dims[i]] ?? 0);
+    return el("span", {
+      class: `flow-dot flow-dot-${suffix}`,
+      style: `background:${color};box-shadow:0 0 8px ${color}`,
+    });
+  });
+
+  const base = el(
+    "div",
+    { class: "flow-base" },
+    dims.map((dim) => {
+      const value = Number(indexes[dim] ?? 0);
+      return el("div", indexNodeAttrs("flow-node", value, `${label(DIMENSION, dim)}指数`), [
+        el("span", { text: label(DIMENSION, dim) }),
+        el("span", { class: "flow-index", text: value.toFixed(2) }),
+      ]);
+    })
+  );
+
+  return el("div", { class: "flow" }, [
+    paceNode,
+    el("div", { class: "flow-streams", "aria-hidden": "true" }, dots),
+    base,
   ]);
 }
 

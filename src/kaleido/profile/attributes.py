@@ -15,15 +15,22 @@ from kaleido.profile.taxonomy import Taxonomy
 class AttributeSchema:
     """属性维度的校验规则与解析器。"""
 
-    def __init__(self, spec: dict, level_order: list[str]):
+    def __init__(
+        self, spec: dict, level_order: list[str], pace_index_map: dict | None = None
+    ):
         self.spec = spec  # 各属性的类型与取值约束
         self.level_order = level_order  # 认知等级从低到高的顺序
+        self.pace_index_map = pace_index_map or {}  # 学习节奏 → 指数（0~1）
 
     @classmethod
     def load(cls) -> "AttributeSchema":
         """从配置文件加载属性校验规则。"""
         config = load_config("attributes")
-        return cls(config.get("attributes", {}), config.get("cognitive_level_order", []))
+        return cls(
+            config.get("attributes", {}),
+            config.get("cognitive_level_order", []),
+            config.get("learning_pace_index", {}),
+        )
 
     def validate(self, data: StudentAttributesInput) -> None:
         """校验录入属性是否满足必填与枚举约束。"""
@@ -76,4 +83,6 @@ class AttributeSchema:
             # 合并后的适配约束，供生成层使用
             adaptation_constraints=constraints,
             prompt_template_key=primary_type.prompt_template,
+            # 学习节奏指数：由节奏确定性映射，保留两位小数
+            pace_index=round(float(self.pace_index_map.get(data.learning_pace, 0.5)), 2),
         )

@@ -24,6 +24,18 @@ goal_weight_bonus:
   sensory_integration:
     participation: 0.1
 
+# 维度指数推导模型（0~1，体现"当前可达/适切程度"，由属性确定性推导）
+index_model:
+  severity: {mild: 0.85, moderate: 0.65, severe: 0.45}
+  cognitive_level: {preschool: 0.4, primary_low: 0.55, primary_high: 0.7, vocational: 0.8}
+  learning_pace: {fast: 0.85, medium: 0.6, slow: 0.35}
+  # 康复目标对相关维度的加成
+  goal_bonus:
+    language: {practice: 0.05}
+    cognitive: {practice: 0.05}
+    social: {participation: 0.05}
+    sensory_integration: {participation: 0.05}
+
 # 公共指标：所有学生共有，不随障碍类型或认知等级裁剪
 public_indicators:
   - key: class_participation

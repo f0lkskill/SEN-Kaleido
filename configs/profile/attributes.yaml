@@ -29,3 +29,9 @@ attributes:
     type: enum
     required: true
     values: [fast, medium, slow]
+
+# 学习节奏指数映射（0~1 小数），用于界面可视化
+learning_pace_index:
+  fast: 0.85
+  medium: 0.6
+  slow: 0.35

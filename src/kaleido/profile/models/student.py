@@ -32,6 +32,7 @@ class StudentAttributes(BaseModel):
     baseline: dict | None = None
     adaptation_constraints: dict = Field(default_factory=dict)  # 推导出的适配约束
     prompt_template_key: str = ""  # 推导出的 Prompt 模板键
+    pace_index: float = 0.0  # 学习节奏指数（0~1，由节奏确定性推导）
 
 
 class CreateStudentRequest(BaseModel):

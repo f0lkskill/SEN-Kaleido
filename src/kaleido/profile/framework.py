@@ -38,6 +38,7 @@ class FrameworkEngine:
         primary_disability: str,
         severity: str,
         cognitive_level: str,
+        learning_pace: str,
         rehab_goals: list[str],
         framework_id: str,
     ) -> EvaluationFramework:
@@ -60,13 +61,49 @@ class FrameworkEngine:
             dimensions,
             rehab_goals,
         )
+        indexes = self._compute_indexes(
+            severity, cognitive_level, learning_pace, rehab_goals, dimensions
+        )
         return EvaluationFramework(
             framework_id=framework_id,
             dimensions=dimensions,
             indicators=indicators,
             weights=weights,
+            dimension_indexes=indexes,
             prompt_template_key=f"{primary_disability}_layer",
         )
+
+    def _compute_indexes(
+        self,
+        severity: str,
+        cognitive_level: str,
+        learning_pace: str,
+        rehab_goals: list[str],
+        dimensions: list[str],
+    ) -> dict[str, float]:
+        """按属性确定性推导各维度指数（0~1，保留两位小数）。
+
+        基础分取「障碍程度、认知等级、学习节奏」三者映射值的平均，
+        再叠加康复目标对相关维度的加成，最后截断到 [0, 1]。
+        注：当前无真实课堂评价数据，此指数为可复现的示意值。
+        """
+        model = self.config.get("index_model", {})
+        severity_map = model.get("severity", {})
+        cognitive_map = model.get("cognitive_level", {})
+        pace_map = model.get("learning_pace", {})
+        goal_bonus = model.get("goal_bonus", {})
+        base = (
+            float(severity_map.get(severity, 0.6))
+            + float(cognitive_map.get(cognitive_level, 0.55))
+            + float(pace_map.get(learning_pace, 0.6))
+        ) / 3.0
+        indexes: dict[str, float] = {}
+        for dim in dimensions:
+            value = base
+            for goal in rehab_goals:
+                value += float(goal_bonus.get(goal, {}).get(dim, 0.0))
+            indexes[dim] = round(min(1.0, max(0.0, value)), 2)
+        return indexes
 
     def _build_indicator(self, item: dict, severity: str) -> Indicator:
         """构建单个指标及其观测点与评分标准。"""

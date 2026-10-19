@@ -44,6 +44,7 @@ class EvaluationFramework(BaseModel):
     dimensions: list[str] = Field(default_factory=list)  # 参与评价的维度
     indicators: list[Indicator] = Field(default_factory=list)  # 指标清单
     weights: dict[str, float] = Field(default_factory=dict)  # 各维度权重（已归一化）
+    dimension_indexes: dict[str, float] = Field(default_factory=dict)  # 各维度指数（0~1）
     prompt_template_key: str = ""
 
 

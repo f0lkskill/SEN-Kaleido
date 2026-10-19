@@ -305,7 +305,7 @@ export function createView(root) {
       el("h4", { text: "学习节奏" }),
       renderLearningPace(attributes),
       el("h4", { text: "维度与学习节奏关系" }),
-      renderFlow(attributes),
+      renderFlow(attributes, item.framework),
       // 评价标准默认隐藏，点击展开查看观测点与评分等级
       enhanceDisclosure(
         el("details", { class: "collapse" }, [

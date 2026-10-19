@@ -49,6 +49,7 @@ class ProfileService:
             attributes.disabilities[0],
             attributes.severity,
             attributes.cognitive_level,
+            attributes.learning_pace,
             attributes.rehab_goals,
             f"fw_{profile_id}",
         )
@@ -91,6 +92,7 @@ class ProfileService:
                 attributes.disabilities[0],
                 attributes.severity,
                 attributes.cognitive_level,
+                attributes.learning_pace,
                 attributes.rehab_goals,
                 f"fw_{profile_id}",
             )
@@ -110,6 +112,7 @@ class ProfileService:
             resolved.disabilities[0],
             resolved.severity,
             resolved.cognitive_level,
+            resolved.learning_pace,
             resolved.rehab_goals,
             "fw_preview",
         )

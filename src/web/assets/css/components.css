@@ -719,20 +719,16 @@ details.disclosure > summary {
   to { opacity: 0; transform: translateY(12px) scale(0.98); }
 }
 
-/* ---- 学习节奏：独立详细展示（颜色随节奏等级变化） ---- */
-.pace-fast { --pace-color: var(--color-success); }
-.pace-medium { --pace-color: var(--color-warning); }
-.pace-slow { --pace-color: var(--color-danger); }
-
+/* ---- 学习节奏：独立详细展示（颜色随指数变化） ---- */
 .pace-card {
   padding: var(--space-4);
   border: 1px solid var(--color-border);
-  border-left: 6px solid var(--pace-color, var(--color-primary));
+  border-left: 6px solid var(--index-color, var(--color-primary));
   border-radius: var(--radius-md);
   background: var(--color-surface);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--pace-color, var(--color-primary)) 16%, var(--color-surface)),
+    color-mix(in srgb, var(--index-color, var(--color-primary)) 16%, var(--color-surface)),
     var(--color-surface)
   );
   margin-bottom: var(--space-4);
@@ -753,7 +749,17 @@ details.disclosure > summary {
 .pace-badge {
   font-size: var(--font-large);
   font-weight: 700;
-  color: var(--pace-color, var(--color-primary-dark));
+  color: var(--index-color, var(--color-primary-dark));
+}
+
+.pace-index {
+  margin-left: auto;
+  padding: 2px var(--space-3);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--index-color, var(--color-primary-dark));
+  font-size: var(--font-small);
+  font-weight: 700;
 }
 
 .pace-desc {
@@ -771,12 +777,20 @@ details.disclosure > summary {
 }
 
 .flow-node {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--index-color, var(--color-border));
   border-radius: var(--radius-md);
   background: var(--color-surface);
   font-size: var(--font-small);
   text-align: center;
+}
+
+.flow-index {
+  font-weight: 700;
+  color: var(--index-color, var(--color-primary));
 }
 
 .flow-pace {
@@ -784,10 +798,11 @@ details.disclosure > summary {
   justify-self: center;
   width: 60%;
   max-width: 320px;
-  border: 2px solid var(--pace-color, var(--color-primary));
-  color: var(--pace-color, var(--color-primary-dark));
+  justify-content: center;
+  border-color: var(--index-color, var(--color-primary));
+  color: var(--index-color, var(--color-primary-dark));
   font-weight: 700;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pace-color, var(--color-primary)) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--index-color, var(--color-primary)) 18%, transparent);
   transition: border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -842,6 +857,43 @@ details.disclosure > summary {
 
 .flow-base .flow-node {
   justify-self: center;
+}
+
+/* ---- 指数悬停气泡（维度 / 节奏节点共用） ---- */
+.index-node {
+  position: relative;
+  cursor: help;
+}
+
+.index-node::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-text);
+  color: #fff;
+  font-size: var(--font-small);
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 5;
+}
+
+.index-node:hover::after,
+.index-node:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 顶部节奏节点气泡显示在下方，避免被裁剪 */
+.flow-pace.index-node::after {
+  top: calc(100% + 8px);
+  bottom: auto;
 }
 
 /* ---- 折叠区块（默认隐藏，点击展开） ---- */
