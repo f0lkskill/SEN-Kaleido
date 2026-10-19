@@ -216,8 +216,9 @@ export function createView(root) {
 
   /** 拉取并渲染学生列表（会同时收起详情面板，卡片依次入场）。 */
   async function refresh(autoSelect = false) {
-    // 记录滚动位置并在渲染后恢复，避免列表清空重建时页面跳到顶部
+    // 记录滚动位置与选中项，渲染后恢复，避免列表重建时跳顶或丢失选择
     const scrollY = window.scrollY;
+    const restoreId = activeId;
     closeDetail();
     clear(listBox);
     listBox.append(placeholder("正在加载…", "loading"));
@@ -233,10 +234,16 @@ export function createView(root) {
         listBox.append(placeholder("暂无学生档案，点击右上角新建。"));
       } else {
         data.items.forEach((item, index) => listBox.append(studentCard(item, index)));
-        // 首次进入默认展示第一位学生
-        if (autoSelect) {
-          const first = listBox.querySelector(".student-card");
-          if (first) showDetail(data.items[0].profile_id, first);
+        // 优先恢复原选中项，其次（首次进入）默认第一位学生
+        const target =
+          restoreId && data.items.some((it) => it.profile_id === restoreId)
+            ? restoreId
+            : autoSelect && data.items.length
+              ? data.items[0].profile_id
+              : null;
+        if (target) {
+          const card = listBox.querySelector(`[data-profile-id="${target}"]`);
+          showDetail(target, card);
         }
       }
     } catch (err) {
@@ -255,6 +262,7 @@ export function createView(root) {
       {
         class: "student-card",
         type: "button",
+        "data-profile-id": item.profile_id,
         style: `animation-delay:${Math.min(index, 12) * 30}ms`,
         on: { click: () => showDetail(item.profile_id, button) },
       },

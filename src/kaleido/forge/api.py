@@ -86,6 +86,21 @@ def create_app(service: ForgeService | None = None) -> Bottle:
         """读取单个资源。"""
         return run(lambda: svc.get_resource(resource_id))
 
+    @app.post("/api/v1/forge/resources/<resource_id>/status")
+    def update_resource_status(resource_id):
+        """更新资源审核状态（通过/退回）。"""
+
+        def action():
+            payload = cast("dict[str, Any]", request.json) or {}
+            return svc.update_resource_status(resource_id, str(payload.get("status", "")))
+
+        return run(action)
+
+    @app.delete("/api/v1/forge/resources/<resource_id>")
+    def delete_resource(resource_id):
+        """删除资源。"""
+        return run(lambda: svc.delete_resource(resource_id))
+
     @app.get("/api/v1/forge/resource-types")
     def resource_types():
         """可用资源类型。"""

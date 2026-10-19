@@ -11,7 +11,7 @@ for _path in (ROOT, ROOT / "src"):
 
 import pytest
 
-from kaleido.common.errors import ValidationError
+from kaleido.common.errors import NotFoundError, ValidationError
 from kaleido.forge.llm_client import StubClient
 from kaleido.forge.models import GenerateRequest
 from kaleido.forge.service import ForgeService
@@ -115,6 +115,24 @@ class _StreamingStub:
     def stream(self, messages, **overrides):
         yield {"type": "reasoning", "text": "思考…"}
         yield {"type": "content", "text": self.content}
+
+
+def test_update_status_and_delete(tmp_path):
+    service, _, _ = _setup(tmp_path)
+    service.generate(
+        GenerateRequest(attributes=_attributes(), resource_type="courseware", topic="A")
+    )
+    updated = service.update_resource_status("r_00001", "approved")
+    assert updated["status"] == "approved"
+    assert service.get_resource("r_00001")["status"] == "approved"
+
+    with pytest.raises(ValidationError):
+        service.update_resource_status("r_00001", "unknown")
+    with pytest.raises(NotFoundError):
+        service.get_resource("r_99999")
+
+    service.delete_resource("r_00001")
+    assert service.list_resources()["total"] == 0
 
 
 def test_generate_stream(tmp_path):

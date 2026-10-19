@@ -4,7 +4,7 @@ import json
 from collections.abc import Iterator
 
 from kaleido.common.config import load_yaml
-from kaleido.common.errors import ValidationError
+from kaleido.common.errors import NotFoundError, ValidationError
 from kaleido.common.logging import get_logger
 from kaleido.forge.llm_client import LLMClient, create_client
 from kaleido.forge.models import GenerateRequest
@@ -207,7 +207,33 @@ class ForgeService:
 
     def get_resource(self, resource_id: str) -> dict:
         """读取单个资源。"""
-        return {"resource_id": resource_id, **self.resources.get(resource_id)}
+        try:
+            document = self.resources.get(resource_id)
+        except (FileNotFoundError, OSError) as exc:
+            raise NotFoundError(f"资源不存在: {resource_id}") from exc
+        return {"resource_id": resource_id, **document}
+
+    def update_resource_status(self, resource_id: str, status: str) -> dict:
+        """更新资源审核状态（draft / approved / rejected）。"""
+        if status not in {"draft", "approved", "rejected"}:
+            raise ValidationError(f"未知资源状态: {status}")
+        try:
+            document = self.resources.get(resource_id)
+        except (FileNotFoundError, OSError) as exc:
+            raise NotFoundError(f"资源不存在: {resource_id}") from exc
+        document["status"] = status
+        self.resources.put(resource_id, document)
+        _logger.info("资源状态更新: id=%s status=%s", resource_id, status)
+        return self.get_resource(resource_id)
+
+    def delete_resource(self, resource_id: str) -> dict:
+        """删除资源。"""
+        try:
+            self.resources.delete(resource_id)
+        except (FileNotFoundError, OSError) as exc:
+            raise NotFoundError(f"资源不存在: {resource_id}") from exc
+        _logger.info("资源已删除: id=%s", resource_id)
+        return {"resource_id": resource_id, "deleted": True}
 
     def resource_types(self) -> dict:
         """返回可用资源类型。"""

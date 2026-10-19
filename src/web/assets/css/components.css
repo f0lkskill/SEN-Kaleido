@@ -470,6 +470,12 @@ details.disclosure > summary {
   margin-bottom: var(--space-3);
 }
 
+/* 生成正文滚动区：限高并可随流式输出自动滚动 */
+.gen-scroll {
+  max-height: 60vh;
+  overflow: auto;
+}
+
 /* 通用加载占位（placeholder(text, "loading")）也带旋转圆圈 */
 .loading::before {
   content: "";

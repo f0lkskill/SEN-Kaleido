@@ -145,8 +145,9 @@ export function createView(root, hooks = {}) {
     ]);
     const meta = el("div", { class: "badge-row" });
     const contentBox = el("div", { class: "md" });
+    const contentScroll = el("div", { class: "gen-scroll" }, [contentBox]);
     const promptBox = el("div");
-    output.append(statusEl, reasoningBox, meta, contentBox, promptBox);
+    output.append(statusEl, reasoningBox, meta, contentScroll, promptBox);
 
     const button = root.querySelector(".btn-primary");
     if (button) button.disabled = true;
@@ -178,10 +179,13 @@ export function createView(root, hooks = {}) {
           if (statusText) statusText.textContent = "正在生成正文…";
           raw += event.text;
           scheduleRender();
+          // 正文自动滚动到底部，实时跟随最新内容
+          contentScroll.scrollTop = contentScroll.scrollHeight;
         } else if (event.type === "done") {
           if (renderTimer) window.clearTimeout(renderTimer);
           statusEl.remove();
           flush();
+          contentScroll.scrollTop = contentScroll.scrollHeight;
           meta.append(
             el("span", { class: "badge badge-muted", text: `ID：${event.resource_id}` }),
             el("span", { class: "badge badge-muted", text: `模型：${event.model || "-"}` }),

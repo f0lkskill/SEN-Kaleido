@@ -144,6 +144,13 @@ export const api = {
   listResources: (query) => request("/api/v1/forge/resources", { query }),
   getResource: (id) =>
     request(`/api/v1/forge/resources/${encodeURIComponent(id)}`),
+  updateResourceStatus: (id, status) =>
+    request(`/api/v1/forge/resources/${encodeURIComponent(id)}/status`, {
+      method: "POST",
+      body: { status },
+    }),
+  deleteResource: (id) =>
+    request(`/api/v1/forge/resources/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   // ---- 异步任务 ----
   taskTypes: () => request("/api/v1/tasks/types"),

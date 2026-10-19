@@ -8,7 +8,7 @@ import { api } from "../core/api.js";
 import { el, clear, placeholder, panel } from "../core/dom.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { DISABILITY, RESOURCE_STATUS, label, formatTime } from "../core/format.js";
-import { toastError } from "../core/toast.js";
+import { toastSuccess, toastError } from "../core/toast.js";
 import { ATTRIBUTE_OPTIONS } from "./framework.js";
 
 const STATUS_OPTIONS = Object.entries(RESOURCE_STATUS);
@@ -35,6 +35,7 @@ export function createView(root) {
   let counter;
   let typeMap = {}; // 资源类型键 -> 中文名
   let closeTimer = null;
+  let activeId = null; // 当前选中的资源 ID
 
   function build() {
     clear(root);
@@ -82,6 +83,7 @@ export function createView(root) {
   function closeDetail() {
     if (detailBox.hidden) return;
     layout.classList.remove("narrowed");
+    activeId = null;
     for (const node of listBox.querySelectorAll(".student-card")) {
       node.classList.remove("active");
     }
@@ -111,6 +113,7 @@ export function createView(root) {
 
   /** 拉取资源列表（autoSelect 为真时默认展示第一条）。 */
   async function refresh(autoSelect = false) {
+    const restoreId = activeId;
     closeDetail();
     clear(listBox);
     listBox.append(placeholder("正在加载…", "loading"));
@@ -128,9 +131,16 @@ export function createView(root) {
         return;
       }
       data.items.forEach((item, index) => listBox.append(resourceCard(item, index)));
-      if (autoSelect) {
-        const first = listBox.querySelector(".student-card");
-        if (first) showDetail(data.items[0].resource_id, first);
+      // 优先恢复原选中项，其次（首次进入）默认第一条
+      const target =
+        restoreId && data.items.some((it) => it.resource_id === restoreId)
+          ? restoreId
+          : autoSelect && data.items.length
+            ? data.items[0].resource_id
+            : null;
+      if (target) {
+        const card = listBox.querySelector(`[data-resource-id="${target}"]`);
+        showDetail(target, card);
       }
     } catch (err) {
       clear(listBox);
@@ -147,6 +157,7 @@ export function createView(root) {
       {
         class: "student-card",
         type: "button",
+        "data-resource-id": item.resource_id,
         style: `animation-delay:${Math.min(index, 12) * 30}ms`,
         on: { click: (event) => showDetail(item.resource_id, event.currentTarget) },
       },
@@ -176,6 +187,24 @@ export function createView(root) {
         el("h3", { text: typeName }),
       ]),
       el("div", { class: "detail-actions" }, [
+        el("button", {
+          class: "btn btn-sm",
+          type: "button",
+          text: "通过",
+          on: { click: () => setStatus(item.resource_id, "approved") },
+        }),
+        el("button", {
+          class: "btn btn-sm",
+          type: "button",
+          text: "退回",
+          on: { click: () => setStatus(item.resource_id, "rejected") },
+        }),
+        el("button", {
+          class: "btn btn-danger btn-sm",
+          type: "button",
+          text: "删除",
+          on: { click: () => removeResource(item) },
+        }),
         el("button", { class: "btn btn-sm", type: "button", text: "收起", on: { click: closeDetail } }),
       ]),
     ]);
@@ -197,12 +226,37 @@ export function createView(root) {
     ]);
   }
 
+  /** 更新资源审核状态（通过 / 退回）。 */
+  async function setStatus(resourceId, status) {
+    try {
+      await api.updateResourceStatus(resourceId, status);
+      toastSuccess(status === "approved" ? "已通过" : "已退回");
+      refresh();
+    } catch (err) {
+      toastError(err.message);
+    }
+  }
+
+  /** 删除资源。 */
+  async function removeResource(item) {
+    if (!window.confirm(`确认删除资源「${item.topic}」？此操作不可撤销。`)) return;
+    try {
+      await api.deleteResource(item.resource_id);
+      toastSuccess("已删除");
+      activeId = null;
+      refresh();
+    } catch (err) {
+      toastError(err.message);
+    }
+  }
+
   /** 展示资源详情。 */
   async function showDetail(resourceId, cardEl) {
     if (closeTimer) {
       window.clearTimeout(closeTimer);
       closeTimer = null;
     }
+    activeId = resourceId;
     detailBox.hidden = false;
     layout.classList.add("narrowed");
     clear(detailBox);
