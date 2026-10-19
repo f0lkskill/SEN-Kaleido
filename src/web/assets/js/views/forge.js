@@ -32,18 +32,15 @@ export function createView(root, hooks = {}) {
     tempForm = buildAttributesForm("forge");
     tempWrapper = el("div", { hidden: true });
     output = el("div");
+    output.append(placeholder("生成结果将显示在此。"));
 
     studentSelect.addEventListener("change", () => {
       // 未选择学生时展示临时属性表单
       tempWrapper.hidden = studentSelect.value !== "";
     });
 
-    const card = el("section", { class: "card" }, [
-      el("div", { class: "card-header" }, [el("h2", { text: "资源生成" })]),
-      el("p", {
-        class: "card-hint",
-        text: "生成结果初始为草稿状态，需教师确认后方可入库使用。",
-      }),
+    // 左：信息表单；右：生成结果
+    const infoCard = el("section", { class: "card" }, [
       el("div", { class: "field" }, [
         el("label", { text: "学生来源" }),
         studentSelect,
@@ -69,11 +66,17 @@ export function createView(root, hooks = {}) {
         text: "生成资源",
         on: { click: doGenerate },
       }),
-      el("div", { style: "margin-top:16px" }, [output]),
     ]);
 
+    const resultCard = el("section", { class: "card" }, [output]);
+
     tempWrapper.append(tempForm);
-    root.append(card);
+    root.append(
+      el("div", { class: "split split-narrow-left" }, [
+        el("div", { class: "split-aside" }, [infoCard]),
+        el("div", {}, [resultCard]),
+      ])
+    );
   }
 
   /** 加载下拉选项。 */

@@ -56,11 +56,6 @@ export function createView(root) {
 
     // ---- 提交表单 ----
     const submitCard = el("section", { class: "card" }, [
-      el("div", { class: "card-header" }, [el("h2", { text: "提交异步任务" })]),
-      el("p", {
-        class: "card-hint",
-        text: "耗时的生成任务可在此异步执行；勾选「闲时执行」可调度到夜间/周末以节省成本。",
-      }),
       el("div", { class: "field" }, [
         el("label", { text: "任务类型" }),
         typeSelect,
@@ -114,13 +109,15 @@ export function createView(root) {
       counter,
     ]);
 
-    const listCard = el("section", { class: "card" }, [
-      el("div", { class: "card-header" }, [el("h2", { text: "任务列表" })]),
-      toolbar,
-      listBox,
-    ]);
+    const listCard = el("section", { class: "card" }, [toolbar, listBox]);
 
-    root.append(submitCard, listCard);
+    // 左：任务列表；右：提交表单（左右分栏）
+    root.append(
+      el("div", { class: "split split-narrow-right" }, [
+        el("div", {}, [listCard]),
+        el("div", { class: "split-aside" }, [submitCard]),
+      ])
+    );
   }
 
   /** 按任务类型填充 payload 模板。 */

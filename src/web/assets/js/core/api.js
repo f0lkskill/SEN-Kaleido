@@ -4,6 +4,8 @@
  * code === 0 视为成功返回 data，否则抛出带错误信息的异常。
  */
 
+import { log } from "./log.js";
+
 const BASE = "";
 
 /**
@@ -22,6 +24,7 @@ async function request(path, { method = "GET", body, query } = {}) {
     }
   }
 
+  log.debug("请求 →", method, url.pathname + url.search);
   let response;
   try {
     response = await fetch(url, {
@@ -31,6 +34,7 @@ async function request(path, { method = "GET", body, query } = {}) {
     });
   } catch (err) {
     // 网络层失败（基站离线/断网）
+    log.error("请求失败（网络层）:", method, path, err);
     const error = new Error("无法连接处理基站，请检查网络或服务状态");
     error.code = -1;
     throw error;
@@ -47,9 +51,11 @@ async function request(path, { method = "GET", body, query } = {}) {
     const error = new Error(payload.message || `请求失败(${response.status})`);
     error.code = payload.code;
     error.status = response.status;
+    log.error("响应错误:", response.status, method, path, payload.message);
     throw error;
   }
 
+  log.debug("响应 ←", response.status, method, path);
   return payload.data;
 }
 

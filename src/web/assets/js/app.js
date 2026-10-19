@@ -7,7 +7,7 @@
 import { qs, el, clear } from "./core/dom.js";
 import { loadSettings, bindSettingsControls } from "./core/settings.js";
 import { initToast, toastError } from "./core/toast.js";
-import { initBackground } from "./core/background.js";
+import { initErrorCapture, log } from "./core/log.js";
 
 import * as studentsView from "./views/students.js";
 import * as frameworkView from "./views/framework.js";
@@ -103,7 +103,8 @@ function activate(id) {
 
 /** 页面启动。 */
 document.addEventListener("DOMContentLoaded", () => {
-  initBackground();
+  initErrorCapture();
+  log.info("SEN-Kaleido 前端已加载");
   initToast();
   loadSettings();
   bindSettingsControls(qs("#settings"));

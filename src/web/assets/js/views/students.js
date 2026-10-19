@@ -67,34 +67,25 @@ export function createView(root) {
     filterCognitive.addEventListener("change", refresh);
     totalBadge = el("span", { class: "badge badge-muted", text: "共 0 人" });
 
+    // 新建按钮与筛选器同行，置于右侧
     const toolbar = el("div", { class: "toolbar" }, [
       el("div", { class: "field" }, [el("label", { text: "障碍类型" }), filterDisability]),
       el("div", { class: "field" }, [el("label", { text: "认知等级" }), filterCognitive]),
       el("div", { class: "spacer" }),
       totalBadge,
+      el("button", {
+        class: "btn btn-primary",
+        type: "button",
+        text: "＋ 新建学生",
+        on: { click: openCreateModal },
+      }),
     ]);
 
     listBox = el("div", { class: "student-list" });
     detailBox = el("div", { class: "student-detail", hidden: true });
     layout = el("div", { class: "student-layout" }, [listBox, detailBox]);
 
-    const card = el("section", { class: "card" }, [
-      el("div", { class: "card-header" }, [
-        el("h2", { text: "学生档案" }),
-        el("button", {
-          class: "btn btn-primary",
-          type: "button",
-          text: "＋ 新建学生",
-          on: { click: openCreateModal },
-        }),
-      ]),
-      el("p", {
-        class: "card-hint",
-        text: "从左侧选择一名学生查看详情；建档时录入静态属性，系统据此生成公共评价标准。",
-      }),
-      toolbar,
-      layout,
-    ]);
+    const card = el("section", { class: "card" }, [toolbar, layout]);
     root.append(card);
   }
 
@@ -225,6 +216,8 @@ export function createView(root) {
 
   /** 拉取并渲染学生列表（会同时收起详情面板，卡片依次入场）。 */
   async function refresh() {
+    // 记录滚动位置并在渲染后恢复，避免列表清空重建时页面跳到顶部
+    const scrollY = window.scrollY;
     closeDetail();
     clear(listBox);
     listBox.append(placeholder("正在加载…", "loading"));
@@ -238,13 +231,15 @@ export function createView(root) {
       clear(listBox);
       if (data.items.length === 0) {
         listBox.append(placeholder("暂无学生档案，点击右上角新建。"));
-        return;
+      } else {
+        data.items.forEach((item, index) => listBox.append(studentCard(item, index)));
       }
-      data.items.forEach((item, index) => listBox.append(studentCard(item, index)));
     } catch (err) {
       clear(listBox);
       listBox.append(placeholder(`加载失败：${err.message}`));
       toastError(err.message);
+    } finally {
+      window.scrollTo(0, scrollY);
     }
   }
 
@@ -336,6 +331,7 @@ export function createView(root) {
       cardEl.classList.add("active");
     }
     activeId = profileId;
+    const scrollY = window.scrollY;
     try {
       const item = await api.getStudent(profileId);
       clear(detailBox);
@@ -344,6 +340,9 @@ export function createView(root) {
       clear(detailBox);
       detailBox.append(placeholder(`加载失败：${err.message}`));
       toastError(err.message);
+    } finally {
+      // 切换档案时保持页面滚动位置，不跳到顶部
+      window.scrollTo(0, scrollY);
     }
   }
 

@@ -154,11 +154,11 @@ export function renderLearningPace(attributes) {
     name: label(LEARNING_PACE, attributes.learning_pace),
     desc: "",
   };
+  // 指数默认不直接展示，悬停卡片时以气泡给出（见 indexNodeAttrs 的 data-tip）
   return el("div", indexNodeAttrs("pace-card", value, "学习节奏指数"), [
     el("div", { class: "pace-head" }, [
       el("span", { class: "pace-key", text: "学习节奏" }),
       el("span", { class: "pace-badge", text: info.name }),
-      el("span", { class: "pace-index", text: `指数 ${value.toFixed(2)}` }),
     ]),
     el("p", { class: "pace-desc", text: info.desc }),
   ]);
@@ -166,7 +166,8 @@ export function renderLearningPace(attributes) {
 
 /**
  * 渲染汇集关系图：底部两个评价维度，向上汇集到顶部的学习节奏。
- * 节点按各自指数着色，流动光点颜色与维度指数同步，悬停显示指数气泡。
+ * 节点按各自指数着色，流动光点颜色与维度指数同步；指数默认不显示，
+ * 仅在悬停节点时以气泡给出。
  * @param {Object} attributes 规范化属性
  * @param {Object} framework 评价框架（含 dimension_indexes）
  * @returns {HTMLElement}
@@ -181,7 +182,6 @@ export function renderFlow(attributes, framework) {
 
   const paceNode = el("div", indexNodeAttrs("flow-node flow-pace", paceIndex, "学习节奏指数"), [
     el("span", { text: `学习节奏：${info.name}` }),
-    el("span", { class: "flow-index", text: paceIndex.toFixed(2) }),
   ]);
 
   const dots = ["a", "b"].map((suffix, i) => {
@@ -199,7 +199,6 @@ export function renderFlow(attributes, framework) {
       const value = Number(indexes[dim] ?? 0);
       return el("div", indexNodeAttrs("flow-node", value, `${label(DIMENSION, dim)}指数`), [
         el("span", { text: label(DIMENSION, dim) }),
-        el("span", { class: "flow-index", text: value.toFixed(2) }),
       ]);
     })
   );
@@ -337,11 +336,6 @@ export function createView(root) {
     output = el("div");
 
     const card = el("section", { class: "card" }, [
-      el("div", { class: "card-header" }, [el("h2", { text: "评价框架预览" })]),
-      el("p", {
-        class: "card-hint",
-        text: "当前阶段所有学生共用公共标准（上课参与度、练习完成质量）；输入临时属性可即时预览，不写入档案。",
-      }),
       form,
       el("button", {
         class: "btn btn-primary",

@@ -127,7 +127,8 @@ class ForgeService:
             filters["disability"] = disability
         if status:
             filters["status"] = status
-        items, total = self.resources.list(filters, page=page, size=size)
+        # 资源库列表需展示正文，使用 list_full 回读完整文档
+        items, total = self.resources.list_full(filters, page=page, size=size)
         results = [
             {"resource_id": item["id"], **{k: v for k, v in item.items() if k != "id"}}
             for item in items

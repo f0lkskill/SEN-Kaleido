@@ -409,6 +409,42 @@ details.disclosure > summary {
   flex: 1;
 }
 
+/* ---- 左右分栏（任务队列 / 资源生成） ---- */
+.split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  /* 左窄右宽：资源生成（左信息 / 右结果） */
+  .split-narrow-left {
+    grid-template-columns: minmax(320px, 400px) 1fr;
+  }
+  /* 左宽右窄：任务队列（左列表 / 右提交） */
+  .split-narrow-right {
+    grid-template-columns: 1fr minmax(300px, 360px);
+  }
+  .split-aside {
+    position: sticky;
+    top: 84px;
+  }
+}
+
+/* ---- 重点内容更突出 ---- */
+.attr-value {
+  font-weight: 600;
+}
+
+.framework .indicator-head h4 {
+  font-size: 1.05rem;
+}
+
+.obs-name {
+  font-weight: 600;
+}
+
 /* ---- 信息类徽章（证据来源等） ---- */
 .badge-info { background: #e2f0ff; color: #1553b3; }
 
@@ -752,16 +788,6 @@ details.disclosure > summary {
   color: var(--index-color, var(--color-primary-dark));
 }
 
-.pace-index {
-  margin-left: auto;
-  padding: 2px var(--space-3);
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--index-color, var(--color-primary-dark));
-  font-size: var(--font-small);
-  font-weight: 700;
-}
-
 .pace-desc {
   margin: var(--space-2) 0 0;
   font-size: var(--font-small);
@@ -786,11 +812,6 @@ details.disclosure > summary {
   background: var(--color-surface);
   font-size: var(--font-small);
   text-align: center;
-}
-
-.flow-index {
-  font-weight: 700;
-  color: var(--index-color, var(--color-primary));
 }
 
 .flow-pace {
@@ -873,8 +894,10 @@ details.disclosure > summary {
   transform: translateX(-50%) translateY(4px);
   padding: 3px var(--space-3);
   border-radius: var(--radius-sm);
-  background: var(--color-text);
-  color: #fff;
+  background: #fff;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
   font-size: var(--font-small);
   font-weight: 500;
   white-space: nowrap;

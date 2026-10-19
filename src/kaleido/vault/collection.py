@@ -198,6 +198,31 @@ class Collection:
         start = (page - 1) * size
         return items[start : start + size], total
 
+    def _read_full(self, doc_id: str) -> dict:
+        """读取完整文档：包裹模式下合并 envelope 元数据与业务内容。"""
+        raw = self.store.read(doc_id)
+        if self.spec.envelope and isinstance(raw, dict) and "payload" in raw:
+            meta = {key: value for key, value in raw.items() if key != "payload"}
+            payload = raw["payload"] if isinstance(raw["payload"], dict) else {}
+            return {**meta, **payload}
+        return raw
+
+    def list_full(
+        self,
+        filters: dict[str, Any] | None = None,
+        *,
+        page: int = 1,
+        size: int = 20,
+        sort: str | None = None,
+    ) -> tuple[list[dict], int]:
+        """按索引过滤分页，但返回完整文档（含正文与创建/更新时间）。
+
+        与 :meth:`list` 的差别：``list`` 只返回索引字段，用于轻量筛选；
+        ``list_full`` 额外回读分片，适合需要展示正文的列表（如资源库）。
+        """
+        items, total = self.list(filters, page=page, size=size, sort=sort)
+        return [self._read_full(item["id"]) for item in items], total
+
     def iter_all(self) -> Iterator[dict]:
         """迭代全部文档业务内容。"""
         for doc_id in self.store.list_ids():

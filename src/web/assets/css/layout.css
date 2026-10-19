@@ -6,6 +6,8 @@
 
 /* ---- 站点头部 ---- */
 .site-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -75,6 +77,8 @@
 
 /* ---- 主内容 ---- */
 .main {
+  position: relative;
+  z-index: 1;
   max-width: var(--max-width);
   margin: 0 auto;
   padding: var(--space-5);

@@ -68,11 +68,7 @@ export function createView(root) {
       counter,
     ]);
 
-    const card = el("section", { class: "card" }, [
-      el("div", { class: "card-header" }, [el("h2", { text: "资源库" })]),
-      toolbar,
-      listBox,
-    ]);
+    const card = el("section", { class: "card" }, [toolbar, listBox]);
     root.append(card);
   }
 
