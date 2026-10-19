@@ -1,5 +1,14 @@
 """恢复性测试：索引损坏/丢失后的重建与一致性。"""
 
+import sys
+from pathlib import Path
+
+# 直接运行本测试文件时，把项目根与 src 加入模块搜索路径，保证无需安装即可执行
+ROOT = Path(__file__).resolve().parents[2]
+for _path in (ROOT, ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 from kaleido.vault import Vault
 
 
@@ -44,3 +53,8 @@ def test_counter_preserved_across_instances(tmp_path):
     assert first.next_id() == "d_0001"
     second = Vault(data_dir=tmp_path).collection("docs")
     assert second.next_id() == "d_0002"
+
+if __name__ == "__main__":
+    import pytest
+
+    raise SystemExit(pytest.main([__file__, "-v"]))

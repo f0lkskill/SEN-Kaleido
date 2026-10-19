@@ -1,5 +1,14 @@
 """forge REST 接口测试：通过 WSGI 直接调用路由。"""
 
+import sys
+from pathlib import Path
+
+# 直接运行本测试文件时，把项目根与 src 加入模块搜索路径，保证无需安装即可执行
+ROOT = Path(__file__).resolve().parents[2]
+for _path in (ROOT, ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 import json
 import sys
 from io import BytesIO
@@ -113,3 +122,8 @@ def test_resource_types(tmp_path):
     status, body = call("GET", "/api/v1/forge/resource-types")
     assert status.startswith("200")
     assert "courseware" in body["data"]
+
+if __name__ == "__main__":
+    import pytest
+
+    raise SystemExit(pytest.main([__file__, "-v"]))

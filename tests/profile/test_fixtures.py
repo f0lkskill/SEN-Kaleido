@@ -4,6 +4,15 @@
 「四大类型 × 三种程度」矩阵与边界/非法输入，保证测试数据与联调数据同源。
 """
 
+import sys
+from pathlib import Path
+
+# 直接运行本测试文件时，把项目根与 src 加入模块搜索路径，保证无需安装即可执行
+ROOT = Path(__file__).resolve().parents[2]
+for _path in (ROOT, ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 import pytest
 
 from kaleido.common.errors import ValidationError
@@ -57,3 +66,8 @@ def test_edge_cases(tmp_path, case):
     if case["id"] == "preschool_visual_filter":
         keys = {indicator["key"] for indicator in profile["framework"]["indicators"]}
         assert "braille_literacy" not in keys
+
+if __name__ == "__main__":
+    import pytest
+
+    raise SystemExit(pytest.main([__file__, "-v"]))

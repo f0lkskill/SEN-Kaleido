@@ -1,5 +1,14 @@
 """Prompt 模板测试：渲染占位、约束注入与缺失模板报错。"""
 
+import sys
+from pathlib import Path
+
+# 直接运行本测试文件时，把项目根与 src 加入模块搜索路径，保证无需安装即可执行
+ROOT = Path(__file__).resolve().parents[2]
+for _path in (ROOT, ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 import pytest
 
 from kaleido.common.errors import ConfigError
@@ -36,3 +45,8 @@ def test_missing_placeholder_renders_empty():
 def test_missing_template_raises():
     with pytest.raises(ConfigError):
         load_template("no_such_layer")
+
+if __name__ == "__main__":
+    import pytest
+
+    raise SystemExit(pytest.main([__file__, "-v"]))

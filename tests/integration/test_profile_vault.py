@@ -4,6 +4,15 @@
 且跨实例可恢复、幂等、更新、删除、筛选与索引一致性均正确。
 """
 
+import sys
+from pathlib import Path
+
+# 直接运行本测试文件时，把项目根与 src 加入模块搜索路径，保证无需安装即可执行
+ROOT = Path(__file__).resolve().parents[2]
+for _path in (ROOT, ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 import json
 
 import pytest
@@ -113,3 +122,8 @@ def test_index_consistent_with_shards(tmp_path):
     for item in items:
         payload = collection.get(item["id"])
         assert payload["profile_id"] == item["id"]
+
+if __name__ == "__main__":
+    import pytest
+
+    raise SystemExit(pytest.main([__file__, "-v"]))

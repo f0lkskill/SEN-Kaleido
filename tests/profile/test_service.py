@@ -1,5 +1,14 @@
 """服务层测试：建档、幂等、更新重建框架、预览不落库与元数据。"""
 
+import sys
+from pathlib import Path
+
+# 直接运行本测试文件时，把项目根与 src 加入模块搜索路径，保证无需安装即可执行
+ROOT = Path(__file__).resolve().parents[2]
+for _path in (ROOT, ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 import pytest
 
 from kaleido.common.errors import ConflictError
@@ -77,3 +86,8 @@ def test_metadata_endpoints(tmp_path):
         "intellectual",
         "autism",
     }
+
+if __name__ == "__main__":
+    import pytest
+
+    raise SystemExit(pytest.main([__file__, "-v"]))

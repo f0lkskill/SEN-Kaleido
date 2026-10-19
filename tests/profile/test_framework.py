@@ -1,5 +1,14 @@
 """评价框架生成引擎测试：权重归一化、等级过滤与重度压缩。"""
 
+import sys
+from pathlib import Path
+
+# 直接运行本测试文件时，把项目根与 src 加入模块搜索路径，保证无需安装即可执行
+ROOT = Path(__file__).resolve().parents[2]
+for _path in (ROOT, ROOT / "src"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 import pytest
 
 from kaleido.common.errors import ValidationError
@@ -42,3 +51,8 @@ def test_unknown_disability_raises():
     engine = FrameworkEngine.load()
     with pytest.raises(ValidationError):
         engine.build("unknown", "mild", "primary_low", [], "fw_test")
+
+if __name__ == "__main__":
+    import pytest
+
+    raise SystemExit(pytest.main([__file__, "-v"]))
