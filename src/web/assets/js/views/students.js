@@ -18,6 +18,7 @@ import {
 } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
 import { confirmDialog } from "../core/dialog.js";
+import { openContextMenu } from "../core/contextmenu.js";
 import {
   buildAttributesForm,
   readAttributes,
@@ -267,7 +268,10 @@ export function createView(root, hooks = {}) {
         type: "button",
         "data-profile-id": item.profile_id,
         style: `animation-delay:${Math.min(index, 12) * 30}ms`,
-        on: { click: () => showDetail(item.profile_id, button) },
+        on: {
+          click: () => showDetail(item.profile_id, button),
+          contextmenu: (event) => openContextMenu(event, studentMenu(item, button)),
+        },
       },
       [
         el("span", { class: "avatar", text: firstChar(item.name) }),
@@ -374,6 +378,32 @@ export function createView(root, hooks = {}) {
     }
   }
 
+  /** 学生右键菜单项。 */
+  function studentMenu(item, cardEl) {
+    return [
+      { label: "查看详情", onSelect: () => showDetail(item.profile_id, cardEl) },
+      {
+        label: "创建课件",
+        onSelect: () => {
+          if (hooks.onGenerateFor) hooks.onGenerateFor(item.profile_id, item.name);
+        },
+      },
+      { label: "复制 ID", onSelect: () => copyText(item.profile_id) },
+      null,
+      { label: "删除", danger: true, onSelect: () => remove(item) },
+    ];
+  }
+
+  /** 复制文本到剪贴板。 */
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toastSuccess("已复制到剪贴板");
+    } catch (err) {
+      toastError("复制失败，请手动复制");
+    }
+  }
+
   /** 删除学生档案（自定义确认对话框）。 */
   async function remove(item) {
     const ok = await confirmDialog({
@@ -409,6 +439,15 @@ export function createView(root, hooks = {}) {
     async init() {
       await loadEvidenceSources();
       await refresh(true);
+    },
+    /** 定位并展示指定学生（供资源库跳转使用）。 */
+    async showStudent(profileId) {
+      let card = listBox.querySelector(`[data-profile-id="${profileId}"]`);
+      if (!card) {
+        await refresh(false);
+        card = listBox.querySelector(`[data-profile-id="${profileId}"]`);
+      }
+      if (card) showDetail(profileId, card);
     },
     refresh,
   };

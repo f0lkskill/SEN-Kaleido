@@ -101,6 +101,13 @@ function activate(id) {
           controllers.forge.preselect(profileId);
         }
       },
+      // 从资源库跳转到学生档案，定位并展示来源学生
+      onShowStudent: (profileId) => {
+        activate("students");
+        if (controllers.students && controllers.students.showStudent) {
+          controllers.students.showStudent(profileId);
+        }
+      },
     });
     if (controllers[id].init) controllers[id].init();
   } else if (controllers[id].refresh) {

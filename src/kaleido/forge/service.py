@@ -143,6 +143,7 @@ class ForgeService:
             "model": result.model,
             "usage": result.usage,
             "status": "draft",
+            "attributes": attributes,
         }
         self.resources.put(resource_id, document)
         _logger.info(
@@ -212,6 +213,7 @@ class ForgeService:
             "model": getattr(self.client, "model", ""),
             "usage": {},
             "status": "draft",
+            "attributes": attributes,
         }
         self.resources.put(resource_id, document)
         _logger.info("流式生成完成: resource_id=%s content_len=%d", resource_id, len(content))

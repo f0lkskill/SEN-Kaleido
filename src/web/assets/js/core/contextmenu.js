@@ -1,17 +1,40 @@
 /**
  * core/contextmenu.js —— 应用内右键菜单
  * 在鼠标位置弹出自定义菜单，替代浏览器原生菜单，用于列表项的快捷操作。
+ * 全局监听只绑定一次，避免重复绑定导致菜单被误关闭。
  */
 
 import { el } from "./dom.js";
 
 let current = null;
+let bound = false;
 
 /** 关闭已打开的菜单。 */
 function closeMenu() {
   if (!current) return;
   current.remove();
   current = null;
+}
+
+/** 点击/按下菜单外部时关闭。 */
+function onPointerDown(event) {
+  if (current && !current.contains(event.target)) closeMenu();
+}
+
+/** Esc 关闭。 */
+function onKeyDown(event) {
+  if (event.key === "Escape") closeMenu();
+}
+
+/** 全局监听仅绑定一次。 */
+function bindGlobal() {
+  if (bound) return;
+  bound = true;
+  // 捕获阶段：先于其它点击处理
+  document.addEventListener("mousedown", onPointerDown, true);
+  document.addEventListener("keydown", onKeyDown, true);
+  window.addEventListener("resize", closeMenu);
+  window.addEventListener("scroll", closeMenu, true);
 }
 
 /**
@@ -22,6 +45,7 @@ function closeMenu() {
 export function openContextMenu(event, items) {
   event.preventDefault();
   closeMenu();
+  bindGlobal();
 
   const menu = el("div", { class: "context-menu", role: "menu" });
   for (const item of items) {
@@ -48,23 +72,11 @@ export function openContextMenu(event, items) {
 
   document.body.append(menu);
   current = menu;
+
   // 定位并避免超出视口
   const rect = menu.getBoundingClientRect();
   const x = Math.min(event.clientX, window.innerWidth - rect.width - 8);
   const y = Math.min(event.clientY, window.innerHeight - rect.height - 8);
   menu.style.left = `${Math.max(8, x)}px`;
   menu.style.top = `${Math.max(8, y)}px`;
-
-  // 延迟绑定，避免本次 contextmenu 事件立即关闭菜单
-  window.setTimeout(() => {
-    document.addEventListener("click", closeMenu, { once: true });
-    document.addEventListener("contextmenu", closeMenu, { once: true });
-    document.addEventListener(
-      "keydown",
-      (keyEvent) => {
-        if (keyEvent.key === "Escape") closeMenu();
-      },
-      { once: true }
-    );
-  }, 0);
 }

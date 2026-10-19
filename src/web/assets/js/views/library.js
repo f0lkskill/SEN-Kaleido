@@ -11,7 +11,7 @@ import { confirmDialog } from "../core/dialog.js";
 import { openContextMenu } from "../core/contextmenu.js";
 import { DISABILITY, RESOURCE_STATUS, label, formatTime } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
-import { ATTRIBUTE_OPTIONS } from "./framework.js";
+import { renderAttributes, ATTRIBUTE_OPTIONS } from "./framework.js";
 
 const STATUS_OPTIONS = Object.entries(RESOURCE_STATUS);
 
@@ -27,7 +27,7 @@ function filterSelect(name, options, allText = "全部") {
  * 创建资源库视图。
  * @param {HTMLElement} root 视图容器
  */
-export function createView(root) {
+export function createView(root, hooks = {}) {
   let typeFilter;
   let disabilityFilter;
   let statusFilter;
@@ -188,35 +188,53 @@ export function createView(root) {
     const md = el("div", { class: "md" });
     md.innerHTML = renderMarkdown(item.content || "");
 
+    const actions = [];
+    // 有来源学生时提供快捷跳转；预生成（临时属性）则无此按钮
+    if (item.profile_id) {
+      actions.push(
+        el("button", {
+          class: "btn btn-sm",
+          type: "button",
+          text: "来源学生",
+          on: {
+            click: () => {
+              if (hooks.onShowStudent) hooks.onShowStudent(item.profile_id);
+            },
+          },
+        })
+      );
+    }
+    actions.push(
+      el("button", {
+        class: "btn btn-sm",
+        type: "button",
+        text: "通过",
+        on: { click: () => setStatus(item.resource_id, "approved") },
+      }),
+      el("button", {
+        class: "btn btn-sm",
+        type: "button",
+        text: "退回",
+        on: { click: () => setStatus(item.resource_id, "rejected") },
+      }),
+      el("button", {
+        class: "btn btn-danger btn-sm",
+        type: "button",
+        text: "删除",
+        on: { click: () => removeResource(item) },
+      }),
+      el("button", { class: "btn btn-sm", type: "button", text: "收起", on: { click: closeDetail } })
+    );
+
     const head = el("div", { class: "detail-head" }, [
       el("div", { class: "detail-id" }, [
         el("span", { class: "avatar avatar-lg", text: (typeName || "?").slice(0, 1) }),
         el("h3", { text: typeName }),
       ]),
-      el("div", { class: "detail-actions" }, [
-        el("button", {
-          class: "btn btn-sm",
-          type: "button",
-          text: "通过",
-          on: { click: () => setStatus(item.resource_id, "approved") },
-        }),
-        el("button", {
-          class: "btn btn-sm",
-          type: "button",
-          text: "退回",
-          on: { click: () => setStatus(item.resource_id, "rejected") },
-        }),
-        el("button", {
-          class: "btn btn-danger btn-sm",
-          type: "button",
-          text: "删除",
-          on: { click: () => removeResource(item) },
-        }),
-        el("button", { class: "btn btn-sm", type: "button", text: "收起", on: { click: closeDetail } }),
-      ]),
+      el("div", { class: "detail-actions" }, actions),
     ]);
 
-    return el("section", { class: "detail-body" }, [
+    const panels = [
       panel(null, head),
       panel(
         "资源信息",
@@ -229,8 +247,13 @@ export function createView(root) {
           el("span", { class: "badge badge-muted", text: formatTime(item.updated_at) }),
         ])
       ),
-      panel("内容", el("div", { class: "detail-md" }, [md])),
-    ]);
+    ];
+    // 预生成资源（未建档）直接展示临时属性
+    if (!item.profile_id && item.attributes) {
+      panels.push(panel("临时属性（未建档）", renderAttributes(item.attributes)));
+    }
+    panels.push(panel("内容", el("div", { class: "detail-md" }, [md])));
+    return el("section", { class: "detail-body" }, panels);
   }
 
   /** 资源右键菜单项。 */
