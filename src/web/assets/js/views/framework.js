@@ -137,7 +137,7 @@ export function renderLearningPace(attributes) {
     name: label(LEARNING_PACE, attributes.learning_pace),
     desc: "",
   };
-  return el("div", { class: "pace-card" }, [
+  return el("div", { class: `pace-card pace-${attributes.learning_pace}` }, [
     el("div", { class: "pace-head" }, [
       el("span", { class: "pace-key", text: "学习节奏" }),
       el("span", { class: "pace-badge", text: info.name }),
@@ -156,7 +156,7 @@ export function renderFlow(attributes) {
     name: label(LEARNING_PACE, attributes.learning_pace),
   };
   const dims = ["participation", "practice"];
-  return el("div", { class: "flow" }, [
+  return el("div", { class: `flow pace-${attributes.learning_pace}` }, [
     el("div", { class: "flow-node flow-pace", text: `学习节奏：${info.name}` }),
     el("div", { class: "flow-streams", "aria-hidden": "true" }, [
       el("span", { class: "flow-dot flow-dot-a" }),

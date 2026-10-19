@@ -36,6 +36,12 @@ function filterSelect(name, options) {
   return node;
 }
 
+/** 取姓名首字作为头像文字。 */
+function firstChar(name) {
+  const text = String(name || "").trim();
+  return text ? text[0] : "?";
+}
+
 /**
  * 创建学生档案视图。
  * @param {HTMLElement} root 视图容器
@@ -48,6 +54,7 @@ export function createView(root) {
   let detailBox;
   let totalBadge;
   let activeId = null; // 当前选中的档案 ID
+  let closeTimer = null; // 收起动画定时器
 
   function build() {
     clear(root);
@@ -184,22 +191,17 @@ export function createView(root) {
     if (detailBox.hidden) return;
     layout.classList.remove("narrowed");
     detailBox.classList.add("leaving");
-    const cleanup = () => {
-      detailBox.classList.remove("leaving");
-      detailBox.hidden = true;
-      clear(detailBox);
-    };
-    detailBox.addEventListener("animationend", cleanup, { once: true });
-    // 兜底：动画事件未触发时也要收起
-    setTimeout(() => {
-      if (!detailBox.hidden) {
-        cleanup();
-      }
-    }, 260);
     activeId = null;
     for (const item of listBox.querySelectorAll(".student-card")) {
       item.classList.remove("active");
     }
+    if (closeTimer) window.clearTimeout(closeTimer);
+    closeTimer = window.setTimeout(() => {
+      detailBox.classList.remove("leaving");
+      detailBox.hidden = true;
+      clear(detailBox);
+      closeTimer = null;
+    }, 200);
   }
 
   /** 拉取并渲染学生列表（会同时收起详情面板，卡片依次入场）。 */
@@ -227,7 +229,7 @@ export function createView(root) {
     }
   }
 
-  /** 单个学生卡片（带依次入场延时）。 */
+  /** 单个学生卡片（带圆形头像与依次入场延时）。 */
   function studentCard(item, index) {
     const button = el(
       "button",
@@ -238,14 +240,17 @@ export function createView(root) {
         on: { click: () => showDetail(item.profile_id, button) },
       },
       [
-        el("h4", { text: item.name }),
-        el("div", { class: "badge-row" }, [
-          el("span", { class: "badge badge-info", text: labels(DISABILITY, item.disabilities) }),
-          el("span", { class: "badge badge-muted", text: label(SEVERITY, item.severity) }),
-          el("span", {
-            class: "badge badge-muted",
-            text: `认知：${label(COGNITIVE_LEVEL, item.cognitive_level)}`,
-          }),
+        el("span", { class: "avatar", text: firstChar(item.name) }),
+        el("span", { class: "student-card-body" }, [
+          el("h4", { text: item.name }),
+          el("div", { class: "badge-row" }, [
+            el("span", { class: "badge badge-info", text: labels(DISABILITY, item.disabilities) }),
+            el("span", { class: "badge badge-muted", text: label(SEVERITY, item.severity) }),
+            el("span", {
+              class: "badge badge-muted",
+              text: `认知：${label(COGNITIVE_LEVEL, item.cognitive_level)}`,
+            }),
+          ]),
         ]),
       ]
     );
@@ -257,7 +262,10 @@ export function createView(root) {
     const attributes = item.attributes;
     return el("section", { class: "detail-body" }, [
       el("div", { class: "detail-head" }, [
-        el("h3", { text: `${item.name} · 档案详情` }),
+        el("div", { class: "detail-id" }, [
+          el("span", { class: "avatar avatar-lg", text: firstChar(item.name) }),
+          el("h3", { text: `${item.name} · 档案详情` }),
+        ]),
         el("div", { class: "detail-actions" }, [
           el("button", {
             class: "btn btn-sm",
@@ -284,12 +292,17 @@ export function createView(root) {
         el("summary", {}, [el("span", { text: "评价标准与观测点" })]),
         el("div", { class: "collapse-body" }, [renderFramework(item.framework)]),
       ]),
-      el("p", { class: "meta", text: `更新时间：${formatTime(item.updated_at)}` }),
+      el("p", { class: "meta detail-meta", text: `更新时间：${formatTime(item.updated_at)}` }),
     ]);
   }
 
-  /** 展示学生详情（列表收窄、右侧滑出面板）。 */
+  /** 展示学生详情（列表收窄、右侧滑出面板；切换学生重新播放进入动画）。 */
   async function showDetail(profileId, cardEl) {
+    // 取消可能仍在进行的收起定时器，避免误清空新详情
+    if (closeTimer) {
+      window.clearTimeout(closeTimer);
+      closeTimer = null;
+    }
     detailBox.classList.remove("leaving");
     detailBox.hidden = false;
     layout.classList.add("narrowed");

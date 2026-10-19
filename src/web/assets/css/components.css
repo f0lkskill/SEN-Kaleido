@@ -420,7 +420,9 @@ details.disclosure > summary {
 }
 
 .student-card {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   width: 100%;
   text-align: left;
   padding: var(--space-3) var(--space-4);
@@ -429,7 +431,12 @@ details.disclosure > summary {
   background: var(--color-surface);
   cursor: pointer;
   font-family: inherit;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.student-card-body {
+  min-width: 0;
 }
 
 .student-card:hover {
@@ -448,8 +455,8 @@ details.disclosure > summary {
 }
 
 /* ---- 学生档案：详情面板 ---- */
-.student-detail {
-  animation: panel-in 0.3s ease both;
+.detail-body {
+  animation: panel-in 0.28s ease both;
 }
 
 @keyframes panel-in {
@@ -712,14 +719,24 @@ details.disclosure > summary {
   to { opacity: 0; transform: translateY(12px) scale(0.98); }
 }
 
-/* ---- 学习节奏：独立详细展示 ---- */
+/* ---- 学习节奏：独立详细展示（颜色随节奏等级变化） ---- */
+.pace-fast { --pace-color: var(--color-success); }
+.pace-medium { --pace-color: var(--color-warning); }
+.pace-slow { --pace-color: var(--color-danger); }
+
 .pace-card {
   padding: var(--space-4);
   border: 1px solid var(--color-border);
-  border-left: 4px solid var(--color-primary);
+  border-left: 6px solid var(--pace-color, var(--color-primary));
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--color-primary-soft), var(--color-surface));
+  background: var(--color-surface);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--pace-color, var(--color-primary)) 16%, var(--color-surface)),
+    var(--color-surface)
+  );
   margin-bottom: var(--space-4);
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.18s ease;
 }
 
 .pace-head {
@@ -736,7 +753,7 @@ details.disclosure > summary {
 .pace-badge {
   font-size: var(--font-large);
   font-weight: 700;
-  color: var(--color-primary-dark);
+  color: var(--pace-color, var(--color-primary-dark));
 }
 
 .pace-desc {
@@ -744,12 +761,11 @@ details.disclosure > summary {
   font-size: var(--font-small);
 }
 
-/* ---- 汇集关系图：底部维度向上汇集到学习节奏 ---- */
+/* ---- 汇集关系图：底部两维度对齐向上流动到学习节奏（随节奏同色） ---- */
 .flow {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  row-gap: 0;
   padding: var(--space-4) 0;
   margin-bottom: var(--space-4);
 }
@@ -764,43 +780,52 @@ details.disclosure > summary {
 }
 
 .flow-pace {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-soft);
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: 60%;
+  max-width: 320px;
+  border: 2px solid var(--pace-color, var(--color-primary));
+  color: var(--pace-color, var(--color-primary-dark));
   font-weight: 700;
-  color: var(--color-primary-dark);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pace-color, var(--color-primary)) 18%, transparent);
+  transition: border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .flow-streams {
+  grid-column: 1 / -1;
   position: relative;
-  width: 62%;
+  width: 100%;
   height: 84px;
 }
 
+/* 两条竖线分别对齐左右两列中心（25% / 75%），与底部节点一一对齐 */
 .flow-streams::before,
 .flow-streams::after {
   content: "";
   position: absolute;
+  top: 0;
   bottom: 0;
-  height: 100%;
   border-left: 2px dashed var(--color-border);
 }
 
-.flow-streams::before { left: 18%; }
-.flow-streams::after { right: 18%; }
+.flow-streams::before { left: 25%; }
+.flow-streams::after { left: 75%; }
 
 .flow-dot {
   position: absolute;
   bottom: 0;
   width: 10px;
   height: 10px;
+  margin-left: -5px;
   border-radius: 50%;
-  background: var(--color-primary);
-  box-shadow: 0 0 8px var(--color-primary);
+  background: var(--pace-color, var(--color-primary));
+  box-shadow: 0 0 8px var(--pace-color, var(--color-primary));
   animation: rise 1.9s ease-in-out infinite;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
 }
 
-.flow-dot-a { left: calc(18% - 5px); }
-.flow-dot-b { right: calc(18% - 5px); animation-delay: 0.65s; }
+.flow-dot-a { left: 25%; }
+.flow-dot-b { left: 75%; animation-delay: 0.65s; }
 
 @keyframes rise {
   0% { transform: translateY(0); opacity: 0; }
@@ -810,10 +835,13 @@ details.disclosure > summary {
 }
 
 .flow-base {
-  display: flex;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  justify-content: center;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.flow-base .flow-node {
+  justify-self: center;
 }
 
 /* ---- 折叠区块（默认隐藏，点击展开） ---- */
@@ -860,14 +888,25 @@ details.collapse[open] .collapse-body {
   to { opacity: 1; transform: none; }
 }
 
-/* ---- 详情面板收起动画 ---- */
-.student-detail.leaving {
+/* ---- 详情面板收起动画（作用于每次重建的 .detail-body） ---- */
+.student-detail.leaving .detail-body {
   animation: panel-out 0.2s ease both;
 }
 
 @keyframes panel-out {
   from { opacity: 1; transform: translateX(0); }
   to { opacity: 0; transform: translateX(18px); }
+}
+
+/* ---- 详情：头像 + 姓名 + 更新时间边距 ---- */
+.detail-id {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.detail-meta {
+  margin: var(--space-4) 0 0;
 }
 
 /* ---- 列表卡片入场（配合 JS 的 stagger 延时） ---- */
@@ -894,4 +933,75 @@ details.collapse[open] .collapse-body {
 .flow-node:hover,
 .attr-item:hover {
   transform: translateY(-1px);
+}
+
+/* ---- 圆形头像框（列表与详情共用） ---- */
+.avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--font-body);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.avatar-lg {
+  width: 64px;
+  height: 64px;
+  font-size: var(--font-heading);
+}
+
+.student-card:hover .avatar {
+  transform: scale(1.06);
+}
+
+/* ---- 控件变化统一过渡（扩展） ---- */
+.btn {
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease,
+    transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.badge {
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.card {
+  transition: box-shadow 0.2s ease;
+}
+
+.indicator,
+.observation,
+.rubric-item {
+  transition: background 0.18s ease, border-color 0.18s ease;
 }
