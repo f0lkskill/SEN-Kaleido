@@ -29,6 +29,9 @@ collections:
   tasks:
     id_prefix: t
     id_zerofill: 5
+    index_fields:
+      - task_type
+      - status
   knowledge:
     id_prefix: k
     id_zerofill: 4

@@ -1,0 +1,20 @@
+# kaleido-tasks 配置：异步任务队列与闲时调度
+# 设计背景：云端大模型调用有延迟且分峰谷定价，故生成/质检等任务
+# 采用异步后处理，并可将批量任务调度到闲时（夜间、周末、节假日）执行。
+
+# 后台工作线程数
+worker_count: 2
+
+schedule:
+  # 闲时任务未到执行窗口时的轮询间隔（秒）
+  defer_poll_seconds: 5
+  # 闲时区间定义；用于决定 defer_off_peak=true 的任务何时执行
+  off_peak:
+    # 周六、周日整天视为闲时
+    weekends: true
+    # 法定节假日（YYYY-MM-DD）列表，可按需维护
+    holidays: []
+    # 每日闲时时段（跨零点用 start > end 表示，如 22:00-07:00）
+    windows:
+      - start: "22:00"
+        end: "07:00"
