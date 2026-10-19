@@ -10,7 +10,7 @@
 
 from typing import Any, cast
 
-from bottle import Bottle, abort, request, response, static_file
+from bottle import Bottle, abort, response, static_file
 
 from kaleido.common.logging import get_logger
 from kaleido.common.paths import WEB_DIR
@@ -57,17 +57,6 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
             lambda payload: forge_service.generate(GenerateRequest(**payload)),
         )
     app.merge(create_tasks_app(task_service))
-
-    # ---- 轻量访问日志：只记录 API 调用，便于事后排查（静态资源不记） ----
-    @app.hook("before_request")
-    def _log_request() -> None:
-        if request.path.startswith("/api/"):
-            logger.info("→ %s %s", request.method, request.path)
-
-    @app.hook("after_request")
-    def _log_response() -> None:
-        if request.path.startswith("/api/"):
-            logger.info("← %s %s %s", request.method, request.path, response.status_code)
 
     # ---- 静态前端：与后端脚本分离，按 assets 分类组织 ----
     @app.get("/")
