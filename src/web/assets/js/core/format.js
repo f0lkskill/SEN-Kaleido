@@ -34,6 +34,9 @@ export const COGNITIVE_LEVEL = {
   senior_2: "高中二年级",
   senior_3: "高中三年级",
   vocational: "职教",
+  // 兼容历史数据键（旧版枚举），迁移后可移除
+  primary_low: "小学低段",
+  primary_high: "小学高段",
 };
 
 /** 感官偏好。 */

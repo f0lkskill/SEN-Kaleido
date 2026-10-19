@@ -47,6 +47,7 @@ export function openContextMenu(event, items) {
   }
 
   document.body.append(menu);
+  current = menu;
   // 定位并避免超出视口
   const rect = menu.getBoundingClientRect();
   const x = Math.min(event.clientX, window.innerWidth - rect.width - 8);
