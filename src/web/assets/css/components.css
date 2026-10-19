@@ -175,6 +175,15 @@
 }
 
 .field label {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
   font-weight: 600;
   font-size: var(--font-small);
 }
@@ -601,12 +610,32 @@ details.disclosure > summary {
 }
 
 .attr-name {
-  font-size: var(--font-small);
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
   color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: var(--font-small);
 }
 
 .attr-value {
   font-weight: 600;
+}
+
+/* 详情中的区块小标题：左侧主色条的药丸样式 */
+.detail-body h4 {
+  display: inline-flex;
+  width: fit-content;
+  margin: var(--space-4) 0 var(--space-2);
+  padding: 3px var(--space-4);
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  border-left: 4px solid var(--color-primary);
+  font-size: var(--font-base);
 }
 
 /* ---- 评价框架可视化 ---- */
