@@ -336,9 +336,9 @@ export function createView(root, hooks = {}) {
     return el("section", { class: "detail-body" }, [
       panel(null, head),
       panel("学生属性", renderAttributes(attributes)),
-      panel("学生画像", renderPortrait(item.portrait)),
       panel("学习节奏", renderLearningPace(attributes)),
       panel("维度与学习节奏关系", renderFlow(attributes, item.framework)),
+      panel("学生画像", renderPortrait(item.portrait)),
       panel(
         "评价标准与观测点",
         // 评价标准默认隐藏，点击展开查看观测点与评分等级
