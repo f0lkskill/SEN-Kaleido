@@ -118,6 +118,42 @@ async function streamRequest(path, body, onEvent) {
   log.debug("流式请求结束 ←", path);
 }
 
+/**
+ * 上传文件：以 multipart/form-data 提交，并解包统一响应。
+ * @param {string} path 接口路径
+ * @param {File} file 待上传文件
+ * @returns {Promise<any>} 成功时的 data
+ */
+async function uploadRequest(path, file) {
+  const form = new FormData();
+  form.append("file", file);
+  let response;
+  try {
+    response = await fetch(path, { method: "POST", body: form });
+  } catch (err) {
+    log.error("上传失败（网络层）:", path, err);
+    const error = new Error("无法连接处理基站，请检查网络或服务状态");
+    error.code = -1;
+    throw error;
+  }
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (err) {
+    payload = { code: 1000, message: `响应解析失败(${response.status})`, data: null };
+  }
+  if (!response.ok || payload.code !== 0) {
+    const error = new Error(payload.message || `上传失败(${response.status})`);
+    error.code = payload.code;
+    error.status = response.status;
+    log.error("上传响应错误:", response.status, path, payload.message);
+    throw error;
+  }
+  log.debug("上传完成 ←", response.status, path);
+  return payload.data;
+}
+
 /** 业务接口集合。 */
 export const api = {
   // ---- 元数据 ----
@@ -138,6 +174,12 @@ export const api = {
   evidenceSummary: (query) => request("/api/v1/evidence/summary", { query }),
   getEvidence: (id) => request(`/api/v1/evidence/${encodeURIComponent(id)}`),
   createEvidence: (body) => request("/api/v1/evidence", { method: "POST", body }),
+  uploadEvidenceFile: (file) => uploadRequest("/api/v1/evidence/upload", file),
+  classifyEvidence: (id, body) =>
+    request(`/api/v1/evidence/${encodeURIComponent(id)}/classify`, {
+      method: "POST",
+      body,
+    }),
   reviewEvidence: (id, body) =>
     request(`/api/v1/evidence/${encodeURIComponent(id)}/review`, {
       method: "POST",

@@ -90,6 +90,7 @@ export const EVIDENCE_SOURCE = {
   classroom_observation: "课堂观察",
   video_event: "视频事件",
   work_sample: "作品/作业样本",
+  image_capture: "图像采集",
   teacher_rating: "教师评分",
   parent_feedback: "家长反馈",
   rehab_record: "康复师记录",
@@ -130,6 +131,19 @@ export const EVIDENCE_STATUS = {
   rejected: "已拒绝",
 };
 
+/** 证据归属：未归类公有证据 / 已划分所有者。 */
+export const EVIDENCE_SCOPE = {
+  public: "公有证据",
+  classified: "归类证据",
+};
+
+/** 证据媒体类型。 */
+export const MEDIA_TYPE = {
+  text: "纯文本",
+  image: "图像",
+  video: "视频",
+};
+
 /** 证据审核状态对应的徽章样式类。 */
 export const EVIDENCE_STATUS_CLASS = {
   draft: "badge-warning",
@@ -148,6 +162,7 @@ export const EVIDENCE_MODALITY = {
   structured: "结构化",
   raw_media: "原始媒体",
   artifact: "作品样本",
+  image: "图像",
   text: "文本",
 };
 
