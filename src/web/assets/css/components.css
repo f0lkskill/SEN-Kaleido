@@ -231,15 +231,28 @@ textarea {
 .checks {
   display: grid;
   /* 宽容器自动四列一行，窄容器（如资源生成侧栏）自动降为两列 */
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 10px;
-  max-width: 560px;
-  margin-inline: auto;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+  max-width: 520px;
+  /* 在 flex 列容器中居中，但不能用 margin auto（会把网格挤成内容宽度） */
+  align-self: center;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 700px) {
   .checks {
+    /* 移动端固定两列，并拉开间距，避免四枚按钮挤在一起 */
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .check {
+    padding: 6px 14px 6px 38px;
+    font-size: var(--font-body);
+  }
+
+  .check:has(input[type="checkbox"]:checked) {
+    padding: 6px 38px 6px 14px;
   }
 }
 
@@ -249,26 +262,31 @@ textarea {
   isolation: isolate;
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* 关闭态：文字靠右，主动远离左侧滑块 */
+  justify-content: flex-end;
   width: 100%;
   max-width: 340px;
   margin-inline: auto;
-  min-height: 50px;
-  padding: 8px 10px 8px 34px;
+  min-height: 44px;
+  padding: 6px 12px 6px 36px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface);
   color: var(--color-text);
-  /* 标题回到正文尺寸，避免小按钮里文字过大 */
-  font-size: var(--font-body);
+  font-size: calc(var(--font-body) * 1.14);
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0;
-  text-align: center;
+  text-align: right;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
-  transition: border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+  /* padding 过渡让文字随滑块位置平滑让位 */
+  transition:
+    border-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease,
+    padding 0.24s ease;
 }
 
 .check:hover {
@@ -324,6 +342,10 @@ textarea {
 /* 启用态：渐变蒙版淡入，文字反白，旋钮滑到右侧内沿 */
 .check:has(input[type="checkbox"]:checked) {
   border-color: transparent;
+  /* 开启态：滑块在右，文字靠左让位 */
+  justify-content: flex-start;
+  padding: 6px 36px 6px 12px;
+  text-align: left;
   color: #fff;
   box-shadow: 0 8px 18px rgba(47, 109, 240, 0.26);
 }
@@ -975,19 +997,20 @@ details.disclosure > summary {
   margin-top: var(--space-4);
 }
 
-/* 板块标题：沿用 .badge 的浅蓝底/深蓝字，与属性标签同一套语言 */
+/* 内容分区标题：复刻“上课参与度”标签——浅蓝底、左侧主色弧条、深色大标题 */
 .panel-title {
   display: inline-flex;
   align-items: center;
   width: fit-content;
   margin: 0 0 var(--space-3);
-  padding: 3px var(--space-3);
+  padding: 4px 14px;
+  border-left: 5px solid var(--color-primary);
   border-radius: 999px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary-dark);
-  font-size: var(--font-small);
-  font-weight: 500;
-  line-height: 1.5;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: var(--font-body);
+  font-weight: 700;
+  line-height: 1.4;
   letter-spacing: 0;
 }
 
