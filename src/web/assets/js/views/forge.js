@@ -241,18 +241,17 @@ export function createView(root, hooks = {}) {
         board.filter((item) => item.enabled).map((item) => item.prompt_id)
       );
       promptBoardBox.hidden = false;
-      promptBoardBox.append(el("h4", { text: "选用画像规则板提示词" }));
       const list = el("div", { class: "prompt-picker-list" });
       for (const item of board) {
         const checkbox = el("input", {
           type: "checkbox",
           checked: Boolean(item.enabled),
-          disabled: !item.enabled,
         });
         checkbox.addEventListener("change", () => {
           if (checkbox.checked) selectedPromptIds.add(item.prompt_id);
           else selectedPromptIds.delete(item.prompt_id);
         });
+        // label 包裹复选框：点击整张卡片即可启用/关闭
         list.append(
           el("label", { class: "check prompt-picker-item" }, [
             checkbox,
@@ -260,9 +259,15 @@ export function createView(root, hooks = {}) {
           ])
         );
       }
+      // 规则板默认收起，点击标题展开
       promptBoardBox.append(
-        list,
-        el("p", { class: "meta", text: "仅勾选的启用提示词会加入本次生成。" })
+        enhanceDisclosure(
+          el("details", { class: "prompt-picker-collapse" }, [
+            el("summary", { text: "选用画像规则板提示词" }),
+            list,
+            el("p", { class: "meta", text: "仅勾选的启用提示词会加入本次生成。" }),
+          ])
+        )
       );
     } catch (err) {
       toastError(`加载规则板失败：${err.message}`);

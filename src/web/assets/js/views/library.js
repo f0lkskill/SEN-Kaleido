@@ -5,7 +5,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder, panel } from "../core/dom.js";
+import { el, clear, placeholder, panel, enhanceDisclosure } from "../core/dom.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { confirmDialog } from "../core/dialog.js";
 import { openContextMenu } from "../core/contextmenu.js";
@@ -45,6 +45,7 @@ export function createView(root, hooks = {}) {
   let typeMap = {}; // 资源类型键 -> 中文名
   let closeTimer = null;
   let activeId = null; // 当前选中的资源 ID
+  let evaluating = false; // 质量校验进行中，避免重复提交
 
   function build() {
     clear(root);
@@ -232,7 +233,7 @@ export function createView(root, hooks = {}) {
         class: "btn btn-sm",
         type: "button",
         text: item.facet ? "重新校验" : "质量校验",
-        on: { click: () => evaluateResource(item) },
+        on: { click: (event) => evaluateResource(item, event.currentTarget) },
       }),
       el("button", {
         class: "btn btn-sm",
@@ -282,7 +283,15 @@ export function createView(root, hooks = {}) {
     if (!item.profile_id && item.attributes) {
       panels.push(panel("临时属性（未建档）", renderAttributes(item.attributes)));
     }
-    panels.push(panel("内容", el("div", { class: "detail-md" }, [md])));
+    // 正文默认收起，点击标题展开，避免长文淹没其他信息
+    panels.push(
+      enhanceDisclosure(
+        el("details", { class: "panel content-disclosure" }, [
+          el("summary", { class: "panel-title", text: "内容" }),
+          el("div", { class: "detail-md" }, [md]),
+        ])
+      )
+    );
     return el("section", { class: "detail-body" }, panels);
   }
 
@@ -308,7 +317,7 @@ export function createView(root, hooks = {}) {
           class: "btn btn-sm",
           type: "button",
           text: "开始校验",
-          on: { click: () => evaluateResource(item) },
+          on: { click: (event) => evaluateResource(item, event.currentTarget) },
         }),
       ]);
     }
@@ -338,16 +347,40 @@ export function createView(root, hooks = {}) {
       { class: "facet-dimensions" },
       (report.dimensions || []).map((dimension) => {
         const hasScore = dimension.score !== null && dimension.score !== undefined;
-        const value = hasScore ? Number(dimension.score) : 0;
+        const value = hasScore
+          ? Math.max(0, Math.min(100, Number(dimension.score)))
+          : 0;
         const weight = Math.round(Number(dimension.weight || 0) * 100);
+        const level = !hasScore
+          ? "none"
+          : value >= 80
+            ? "good"
+            : value >= 60
+              ? "ok"
+              : value >= 40
+                ? "warn"
+                : "bad";
+        const scoreText = hasScore ? `${Math.round(value)}` : "—";
         return el("div", { class: "facet-dim" }, [
-          el("div", { class: "facet-dim-head" }, [
-            el("span", { text: `${dimension.name}（${weight}%）` }),
-            el("span", { text: hasScore ? `${value} 分` : "未评分" }),
-          ]),
-          el("div", { class: "facet-bar" }, [
-            el("span", { style: `width:${Math.max(0, Math.min(100, value))}%` }),
-          ]),
+          el(
+            "div",
+            {
+              class: `facet-orb facet-orb-${level}`,
+              style: `--value:${value}`,
+              role: "img",
+              "aria-label": `${dimension.name}（权重 ${weight}%）：${
+                hasScore ? `${Math.round(value)} 分` : "未评分"
+              }`,
+            },
+            [
+              el("div", { class: "facet-orb-core" }, [
+                el("strong", { text: scoreText }),
+                el("span", { text: hasScore ? "分" : "未评分" }),
+              ]),
+            ]
+          ),
+          el("div", { class: "facet-dim-name", text: dimension.name }),
+          el("div", { class: "facet-dim-weight", text: `权重 ${weight}%` }),
         ]);
       })
     );
@@ -395,8 +428,30 @@ export function createView(root, hooks = {}) {
     return el("div", { class: "facet-report" }, [head, ...blocks.filter(Boolean)]);
   }
 
-  /** 触发质量校验并刷新详情。 */
-  async function evaluateResource(item) {
+  /** 触发质量校验并刷新详情（校验期间按钮转圈、面板显示等待）。 */
+  async function evaluateResource(item, trigger = null) {
+    if (evaluating) return;
+    evaluating = true;
+
+    const originalLabel = trigger ? trigger.textContent : "";
+    if (trigger) {
+      trigger.disabled = true;
+      trigger.classList.add("is-busy");
+      trigger.textContent = "";
+      trigger.append(
+        el("span", { class: "spinner", "aria-hidden": "true" }),
+        el("span", { text: "校验中…" })
+      );
+    }
+
+    // 校验期间销毁旧报告，只显示等待占位，避免旧数据误导
+    const facetBody = detailBox.querySelector(".facet-panel .panel-body");
+    const waiting = placeholder("正在校验，请稍候…", "loading");
+    if (facetBody) {
+      clear(facetBody);
+      facetBody.append(waiting);
+    }
+
     try {
       const report = await api.evaluateResource(item.resource_id);
       toastSuccess(
@@ -405,6 +460,16 @@ export function createView(root, hooks = {}) {
       await refresh();
     } catch (err) {
       toastError(err.message);
+      // 失败时恢复原有报告
+      await refresh();
+    } finally {
+      evaluating = false;
+      if (waiting.isConnected) waiting.remove();
+      if (trigger) {
+        trigger.disabled = false;
+        trigger.classList.remove("is-busy");
+        trigger.textContent = originalLabel;
+      }
     }
   }
 

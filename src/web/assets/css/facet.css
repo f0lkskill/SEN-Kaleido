@@ -38,40 +38,89 @@
 
 .facet-dimensions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: var(--space-3);
   margin-bottom: var(--space-2);
 }
 
+/* 维度卡片：环形“图元球” + 维度名 + 权重，比进度条更直观 */
 .facet-dim {
-  padding: var(--space-3);
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt);
+  text-align: center;
 }
 
-.facet-dim-head {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
+.facet-orb {
+  --value: 0;
+  --orb-color: var(--color-primary);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--orb-color) calc(var(--value) * 1%),
+    var(--color-border) 0
+  );
+  box-shadow: inset 0 1px 3px rgba(27, 37, 54, 0.12);
+}
+
+/* 内圆 + 左上高光，制造轻微球体质感 */
+.facet-orb::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.9), transparent 52%),
+    var(--color-surface);
+  box-shadow: 0 2px 6px rgba(27, 37, 54, 0.1) inset;
+}
+
+.facet-orb-core {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  line-height: 1.05;
+}
+
+.facet-orb-core strong {
+  color: var(--orb-color);
+  font-size: calc(1.55rem * var(--font-scale));
+}
+
+.facet-orb-core span {
+  color: var(--color-text-muted);
   font-size: var(--font-small);
+}
+
+/* 分档配色：绿 / 蓝 / 橙 / 红，未评分为中性灰 */
+.facet-orb-good { --orb-color: var(--color-success); }
+.facet-orb-ok { --orb-color: var(--color-primary); }
+.facet-orb-warn { --orb-color: var(--color-warning); }
+.facet-orb-bad { --orb-color: var(--color-danger); }
+.facet-orb-none { --orb-color: var(--color-border); }
+
+.facet-orb-none .facet-orb-core strong {
   color: var(--color-text-muted);
 }
 
-.facet-bar {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-border);
+.facet-dim-name {
+  font-weight: 600;
+  line-height: 1.4;
 }
 
-.facet-bar > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-primary);
-  transition: width 240ms ease;
+.facet-dim-weight {
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
 }
 
 .facet-block {

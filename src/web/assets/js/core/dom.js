@@ -93,8 +93,8 @@ export function enhanceDisclosure(details) {
   while (summary.nextSibling) body.append(summary.nextSibling);
   details.append(body);
 
-  details.open = false;
-  body.style.height = "0px";
+  // 尊重初始 open：默认展开的板块（如学生画像）保持展开
+  body.style.height = details.open ? "auto" : "0px";
 
   summary.addEventListener("click", (event) => {
     event.preventDefault();

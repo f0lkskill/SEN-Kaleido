@@ -338,17 +338,26 @@ export function createView(root, hooks = {}) {
       panel("学生属性", renderAttributes(attributes)),
       panel("学习节奏", renderLearningPace(attributes)),
       panel("维度与学习节奏关系", renderFlow(attributes, item.framework)),
-      panel("学生画像", renderPortrait(item.portrait)),
-      panel("生成提示词规则板", renderPromptBoard(item)),
-      panel(
-        "评价标准与观测点",
-        // 评价标准默认隐藏，点击展开查看观测点与评分等级
-        enhanceDisclosure(
-          el("details", { class: "collapse" }, [
-            el("summary", {}, [el("span", { text: "展开查看观测点与评分等级" })]),
-            el("div", { class: "collapse-body" }, [renderFramework(item.framework)]),
-          ])
-        )
+      // 画像默认收起，点击标题展开
+      enhanceDisclosure(
+        el("details", { class: "panel content-disclosure", open: true }, [
+          el("summary", { class: "panel-title", text: "学生画像" }),
+          el("div", { class: "portrait-body" }, [renderPortrait(item.portrait)]),
+        ])
+      ),
+      // 规则板默认收起，点击标题展开
+      enhanceDisclosure(
+        el("details", { class: "panel content-disclosure" }, [
+          el("summary", { class: "panel-title", text: "生成提示词规则板" }),
+          renderPromptBoard(item),
+        ])
+      ),
+      // 评价标准默认收起：标题即开关，展开后内容与标题直接融合
+      enhanceDisclosure(
+        el("details", { class: "panel content-disclosure" }, [
+          el("summary", { class: "panel-title", text: "评价标准与观测点" }),
+          renderFramework(item.framework),
+        ])
       ),
       el("p", { class: "meta detail-meta", text: `更新时间：${formatTime(item.updated_at)}` }),
     ]);
@@ -414,30 +423,40 @@ export function createView(root, hooks = {}) {
         checkbox.addEventListener("change", () =>
           togglePromptBoardItem(item, prompt, checkbox.checked)
         );
-        const badges = el("div", { class: "badge-row" }, [
-          prompt.source_topic
-            ? el("span", { class: "badge badge-muted", text: `来源：${prompt.source_topic}` })
-            : null,
-          prompt.source_score !== null && prompt.source_score !== undefined
-            ? el("span", { class: "badge badge-warning", text: `评分 ${prompt.source_score}` })
-            : null,
-          el("span", { class: "badge badge-muted", text: formatTime(prompt.created_at) }),
+        // 元信息与删除按钮同一行：来源/时间靠左，删除靠右
+        const meta = el("div", { class: "prompt-board-meta" }, [
+          el("div", { class: "badge-row" }, [
+            prompt.source_topic
+              ? el("span", { class: "badge badge-muted", text: `来源：${prompt.source_topic}` })
+              : null,
+            el("span", { class: "badge badge-muted", text: formatTime(prompt.created_at) }),
+          ]),
+          el("button", {
+            class: "btn btn-danger btn-sm prompt-board-delete",
+            type: "button",
+            text: "删除",
+            on: {
+              click: (event) => {
+                event.stopPropagation();
+                removePromptBoardItem(item, prompt);
+              },
+            },
+          }),
         ]);
-        list.append(
-          el("div", { class: "prompt-board-item" }, [
-            el("label", { class: "check prompt-board-check" }, [
-              checkbox,
-              el("span", { class: "prompt-board-text", text: prompt.text }),
-            ]),
-            badges,
-            el("button", {
-              class: "btn btn-danger btn-sm",
-              type: "button",
-              text: "删除",
-              on: { click: () => removePromptBoardItem(item, prompt) },
-            }),
-          ])
-        );
+
+        const row = el("div", { class: "prompt-board-item" }, [
+          el("label", { class: "check prompt-board-check" }, [
+            checkbox,
+            el("span", { class: "prompt-board-text", text: prompt.text }),
+          ]),
+          meta,
+        ]);
+        // 点击整张卡片即可启用/关闭提示词（删除按钮与复选框除外）
+        row.addEventListener("click", (event) => {
+          if (event.target.closest("button") || event.target.closest("label")) return;
+          checkbox.click();
+        });
+        list.append(row);
       }
       wrap.append(list);
     }
@@ -470,9 +489,11 @@ export function createView(root, hooks = {}) {
   async function togglePromptBoardItem(item, prompt, enabled) {
     try {
       await api.updatePromptBoardItem(item.profile_id, prompt.prompt_id, { enabled });
-      await refreshDetail(item);
+      // 本地同步即可，避免整块详情重绘导致折叠状态丢失
+      prompt.enabled = enabled;
     } catch (err) {
       toastError(err.message);
+      await refreshDetail(item);
     }
   }
 

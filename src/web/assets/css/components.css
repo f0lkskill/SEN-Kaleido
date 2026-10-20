@@ -245,6 +245,105 @@ select:hover {
   border-color: #b9c6da;
 }
 
+/* ---- 可定制下拉弹层：Chromium 渐进增强，其余浏览器回退原生 ---- */
+@supports (appearance: base-select) {
+  select {
+    display: inline-flex;
+    appearance: base-select;
+    align-items: center;
+    padding-right: 34px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* 选中值单行显示，超长省略 */
+  select::selectedcontent {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 原生三角不参与布局：箭头统一由选择框的背景 chevron 提供，
+     这样箭头始终落在固定的右内边距处，不会随所选文字长短漂移 */
+  select::picker-icon {
+    display: none;
+  }
+
+  /* 以整个胶囊字段为锚点，保证弹层左对齐且等宽 */
+  .field:has(> select) {
+    anchor-name: --kaleido-select;
+    anchor-scope: --kaleido-select;
+  }
+
+  /* 弹层容器：与触发框等宽，超高时内部滚动 */
+  select::picker(select) {
+    appearance: base-select;
+    position-anchor: --kaleido-select;
+    left: anchor(left);
+    right: auto;
+    width: anchor-size(width);
+    max-height: 360px;
+    margin-top: 6px;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: 0 12px 32px rgba(23, 43, 77, 0.18);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity 0.16s ease,
+      transform 0.16s ease,
+      display 0.16s allow-discrete,
+      overlay 0.16s allow-discrete;
+  }
+
+  /* 关闭时淡出并轻微上移 */
+  select:not(:open)::picker(select) {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  /* 打开时从透明、略微上移的位置渐入 */
+  @starting-style {
+    select:open::picker(select) {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+
+  /* 选项：圆角、留白与悬浮反馈 */
+  select option {
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font-size: var(--font-body);
+  }
+
+  select option:hover {
+    background: var(--color-surface-alt);
+  }
+
+  select option:checked {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-weight: 600;
+  }
+
+  select option:disabled {
+    color: var(--color-text-muted);
+  }
+
+}
+
 .checks {
   display: grid;
   /* 宽容器自动四列一行，窄容器（如资源生成侧栏）自动降为两列 */
@@ -623,9 +722,10 @@ details.disclosure > summary {
   font-weight: 600;
 }
 
-.field:has(> select) > select {
-  padding-right: 24px;
-  background-position: right 2px center;
+/* 胶囊内的下拉：右侧恒定留出箭头位，箭头距胶囊右缘约 12px（8px 胶囊内边距 + 4px） */
+.field:has(> label):has(> select) > select {
+  padding: 0 30px 0 0;
+  background-position: right 4px center;
 }
 
 .field:has(> select) > select:focus,
@@ -661,8 +761,8 @@ details.disclosure > summary {
 }
 
 .toolbar-with-actions .field {
-  flex: 1 1 0;
-  min-width: 130px;
+  flex: 1 1 8em;
+  min-width: 8em;
   max-width: 220px;
 }
 
@@ -1130,6 +1230,39 @@ details.disclosure > summary {
   letter-spacing: 0;
 }
 
+/* ---- 可折叠板块：标题沿用 panel-title，默认收起，点击展开 ---- */
+.content-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.content-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 展开/收起状态用 chevron 图标表示 */
+.content-disclosure > summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-left: var(--space-2);
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: var(--color-text-muted);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.2s ease;
+}
+
+.content-disclosure[open] > summary::after {
+  transform: rotate(-135deg) translateY(-2px);
+}
+
+.content-disclosure .disclosure-body > .detail-md,
+.content-disclosure .disclosure-body > .portrait-body {
+  margin-top: var(--space-2);
+}
 
 /* ---- 评价框架可视化 ---- */
 .framework {
@@ -1600,14 +1733,19 @@ details.collapse > summary::-webkit-details-marker {
 }
 
 details.collapse > summary::after {
-  content: "展开";
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
   color: var(--color-text-muted);
-  font-size: var(--font-small);
-  font-weight: 400;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.2s ease;
 }
 
 details.collapse[open] > summary::after {
-  content: "收起";
+  transform: rotate(-135deg) translateY(-2px);
 }
 
 /* 折叠内容容器：高度过渡由 enhanceDisclosure() 驱动，展开/收起均有动画 */
