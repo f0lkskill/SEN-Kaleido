@@ -103,6 +103,17 @@ function activate(id) {
           controllers.forge.preselect(profileId);
         }
       },
+      // 从资源库基于原资源发起修订生成
+      onReviseResource: (resource) => {
+        activate("forge");
+        if (controllers.forge && controllers.forge.preselect) {
+          controllers.forge.preselect(resource.profile_id, {
+            resource_id: resource.resource_id,
+            topic: resource.topic,
+            resource_type: resource.resource_type,
+          });
+        }
+      },
       // 从资源库跳转到学生档案，定位并展示来源学生
       onShowStudent: (profileId) => {
         activate("students");

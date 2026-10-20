@@ -339,6 +339,7 @@ export function createView(root, hooks = {}) {
       panel("学习节奏", renderLearningPace(attributes)),
       panel("维度与学习节奏关系", renderFlow(attributes, item.framework)),
       panel("学生画像", renderPortrait(item.portrait)),
+      panel("生成提示词规则板", renderPromptBoard(item)),
       panel(
         "评价标准与观测点",
         // 评价标准默认隐藏，点击展开查看观测点与评分等级
@@ -388,6 +389,125 @@ export function createView(root, hooks = {}) {
       })
     );
     return wrap;
+  }
+
+  /** 渲染画像下方的生成提示词规则板。 */
+  function renderPromptBoard(item) {
+    const board = Array.isArray(item.prompt_board) ? item.prompt_board : [];
+    const wrap = el("div", { class: "prompt-board" });
+    wrap.append(
+      el("p", {
+        class: "meta",
+        text: "质量校验时模型提炼的生成提示词会收录在这里；生成资源时可勾选使用。",
+      })
+    );
+
+    if (board.length === 0) {
+      wrap.append(placeholder("暂无补充提示词。可手动添加，或在资源库对课件做质量校验后自动收录。"));
+    } else {
+      const list = el("div", { class: "prompt-board-list" });
+      for (const prompt of board) {
+        const checkbox = el("input", {
+          type: "checkbox",
+          checked: Boolean(prompt.enabled),
+        });
+        checkbox.addEventListener("change", () =>
+          togglePromptBoardItem(item, prompt, checkbox.checked)
+        );
+        const badges = el("div", { class: "badge-row" }, [
+          prompt.source_topic
+            ? el("span", { class: "badge badge-muted", text: `来源：${prompt.source_topic}` })
+            : null,
+          prompt.source_score !== null && prompt.source_score !== undefined
+            ? el("span", { class: "badge badge-warning", text: `评分 ${prompt.source_score}` })
+            : null,
+          el("span", { class: "badge badge-muted", text: formatTime(prompt.created_at) }),
+        ]);
+        list.append(
+          el("div", { class: "prompt-board-item" }, [
+            el("label", { class: "check prompt-board-check" }, [
+              checkbox,
+              el("span", { class: "prompt-board-text", text: prompt.text }),
+            ]),
+            badges,
+            el("button", {
+              class: "btn btn-danger btn-sm",
+              type: "button",
+              text: "删除",
+              on: { click: () => removePromptBoardItem(item, prompt) },
+            }),
+          ])
+        );
+      }
+      wrap.append(list);
+    }
+
+    const textarea = el("textarea", {
+      name: "prompt_board_text",
+      placeholder: "手动补充一条生成提示词，例如：颜色词必须配可触摸实物。",
+    });
+    wrap.append(
+      el("div", { class: "prompt-board-add" }, [
+        textarea,
+        el("button", {
+          class: "btn btn-sm",
+          type: "button",
+          text: "添加提示词",
+          on: { click: () => addPromptBoardItem(item, textarea) },
+        }),
+      ])
+    );
+    return wrap;
+  }
+
+  /** 重新加载当前学生详情。 */
+  async function refreshDetail(item) {
+    const card = listBox.querySelector(`[data-profile-id="${item.profile_id}"]`);
+    await showDetail(item.profile_id, card);
+  }
+
+  /** 启用/停用规则板提示词。 */
+  async function togglePromptBoardItem(item, prompt, enabled) {
+    try {
+      await api.updatePromptBoardItem(item.profile_id, prompt.prompt_id, { enabled });
+      await refreshDetail(item);
+    } catch (err) {
+      toastError(err.message);
+    }
+  }
+
+  /** 删除规则板提示词。 */
+  async function removePromptBoardItem(item, prompt) {
+    const ok = await confirmDialog({
+      title: "删除提示词",
+      message: "确认从规则板删除这条提示词？",
+      confirmText: "删除",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.deletePromptBoardItem(item.profile_id, prompt.prompt_id);
+      toastSuccess("提示词已删除");
+      await refreshDetail(item);
+    } catch (err) {
+      toastError(err.message);
+    }
+  }
+
+  /** 手动新增规则板提示词。 */
+  async function addPromptBoardItem(item, textarea) {
+    const text = textarea.value.trim();
+    if (!text) {
+      toastError("请填写提示词内容");
+      return;
+    }
+    try {
+      await api.addPromptBoardItem(item.profile_id, { text });
+      toastSuccess("提示词已添加");
+      await refreshDetail(item);
+    } catch (err) {
+      toastError(err.message);
+    }
   }
 
   /** 基于证据生成学生画像，并刷新详情。 */

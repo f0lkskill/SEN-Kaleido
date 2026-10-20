@@ -24,8 +24,13 @@ export function createView(root, hooks = {}) {
   let tempWrapper;
   let output;
   let studentPanel;
+  let promptBoardBox;
+  let sourceBanner;
   let studentsCache = [];
   let pendingProfile = null;
+  let pendingSource = null;
+  let sourceResourceId = null;
+  let selectedPromptIds = new Set();
 
   function build() {
     clear(root);
@@ -42,11 +47,16 @@ export function createView(root, hooks = {}) {
     output = el("div");
     output.append(placeholder("生成结果将显示在此。"));
     studentPanel = el("div", { class: "selected-student", hidden: true });
+    promptBoardBox = el("div", { class: "prompt-picker", hidden: true });
+    sourceBanner = el("div", { class: "source-banner", hidden: true });
 
     studentSelect.addEventListener("change", () => {
       // 未选择学生时展示临时属性表单
       tempWrapper.hidden = studentSelect.value !== "";
+      sourceResourceId = null;
+      renderSourceBanner();
       renderSelectedStudent();
+      loadPromptBoard();
     });
 
     // 左：信息表单；右：生成结果
@@ -57,9 +67,11 @@ export function createView(root, hooks = {}) {
           studentSelect,
         ]),
         studentPanel,
+        promptBoardBox,
         tempWrapper,
       ]),
       panel("生成设置", [
+        sourceBanner,
         el("div", { class: "field" }, [
           el("label", { text: "资源类型" }),
           resourceSelect,
@@ -120,7 +132,8 @@ export function createView(root, hooks = {}) {
       studentsCache = students.items;
       // 选项重建后 value 会被重置，这里恢复原选中/待预选的学生
       if (previous && selectStudent(previous)) pendingProfile = null;
-      renderSelectedStudent();
+      else renderSelectedStudent();
+      applyPending();
     } catch (err) {
       toastError(`加载选项失败：${err.message}`);
     }
@@ -161,12 +174,99 @@ export function createView(root, hooks = {}) {
     studentSelect.value = profileId;
     tempWrapper.hidden = true;
     renderSelectedStudent();
+    loadPromptBoard();
     return true;
   }
 
-  /** 应用待预选的学生（选项尚未就绪时留存，加载完成后生效）。 */
+  /** 应用待预选的学生与原资源。 */
   function applyPending() {
     if (pendingProfile && selectStudent(pendingProfile)) pendingProfile = null;
+    if (pendingSource && resourceSelect.options.length) {
+      applySource(pendingSource);
+      pendingSource = null;
+    }
+  }
+
+  /** 记录“基于原资源修订”的来源，并填充主题/类型。 */
+  function applySource(source) {
+    if (!source) return;
+    sourceResourceId = source.resource_id || null;
+    if (source.topic) topicInput.value = source.topic;
+    if (source.resource_type) {
+      const option = Array.from(resourceSelect.options).find(
+        (item) => item.value === source.resource_type
+      );
+      if (option) resourceSelect.value = source.resource_type;
+    }
+    renderSourceBanner();
+  }
+
+  /** 展示/隐藏原资源修订提示。 */
+  function renderSourceBanner() {
+    clear(sourceBanner);
+    if (!sourceResourceId) {
+      sourceBanner.hidden = true;
+      return;
+    }
+    sourceBanner.hidden = false;
+    sourceBanner.append(
+      el("span", { text: `基于原资源 ${sourceResourceId} 生成修订版` }),
+      el("button", {
+        class: "btn btn-sm",
+        type: "button",
+        text: "取消",
+        on: {
+          click: () => {
+            sourceResourceId = null;
+            renderSourceBanner();
+          },
+        },
+      })
+    );
+  }
+
+  /** 加载所选学生的规则板并渲染勾选项。 */
+  async function loadPromptBoard() {
+    selectedPromptIds = new Set();
+    promptBoardBox.hidden = true;
+    clear(promptBoardBox);
+    const profileId = studentSelect.value;
+    if (!profileId) return;
+    try {
+      const board = await api.getPromptBoard(profileId);
+      // 学生切换过快时丢弃过期响应
+      if (studentSelect.value !== profileId) return;
+      if (!board.length) return;
+      selectedPromptIds = new Set(
+        board.filter((item) => item.enabled).map((item) => item.prompt_id)
+      );
+      promptBoardBox.hidden = false;
+      promptBoardBox.append(el("h4", { text: "选用画像规则板提示词" }));
+      const list = el("div", { class: "prompt-picker-list" });
+      for (const item of board) {
+        const checkbox = el("input", {
+          type: "checkbox",
+          checked: Boolean(item.enabled),
+          disabled: !item.enabled,
+        });
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) selectedPromptIds.add(item.prompt_id);
+          else selectedPromptIds.delete(item.prompt_id);
+        });
+        list.append(
+          el("label", { class: "check prompt-picker-item" }, [
+            checkbox,
+            el("span", { text: item.text }),
+          ])
+        );
+      }
+      promptBoardBox.append(
+        list,
+        el("p", { class: "meta", text: "仅勾选的启用提示词会加入本次生成。" })
+      );
+    } catch (err) {
+      toastError(`加载规则板失败：${err.message}`);
+    }
   }
 
   /** 执行生成（流式：实时显示模型思考与正文增量）。 */
@@ -183,6 +283,10 @@ export function createView(root, hooks = {}) {
     };
     if (studentSelect.value) {
       payload.profile_id = studentSelect.value;
+      if (selectedPromptIds.size) {
+        payload.prompt_ids = [...selectedPromptIds];
+      }
+      if (sourceResourceId) payload.source_resource_id = sourceResourceId;
     } else {
       payload.attributes = readAttributes(tempForm);
     }
@@ -290,9 +394,10 @@ export function createView(root, hooks = {}) {
     refresh() {
       loadOptions();
     },
-    /** 预选指定学生（用于从学生档案快速跳转生成）。 */
-    preselect(profileId) {
+    /** 预选指定学生（用于从学生档案/资源库快速跳转生成）。 */
+    preselect(profileId, source = null) {
       pendingProfile = profileId;
+      pendingSource = source;
       applyPending();
     },
   };

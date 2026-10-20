@@ -124,3 +124,43 @@
 .facet-empty .meta {
   margin: 0;
 }
+
+/* 生成页：画像规则板勾选与原资源修订提示 */
+.prompt-picker {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+}
+
+.prompt-picker h4 {
+  margin: 0;
+  font-size: var(--font-small);
+  color: var(--color-text-muted);
+}
+
+.prompt-picker-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.prompt-picker-item {
+  align-items: flex-start;
+  line-height: 1.7;
+}
+
+.source-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-soft);
+}

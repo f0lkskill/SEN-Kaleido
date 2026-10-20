@@ -214,6 +214,16 @@ export function createView(root, hooks = {}) {
               if (hooks.onShowStudent) hooks.onShowStudent(item.profile_id);
             },
           },
+        }),
+        el("button", {
+          class: "btn btn-sm",
+          type: "button",
+          text: "修订生成",
+          on: {
+            click: () => {
+              if (hooks.onReviseResource) hooks.onReviseResource(item);
+            },
+          },
         })
       );
     }
@@ -411,6 +421,12 @@ export function createView(root, hooks = {}) {
       },
       { label: "复制 ID", onSelect: () => copyText(item.resource_id) },
       null,
+      {
+        label: "修订生成",
+        onSelect: () => {
+          if (hooks.onReviseResource) hooks.onReviseResource(item);
+        },
+      },
       {
         label: item.facet ? "重新校验质量" : "质量校验",
         onSelect: () => evaluateResource(item),
