@@ -344,11 +344,11 @@ export function buildAttributesForm(prefix) {
     ),
   ]);
 
-  // 按语义分区，避免长表单混在一起
+  // 按语义分区（仅用分隔线分组，标题由各字段的药丸标签承担，避免重复）
   form.append(
-    panel("障碍信息", [disabilityField, row1]),
-    panel("认知与节奏", [row2]),
-    panel("康复目标", [goalField])
+    panel(null, [disabilityField, row1]),
+    panel(null, [row2]),
+    panel(null, [goalField])
   );
   return form;
 }

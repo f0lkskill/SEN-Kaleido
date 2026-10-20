@@ -181,11 +181,11 @@
   gap: var(--space-1);
   margin-bottom: 2px;
   padding: 3px var(--space-3);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-primary-soft);
   border-radius: 999px;
-  background: var(--color-surface-alt);
-  color: var(--color-text-muted);
-  font-weight: 600;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-weight: 700;
   font-size: var(--font-small);
   line-height: 1.4;
 }
@@ -227,23 +227,31 @@ textarea {
 }
 
 .checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
 }
 
-/* ---- 单/多选：滑动开关（名称融入控件，统一宽度） ---- */
+@media (max-width: 520px) {
+  .checks {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- 单/多选：滑动开关（名称融入控件，统一高度） ---- */
 .check {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
-  min-width: 160px;
-  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface-alt);
-  font-size: var(--font-small);
+  font-size: var(--font-body);
+  font-weight: 500;
   cursor: pointer;
   user-select: none;
   transition: border-color 0.18s ease, background 0.18s ease;
@@ -258,8 +266,8 @@ textarea {
   -webkit-appearance: none;
   position: relative;
   flex: none;
-  width: 38px;
-  height: 22px;
+  width: 42px;
+  height: 24px;
   margin: 0;
   border-radius: 999px;
   background: var(--color-border);
@@ -272,8 +280,8 @@ textarea {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #fff;
   box-shadow: var(--shadow-sm);
@@ -285,7 +293,7 @@ textarea {
 }
 
 .check input[type="checkbox"]:checked::after {
-  transform: translateX(16px);
+  transform: translateX(18px);
 }
 
 .check input[type="checkbox"]:focus-visible {
@@ -300,7 +308,7 @@ textarea {
 
 /* 同一组内的开关等宽 */
 .checks .check {
-  flex: 1 1 160px;
+  width: 100%;
 }
 
 /* ---- 表格 ---- */

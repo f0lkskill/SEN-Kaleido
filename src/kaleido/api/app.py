@@ -17,8 +17,12 @@ from kaleido.common.logging import get_logger, setup_logging
 from kaleido.common.paths import DATA_DIR, WEB_DIR
 
 logger = get_logger("api")
+from kaleido.evidence.api import create_app as create_evidence_app
+from kaleido.evidence.repository import EvidenceRepository
+from kaleido.evidence.service import EvidenceService
 from kaleido.forge.models import GenerateRequest
 from kaleido.profile.api import create_app as create_profile_app
+from kaleido.profile.repository import StudentRepository
 from kaleido.profile.service import ProfileService
 from kaleido.tasks.api import create_app as create_tasks_app
 from kaleido.tasks.service import TaskService
@@ -44,9 +48,17 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
 
     # 单一 Vault 实例在三层间共享，保证磁盘锁与索引一致
     vault = vault or Vault()
-    profile_service = profile_service or ProfileService()
+    profile_repository = StudentRepository(vault=vault)
+    profile_service = profile_service or ProfileService(repository=profile_repository)
     app.merge(create_profile_app(profile_service))
     app.merge(create_vault_app(vault))
+
+    # 证据管理：与学生档案共用同一 vault 与仓库，保证跨模块一致
+    evidence_service = EvidenceService(
+        repository=EvidenceRepository(vault=vault),
+        student_repository=profile_repository,
+    )
+    app.merge(create_evidence_app(evidence_service))
 
     # 异步任务服务：注册 forge 生成处理器，供批量/闲时调度使用
     task_service = TaskService(vault=vault)

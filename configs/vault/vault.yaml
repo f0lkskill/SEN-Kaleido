@@ -23,6 +23,15 @@ collections:
       - resource_type
       - disability
       - status
+  evidence:
+    id_prefix: e
+    id_zerofill: 5
+    index_fields:
+      - student_id
+      - observation_key
+      - source_type
+      - status
+      - collected_at
   feedback:
     id_prefix: f
     id_zerofill: 5

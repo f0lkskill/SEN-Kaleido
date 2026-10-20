@@ -143,13 +143,11 @@ export function createView(root, hooks = {}) {
     });
 
     const form = el("form", { class: "create-form" }, [
-      panel("基本信息", [
+      panel(null, [
         el("div", { class: "field" }, [el("label", { text: "学生姓名/化名" }), nameInput]),
       ]),
       attrsForm,
-      panel("其他选项", [
-        el("label", { class: "check" }, [frameworkCheck, "同时生成评价框架"]),
-      ]),
+      panel(null, [el("label", { class: "check" }, [frameworkCheck, "同时生成评价框架"])]),
       el("div", { class: "form-actions" }, [
         el("button", { class: "btn btn-primary", type: "submit", text: "建档" }),
       ]),
