@@ -132,7 +132,7 @@ export function createView(root, hooks = {}) {
     mediaFilter = filterSelect("media_type", Object.entries(MEDIA_TYPE), "全部媒体");
     sourceFilter = filterSelect("source_type", []);
     statusFilter = filterSelect("status", Object.entries(EVIDENCE_STATUS));
-    summaryBox = el("div", { class: "badge-row" }, [badge("共 0 条")]);
+    summaryBox = el("div", { class: "badge-row toolbar-summary" });
     listBox = el("div", { class: "student-list" });
     detailBox = el("div", { class: "student-detail", hidden: true });
     layout = el("div", { class: "student-layout" }, [listBox, detailBox]);
@@ -144,14 +144,15 @@ export function createView(root, hooks = {}) {
       el("div", { class: "field" }, [el("label", { text: "来源" }), sourceFilter]),
       el("div", { class: "field" }, [el("label", { text: "状态" }), statusFilter]),
       el("div", { class: "spacer" }),
-      summaryBox,
-      el("button", { class: "btn", type: "button", text: "刷新", on: { click: refresh } }),
-      el("button", {
-        class: "btn btn-primary",
-        type: "button",
-        text: "＋ 新增证据",
-        on: { click: openCreateModal },
-      }),
+      el("div", { class: "toolbar-actions" }, [
+        el("button", { class: "btn", type: "button", text: "刷新", on: { click: refresh } }),
+        el("button", {
+          class: "btn btn-primary",
+          type: "button",
+          text: "＋ 新增证据",
+          on: { click: openCreateModal },
+        }),
+      ]),
     ]);
 
     // 选择即筛选
@@ -159,7 +160,7 @@ export function createView(root, hooks = {}) {
       select.addEventListener("change", refresh);
     }
 
-    root.append(el("section", { class: "card" }, [toolbar, layout]));
+    root.append(el("section", { class: "card" }, [toolbar, summaryBox, layout]));
   }
 
   /** 来源定义（后端失败时回退到静态键名）。 */
@@ -215,7 +216,6 @@ export function createView(root, hooks = {}) {
       const byScope = data.by_scope || {};
       clear(summaryBox);
       summaryBox.append(
-        badge(`共 ${data.total || 0} 条`),
         badge(`公有 ${byScope.public || 0}`, "badge-info"),
         badge(`归类 ${byScope.classified || 0}`, "badge-muted"),
         badge(`待审核 ${byStatus.draft || 0}`, "badge-warning")

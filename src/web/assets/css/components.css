@@ -198,7 +198,7 @@
 
 .field-row {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
   gap: var(--space-4);
 }
@@ -566,8 +566,10 @@ details.disclosure > summary {
   margin-bottom: var(--space-4);
 }
 
-/* ---- 复合选择控件：标签与下拉融合成胶囊（全站通用） ---- */
-.field:has(> select) {
+/* ---- 复合控件：标签与下拉/单行输入融合成胶囊（全站通用） ---- */
+.field:has(> label):has(> select),
+.field:has(> label):has(> input[type="text"]),
+.field:has(> label):has(> input[type="number"]) {
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
@@ -579,16 +581,22 @@ details.disclosure > summary {
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.field:has(> select):hover {
+.field:has(> label):has(> select):hover,
+.field:has(> label):has(> input[type="text"]):hover,
+.field:has(> label):has(> input[type="number"]):hover {
   border-color: #b9c6da;
 }
 
-.field:has(> select):focus-within {
+.field:has(> label):has(> select):focus-within,
+.field:has(> label):has(> input[type="text"]):focus-within,
+.field:has(> label):has(> input[type="number"]):focus-within {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-soft);
 }
 
-.field:has(> select) > label {
+.field:has(> label):has(> select) > label,
+.field:has(> label):has(> input[type="text"]) > label,
+.field:has(> label):has(> input[type="number"]) > label {
   align-self: center;
   margin: 0;
   padding: 0;
@@ -600,21 +608,29 @@ details.disclosure > summary {
   line-height: 1;
 }
 
-.field:has(> select) > select {
+.field:has(> label):has(> select) > select,
+.field:has(> label):has(> input[type="text"]) > input,
+.field:has(> label):has(> input[type="number"]) > input {
   flex: 1 1 auto;
   width: auto;
   min-width: 0;
   min-height: 34px;
-  padding: 0 24px 0 0;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background-color: transparent;
-  background-position: right 2px center;
   box-shadow: none;
   font-weight: 600;
 }
 
-.field:has(> select) > select:focus {
+.field:has(> select) > select {
+  padding-right: 24px;
+  background-position: right 2px center;
+}
+
+.field:has(> select) > select:focus,
+.field:has(> input[type="text"]) > input:focus,
+.field:has(> input[type="number"]) > input:focus {
   border: 0;
   box-shadow: none;
 }
@@ -627,6 +643,20 @@ details.disclosure > summary {
 
 .spacer {
   flex: 1;
+}
+
+/* 工具条右侧操作区：与筛选保持同一行 */
+.toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 筛选结果统计：紧贴工具条下方，弱化展示 */
+.toolbar-summary {
+  margin: calc(var(--space-2) * -1) 0 var(--space-3);
+  padding-inline: var(--space-1);
 }
 
 /* ---- 左右分栏（任务队列 / 资源生成） ---- */

@@ -31,7 +31,11 @@ export function createView(root, hooks = {}) {
     clear(root);
     studentSelect = el("select", { name: "profile_id" });
     resourceSelect = el("select", { name: "resource_type" });
-    topicInput = el("input", { type: "text", name: "topic" });
+    topicInput = el("input", {
+      type: "text",
+      name: "topic",
+      placeholder: "请输入教学主题",
+    });
     extraInput = el("textarea", { name: "extra" });
     tempForm = buildAttributesForm("forge");
     tempWrapper = el("div", { hidden: true });
@@ -56,15 +60,13 @@ export function createView(root, hooks = {}) {
         tempWrapper,
       ]),
       panel("生成设置", [
-        el("div", { class: "field-row" }, [
-          el("div", { class: "field" }, [
-            el("label", { text: "资源类型" }),
-            resourceSelect,
-          ]),
-          el("div", { class: "field" }, [
-            el("label", { text: "教学主题" }),
-            topicInput,
-          ]),
+        el("div", { class: "field" }, [
+          el("label", { text: "资源类型" }),
+          resourceSelect,
+        ]),
+        el("div", { class: "field" }, [
+          el("label", { text: "教学主题" }),
+          topicInput,
         ]),
         el("div", { class: "field" }, [
           el("label", { text: "补充要求（可选）" }),
