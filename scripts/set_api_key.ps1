@@ -1,4 +1,4 @@
-# 安全写入 DeepSeek API Key 到项目根目录 .env
+﻿# 安全写入 DeepSeek API Key 到项目根目录 .env
 # 用法：在项目根目录执行
 #   powershell -ExecutionPolicy Bypass -File scripts\set_api_key.ps1
 # 输入时不回显，密钥不会出现在命令行历史中。
@@ -7,7 +7,8 @@ $ErrorActionPreference = "Stop"
 $envPath = Join-Path (Split-Path -Parent $PSScriptRoot) ".env"
 
 Write-Host "请先在 https://platform.deepseek.com/api_keys 创建新的 API Key。"
-$secure = Read-Host "粘贴新的 DeepSeek API Key（输入不回显）" -AsSecureString
+Write-Host "可先复制新 Key，然后直接按回车从剪贴板读取；也可在下方粘贴（不回显）。"
+$secure = Read-Host "粘贴新的 DeepSeek API Key（直接回车=读取剪贴板）" -AsSecureString
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try {
     $key = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
@@ -17,6 +18,15 @@ finally {
 }
 
 $key = $key.Trim()
+if (-not $key) {
+    try {
+        $key = (Get-Clipboard -Raw).Trim()
+        Write-Host "已从剪贴板读取密钥。"
+    }
+    catch {
+        Write-Error "剪贴板读取失败，请重新运行并手动粘贴密钥。"
+    }
+}
 if (-not $key) {
     Write-Error "未输入密钥，已取消。"
 }
