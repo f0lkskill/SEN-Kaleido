@@ -97,7 +97,7 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
         vault=vault,
         client=forge_service.client if forge_service is not None else None,
     )
-    app.merge(create_facet_app(facet_service))
+    app.merge(create_facet_app(facet_service, task_service=task_service))
     task_service.register(
         "facet.evaluate",
         lambda payload: facet_service.evaluate(str(payload.get("resource_id") or "")),

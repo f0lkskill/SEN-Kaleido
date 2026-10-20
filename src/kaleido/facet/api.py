@@ -10,12 +10,17 @@ from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.facet.models import FacetEvaluationRequest
 from kaleido.facet.service import FacetService
+from kaleido.tasks.recording import record_task
+from kaleido.tasks.service import TaskService
 
 _logger = get_logger("facet.api")
 
 
-def create_app(service: FacetService | None = None) -> Bottle:
-    """构建 facet 的 Bottle 应用。"""
+def create_app(
+    service: FacetService | None = None,
+    task_service: TaskService | None = None,
+) -> Bottle:
+    """构建 facet 的 Bottle 应用；可注入任务服务以便记录模型分析过程。"""
     # bottle 路由装饰器类型标注有缺陷，用 Any 视图规避误报
     app = cast(Any, Bottle())
     svc = service or FacetService()
@@ -43,7 +48,13 @@ def create_app(service: FacetService | None = None) -> Bottle:
 
         def action():
             payload = cast("dict[str, Any]", request.json) or {}
-            return svc.evaluate(resource_id, FacetEvaluationRequest(**payload))
+            req = FacetEvaluationRequest(**payload)
+            return record_task(
+                task_service,
+                "facet.evaluate",
+                {"resource_id": resource_id, **req.model_dump()},
+                lambda: svc.evaluate(resource_id, req),
+            )
 
         return run(action, status=201)
 

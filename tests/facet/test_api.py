@@ -18,6 +18,7 @@ from kaleido.forge.llm_client import StubClient
 from kaleido.profile.models.student import CreateStudentRequest, StudentAttributesInput
 from kaleido.profile.repository import StudentRepository
 from kaleido.profile.service import ProfileService
+from kaleido.tasks.service import FAILED, SUCCEEDED, TaskService
 from kaleido.vault import Vault
 
 _LLM_CONTENT = json.dumps(
@@ -111,11 +112,17 @@ def _setup(tmp_path):
         client=StubClient(content=_LLM_CONTENT),
         vault=vault,
     )
-    return _client(create_app(service)), resource_id
+    task_service = TaskService(
+        vault=vault,
+        config={"worker_count": 1, "schedule": {}},
+        autostart=False,
+    )
+    app = create_app(service, task_service=task_service)
+    return _client(app), resource_id, task_service
 
 
 def test_evaluate_and_get_report(tmp_path):
-    call, resource_id = _setup(tmp_path)
+    call, resource_id, _ = _setup(tmp_path)
     status, body = call("POST", f"/api/v1/facet/resources/{resource_id}/evaluate", {})
     assert status.startswith("201")
     assert body["data"]["verdict"] == "review"
@@ -126,22 +133,52 @@ def test_evaluate_and_get_report(tmp_path):
     assert body["data"]["summary"] == "整体可用。"
 
 
+def test_evaluate_records_task(tmp_path):
+    """资源库触发质量校验时，任务面板应能看到对应记录。"""
+    call, resource_id, tasks = _setup(tmp_path)
+    status, _ = call("POST", f"/api/v1/facet/resources/{resource_id}/evaluate", {})
+    assert status.startswith("201")
+
+    items = tasks.list_tasks(task_type="facet.evaluate")["items"]
+    assert len(items) == 1
+    task = items[0]
+    assert task["status"] == SUCCEEDED
+    assert task["payload"]["resource_id"] == resource_id
+    assert task["result"]["resource_id"] == resource_id
+    assert task["result"]["verdict"] == "review"
+    assert task["result"]["score"] == 90
+    assert task["started_at"] and task["finished_at"]
+
+
+def test_evaluate_failure_records_task(tmp_path):
+    """校验失败时任务也应留痕并标记失败。"""
+    call, _, tasks = _setup(tmp_path)
+    status, body = call("POST", "/api/v1/facet/resources/r_99999/evaluate", {})
+    assert status.startswith("404")
+    assert body["code"] == 1002
+
+    items = tasks.list_tasks(task_type="facet.evaluate")["items"]
+    assert len(items) == 1
+    assert items[0]["status"] == FAILED
+    assert items[0]["error"]
+
+
 def test_missing_report_returns_404(tmp_path):
-    call, resource_id = _setup(tmp_path)
+    call, resource_id, _ = _setup(tmp_path)
     status, body = call("GET", f"/api/v1/facet/resources/{resource_id}")
     assert status.startswith("404")
     assert body["code"] == 1002
 
 
 def test_unknown_resource_returns_404(tmp_path):
-    call, _ = _setup(tmp_path)
+    call, _, _ = _setup(tmp_path)
     status, body = call("POST", "/api/v1/facet/resources/r_99999/evaluate", {})
     assert status.startswith("404")
     assert body["code"] == 1002
 
 
 def test_config_endpoint(tmp_path):
-    call, _ = _setup(tmp_path)
+    call, _, _ = _setup(tmp_path)
     status, body = call("GET", "/api/v1/facet/config")
     assert status.startswith("200")
     assert "disability_fit" in body["data"]["dimensions"]

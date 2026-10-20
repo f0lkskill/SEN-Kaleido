@@ -142,6 +142,13 @@ def test_facet_evaluate_via_unified_app(tmp_path, monkeypatch):
     assert data["resource_id"] == resource_id
     assert data["verdict"] in ("pass", "review", "fail")
 
+    items = _task_items(app, "facet.evaluate")
+    assert len(items) == 1
+    task = items[0]
+    assert task["status"] == "succeeded"
+    assert task["result"]["resource_id"] == resource_id
+    assert task["result"]["verdict"] == data["verdict"]
+
 
 def test_forge_generate_via_task(tmp_path, monkeypatch):
     """通过异步任务执行 forge 生成（使用桩客户端，离线）。"""
