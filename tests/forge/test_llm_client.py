@@ -52,6 +52,25 @@ def test_create_client_falls_back_without_key(monkeypatch):
     )
 
 
+def test_create_client_does_not_log_misplaced_secret(monkeypatch, caplog):
+    # 密钥误填到 api_key_env 时只提示，不把密钥写进日志
+    monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)
+    monkeypatch.delenv("sk-secret", raising=False)
+    with caplog.at_level("WARNING"):
+        client = create_client({"provider": "deepseek", "api_key_env": "sk-secret"})
+    assert isinstance(client, StubClient)
+    assert "sk-secret" not in caplog.text
+
+
+def test_missing_key_error_does_not_leak_secret(monkeypatch):
+    monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)
+    monkeypatch.delenv("sk-secret", raising=False)
+    client = DeepSeekClient({"api_key_env": "sk-secret"})
+    with pytest.raises(ConfigError) as exc:
+        client.complete([{"role": "user", "content": "x"}])
+    assert "sk-secret" not in str(exc.value)
+
+
 def test_api_key_from_config(monkeypatch):
     # 配置里的 api_key 优先于环境变量
     monkeypatch.setattr(llm_client, "load_env_file", lambda *a, **k: None)

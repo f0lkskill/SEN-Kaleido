@@ -67,7 +67,10 @@ class DeepSeekClient:
         """读取密钥（密钥只存于基站，不下发客户端）。"""
         key = self._resolve_api_key()
         if not key:
-            raise ConfigError(f"未设置环境变量 {self.api_key_env}（或配置 api_key）")
+            raise ConfigError(
+                "未设置模型密钥：请在 .env 配置 DEEPSEEK_API_KEY，"
+                "或检查 llm.api_key_env 是否为环境变量名"
+            )
         return key
 
     def complete(self, messages: list[dict[str, Any]], **overrides) -> LLMResult:
@@ -220,9 +223,14 @@ def create_client(config: dict) -> LLMClient:
         return StubClient()
     client = DeepSeekClient(config)
     if not client.has_credentials():
+        if str(client.api_key_env).startswith(("sk-", "Bearer ")):
+            logger.warning(
+                "检测到密钥可能被误填到 llm.api_key_env；请改为环境变量名"
+                "DEEPSEEK_API_KEY，并把密钥只放在 .env"
+            )
         logger.warning(
-            "未检测到模型密钥（%s），已回退离线桩客户端；如需真实生成请在 .env 配置该变量",
-            client.api_key_env,
+            "未检测到模型密钥，已回退离线桩客户端；"
+            "如需真实生成请在 .env 配置 DEEPSEEK_API_KEY"
         )
         return StubClient()
     return client
