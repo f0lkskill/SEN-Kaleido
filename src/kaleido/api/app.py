@@ -20,6 +20,8 @@ logger = get_logger("api")
 from kaleido.evidence.api import create_app as create_evidence_app
 from kaleido.evidence.repository import EvidenceRepository
 from kaleido.evidence.service import EvidenceService
+from kaleido.facet.api import create_app as create_facet_app
+from kaleido.facet.service import FacetService
 from kaleido.forge.models import GenerateRequest
 from kaleido.profile.api import create_app as create_profile_app
 from kaleido.profile.repository import StudentRepository
@@ -64,6 +66,7 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
 
     # 异步任务服务：注册 forge 生成处理器，供批量/闲时调度使用
     task_service = TaskService(vault=vault)
+    forge_service = None
     if create_forge_app is not None and ForgeService is not None:
         forge_service = ForgeService(profile_service=profile_service, vault=vault)
         portrait_service = (
@@ -87,6 +90,18 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
                     str(payload.get("profile_id") or "")
                 ),
             )
+
+    # 质量校验：规则 + 模型评分，报告写回资源文档
+    facet_service = FacetService(
+        profile_service=profile_service,
+        vault=vault,
+        client=forge_service.client if forge_service is not None else None,
+    )
+    app.merge(create_facet_app(facet_service))
+    task_service.register(
+        "facet.evaluate",
+        lambda payload: facet_service.evaluate(str(payload.get("resource_id") or "")),
+    )
     app.merge(create_tasks_app(task_service))
 
     # ---- 可选访问日志（默认关闭，设 SEN_KALEIDO_ACCESS_LOG=1 开启） ----

@@ -112,6 +112,35 @@ def test_forge_task_registered(tmp_path):
     assert status.startswith("200")
     assert "forge.generate" in _json(raw)["data"]["task_types"]
     assert "forge.portrait" in _json(raw)["data"]["task_types"]
+    assert "facet.evaluate" in _json(raw)["data"]["task_types"]
+
+
+def test_facet_evaluate_via_unified_app(tmp_path, monkeypatch):
+    """统一入口下可对资源执行质量校验。"""
+    monkeypatch.setenv("SEN_KALEIDO_LLM_PROVIDER", "stub")
+    app = _app(tmp_path)
+    body = {
+        "attributes": {
+            "disabilities": ["visual"],
+            "severity": "mild",
+            "cognitive_level": "primary_3",
+            "sensory_preference": "visual_first",
+            "learning_pace": "medium",
+        },
+        "resource_type": "courseware",
+        "topic": "认识四季",
+    }
+    status, _, raw = _call(app, "POST", "/api/v1/forge/generate", body)
+    assert status.startswith("201")
+    resource_id = _json(raw)["data"]["resource_id"]
+
+    status, _, raw = _call(
+        app, "POST", f"/api/v1/facet/resources/{resource_id}/evaluate", {}
+    )
+    assert status.startswith("201")
+    data = _json(raw)["data"]
+    assert data["resource_id"] == resource_id
+    assert data["verdict"] in ("pass", "review", "fail")
 
 
 def test_forge_generate_via_task(tmp_path, monkeypatch):

@@ -306,6 +306,9 @@ class ForgeService:
             document = self.resources.get(resource_id)
         except (FileNotFoundError, OSError) as exc:
             raise NotFoundError(f"资源不存在: {resource_id}") from exc
+        facet = document.get("facet") or {}
+        if status == "approved" and facet.get("blocking"):
+            raise ValidationError("质量校验存在硬性错误，请修改资源并重新校验后再通过")
         document["status"] = status
         self.resources.put(resource_id, document)
         _logger.info("资源状态更新: id=%s status=%s", resource_id, status)
