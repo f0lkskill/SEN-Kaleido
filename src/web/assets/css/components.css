@@ -174,7 +174,7 @@
   margin-bottom: var(--space-4);
 }
 
-/* 表单/筛选器标签：保持中性白底，不抢内容的视觉焦点 */
+/* 表单/筛选器标签：中性灰底灰字，与白色背景明确分开，但不抢内容焦点 */
 .field label {
   align-self: flex-start;
   display: inline-flex;
@@ -184,8 +184,8 @@
   padding: 3px var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
   font-weight: 600;
   font-size: var(--font-small);
   line-height: 1.4;
@@ -230,15 +230,16 @@ textarea {
 
 .checks {
   display: grid;
-  /* 每列最宽 220px，避免开关被拉伸得过长、右侧留白过多 */
-  grid-template-columns: repeat(2, minmax(0, 220px));
-  gap: 18px 20px;
-  justify-content: start;
+  /* 宽容器自动四列一行，窄容器（如资源生成侧栏）自动降为两列 */
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+  max-width: 560px;
+  margin-inline: auto;
 }
 
 @media (max-width: 520px) {
   .checks {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -250,17 +251,19 @@ textarea {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 58px;
-  padding: 12px 46px;
+  max-width: 340px;
+  margin-inline: auto;
+  min-height: 50px;
+  padding: 8px 10px 8px 34px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface);
   color: var(--color-text);
-  /* 标题大于常规控件，接近胶囊上下边缘，形成“压住”的视觉重心 */
-  font-size: calc(var(--font-heading) * 1.28);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.01em;
+  /* 标题回到正文尺寸，避免小按钮里文字过大 */
+  font-size: var(--font-body);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0;
   text-align: center;
   white-space: nowrap;
   cursor: pointer;
@@ -304,15 +307,15 @@ textarea {
 .check::before {
   content: "";
   position: absolute;
-  left: 6px;
+  left: 5px;
   top: 50%;
   z-index: 1;
-  width: 38px;
-  height: 38px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: #fff;
   border: 1px solid #c3cee0;
-  box-shadow: 0 4px 10px rgba(30, 50, 90, 0.14);
+  box-shadow: 0 2px 6px rgba(30, 50, 90, 0.16);
   transform: translateY(-50%);
   transition: left 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
   pointer-events: none;
@@ -330,9 +333,9 @@ textarea {
 }
 
 .check:has(input[type="checkbox"]:checked)::before {
-  left: calc(100% - 44px);
+  left: calc(100% - 29px);
   border-color: transparent;
-  box-shadow: 0 4px 12px rgba(10, 30, 80, 0.26);
+  box-shadow: 0 2px 8px rgba(10, 30, 80, 0.26);
 }
 
 /* 键盘焦点落在整块胶囊上 */
@@ -731,9 +734,22 @@ details.disclosure > summary {
   font-size: var(--font-body);
 }
 
-/* ---- 学生档案：详情面板 ----
-   进入动画由列表卡片承担；详情面板直接以最终状态呈现，
-   避免无头截图或动画时间线未推进时面板停留在透明帧。 */
+/* ---- 学生档案：详情面板（切换/刷新时滑入） ---- */
+.detail-body {
+  animation: panel-in 0.28s ease both;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .detail-body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -777,18 +793,19 @@ details.disclosure > summary {
   background: var(--color-surface-alt);
 }
 
-/* 单独属性标签：与 .badge 同款浅蓝底/深蓝字，不做内容标题的实色强调 */
+/* 单独属性标签：灰白底、中灰字，只做背景区分，不使用主色 */
 .attr-name {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
   padding: 3px var(--space-3);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary-dark);
-  font-weight: 500;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-weight: 600;
   font-size: var(--font-small);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .attr-value {
@@ -958,19 +975,19 @@ details.disclosure > summary {
   margin-top: var(--space-4);
 }
 
-/* 板块标题：内容标题使用实色渐变蓝药丸，与筛选器标签区分 */
+/* 板块标题：沿用 .badge 的浅蓝底/深蓝字，与属性标签同一套语言 */
 .panel-title {
   display: inline-flex;
   align-items: center;
   width: fit-content;
   margin: 0 0 var(--space-3);
   padding: 3px var(--space-3);
-  border: 1px solid transparent;
   border-radius: 999px;
-  background: linear-gradient(120deg, var(--color-primary), #5b8def);
-  color: #fff;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
   font-size: var(--font-small);
-  font-weight: 700;
+  font-weight: 500;
+  line-height: 1.5;
   letter-spacing: 0;
 }
 
@@ -1211,6 +1228,11 @@ details.disclosure > summary {
 
 .modal-head h3 {
   margin: 0;
+  /* 标题放大到压住头部基线，形成弹窗内的视觉层级 */
+  font-size: calc(var(--font-heading) * 1.4);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
 }
 
 /* 小尺寸模态（确认框） */
