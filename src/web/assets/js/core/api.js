@@ -194,6 +194,10 @@ export const api = {
 
   // ---- 资源生成与资源库 ----
   generate: (body) => request("/api/v1/forge/generate", { method: "POST", body }),
+  generatePortrait: (profileId) =>
+    request(`/api/v1/forge/students/${encodeURIComponent(profileId)}/portrait`, {
+      method: "POST",
+    }),
   generateStream: (body, onEvent) =>
     streamRequest("/api/v1/forge/generate/stream", body, onEvent),
   listResources: (query) => request("/api/v1/forge/resources", { query }),

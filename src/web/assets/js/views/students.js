@@ -303,6 +303,12 @@ export function createView(root, hooks = {}) {
       ]),
       el("div", { class: "detail-actions" }, [
         el("button", {
+          class: "btn btn-sm",
+          type: "button",
+          text: item.portrait ? "刷新画像" : "生成画像",
+          on: { click: (event) => generatePortrait(item, event.currentTarget) },
+        }),
+        el("button", {
           class: "btn btn-primary btn-sm",
           type: "button",
           text: "创建课件",
@@ -330,6 +336,7 @@ export function createView(root, hooks = {}) {
     return el("section", { class: "detail-body" }, [
       panel(null, head),
       panel("学生属性", renderAttributes(attributes)),
+      panel("学生画像", renderPortrait(item.portrait)),
       panel("学习节奏", renderLearningPace(attributes)),
       panel("维度与学习节奏关系", renderFlow(attributes, item.framework)),
       panel(
@@ -344,6 +351,65 @@ export function createView(root, hooks = {}) {
       ),
       el("p", { class: "meta detail-meta", text: `更新时间：${formatTime(item.updated_at)}` }),
     ]);
+  }
+
+  /** 渲染学生画像摘要（基于证据生成）。 */
+  function renderPortrait(portrait) {
+    if (!portrait || !portrait.summary) {
+      return placeholder("尚未生成学生画像。点击右上方「生成画像」基于该学生的证据生成。");
+    }
+    const wrap = el("div", { class: "portrait" });
+    wrap.append(el("p", { class: "portrait-summary", text: portrait.summary }));
+    const groups = [
+      ["优势表现", portrait.strengths],
+      ["需要支持", portrait.needs],
+      ["教学建议", portrait.suggestions],
+    ];
+    for (const [title, items] of groups) {
+      if (!Array.isArray(items) || items.length === 0) continue;
+      wrap.append(
+        el("div", { class: "portrait-block" }, [
+          el("span", { class: "badge badge-info", text: title }),
+          el(
+            "ul",
+            { class: "portrait-list" },
+            items.map((text) => el("li", { text: String(text) }))
+          ),
+        ])
+      );
+    }
+    wrap.append(
+      el("p", {
+        class: "meta",
+        text:
+          `基于 ${portrait.evidence_count || 0} 条证据 · ` +
+          `图像 ${portrait.image_count || 0} · 视频 ${portrait.video_count || 0} · ` +
+          `${portrait.model || "未知模型"} · ${formatTime(portrait.generated_at)}`,
+      })
+    );
+    return wrap;
+  }
+
+  /** 基于证据生成学生画像，并刷新详情。 */
+  async function generatePortrait(item, button) {
+    const original = button ? button.textContent : "";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "分析中…";
+    }
+    try {
+      await api.generatePortrait(item.profile_id);
+      toastSuccess("学生画像已生成");
+      const card = listBox.querySelector(`[data-profile-id="${item.profile_id}"]`);
+      await showDetail(item.profile_id, card);
+    } catch (err) {
+      toastError(err.message);
+    } finally {
+      if (button && button.isConnected) {
+        button.disabled = false;
+        button.textContent = original || "生成画像";
+      }
+    }
   }
 
   /** 展示学生详情（列表收窄、右侧滑出面板；切换学生重新播放进入动画）。 */
@@ -389,6 +455,10 @@ export function createView(root, hooks = {}) {
         onSelect: () => {
           if (hooks.onGenerateFor) hooks.onGenerateFor(item.profile_id, item.name);
         },
+      },
+      {
+        label: item.portrait ? "刷新画像" : "生成画像",
+        onSelect: () => generatePortrait(item),
       },
       { label: "复制 ID", onSelect: () => copyText(item.profile_id) },
       null,

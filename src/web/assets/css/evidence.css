@@ -41,3 +41,27 @@ video.evidence-media {
   background: var(--color-surface-alt);
   color: var(--color-text);
 }
+
+/* 学生画像：属性下方的画像描述与分点建议 */
+.portrait-summary {
+  margin: 0;
+  line-height: 1.85;
+}
+
+.portrait-block {
+  margin-top: var(--space-4);
+}
+
+.portrait-block .badge {
+  margin-bottom: var(--space-2);
+}
+
+.portrait-list {
+  margin: 0;
+  padding-left: 1.25em;
+  line-height: 1.8;
+}
+
+.portrait-list li + li {
+  margin-top: var(--space-1);
+}

@@ -22,6 +22,9 @@ const PAYLOAD_TEMPLATES = {
     profile_id: "",
     extra: {},
   },
+  "forge.portrait": {
+    profile_id: "",
+  },
 };
 
 // 未完成任务状态，用于决定是否继续轮询
