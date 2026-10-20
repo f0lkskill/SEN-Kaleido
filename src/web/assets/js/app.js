@@ -11,6 +11,7 @@ import { initErrorCapture, log } from "./core/log.js";
 
 import * as studentsView from "./views/students.js";
 import * as frameworkView from "./views/framework.js";
+import * as evidenceView from "./views/evidence.js";
 import * as forgeView from "./views/forge.js";
 import * as libraryView from "./views/library.js";
 // tasks 视图在异步任务模块就绪后接入，缺失时自动跳过该标签
@@ -20,6 +21,7 @@ import * as tasksView from "./views/tasks.js";
 const TABS = [
   { id: "students", label: "学生档案", module: studentsView },
   { id: "framework", label: "评价框架", module: frameworkView },
+  { id: "evidence", label: "证据管理", module: evidenceView },
   { id: "forge", label: "资源生成", module: forgeView },
   { id: "library", label: "资源库", module: libraryView },
   { id: "tasks", label: "任务队列", module: tasksView },
