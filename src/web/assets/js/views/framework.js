@@ -8,7 +8,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder } from "../core/dom.js";
+import { el, clear, placeholder, panel } from "../core/dom.js";
 import {
   DISABILITY,
   SEVERITY,
@@ -344,7 +344,12 @@ export function buildAttributesForm(prefix) {
     ),
   ]);
 
-  form.append(disabilityField, row1, row2, goalField);
+  // 按语义分区，避免长表单混在一起
+  form.append(
+    panel("障碍信息", [disabilityField, row1]),
+    panel("认知与节奏", [row2]),
+    panel("康复目标", [goalField])
+  );
   return form;
 }
 

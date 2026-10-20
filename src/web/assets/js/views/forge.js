@@ -47,7 +47,7 @@ export function createView(root, hooks = {}) {
 
     // 左：信息表单；右：生成结果
     const infoCard = el("section", { class: "card" }, [
-      panel("学生来源", [
+      panel("", [
         el("div", { class: "field" }, [
           el("label", { text: "选择学生" }),
           studentSelect,
@@ -103,7 +103,7 @@ export function createView(root, hooks = {}) {
       const previous = pendingProfile || studentSelect.value;
       clear(studentSelect);
       studentSelect.append(
-        el("option", { value: "", text: "（使用下方临时属性）" })
+        el("option", { value: "", text: "（使用临时档案）" })
       );
       for (const item of students.items) {
         studentSelect.append(

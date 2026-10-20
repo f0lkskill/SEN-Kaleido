@@ -232,16 +232,75 @@ textarea {
   gap: var(--space-3);
 }
 
+/* ---- 单/多选：滑动开关（名称融入控件，统一宽度） ---- */
 .check {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  min-width: 160px;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-alt);
   font-size: var(--font-small);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.18s ease, background 0.18s ease;
 }
 
-.check input {
-  width: 20px;
-  height: 20px;
+.check:hover {
+  border-color: var(--color-primary);
+}
+
+.check input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--color-border);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.check input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease;
+}
+
+.check input[type="checkbox"]:checked {
+  background: var(--color-primary);
+}
+
+.check input[type="checkbox"]:checked::after {
+  transform: translateX(16px);
+}
+
+.check input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.check input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 同一组内的开关等宽 */
+.checks .check {
+  flex: 1 1 160px;
 }
 
 /* ---- 表格 ---- */
