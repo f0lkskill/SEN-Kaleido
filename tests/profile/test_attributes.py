@@ -84,6 +84,24 @@ def test_invalid_rehab_goal_raises():
             ),
         )
 
+def test_avoid_visual_ref_disables_emoji():
+    schema = _schema()
+    taxonomy = Taxonomy.load()
+    resolved = schema.resolve(
+        taxonomy,
+        StudentAttributesInput(
+            disabilities=["visual", "intellectual"],
+            severity="moderate",
+            cognitive_level="primary_3",
+            learning_pace="slow",
+        ),
+    )
+    constraints = resolved.adaptation_constraints
+    assert constraints["avoid_visual_ref"] is True
+    assert constraints["add_emoji"] is False
+    assert constraints["step_by_step"] is True
+
+
 if __name__ == "__main__":
     import pytest
 

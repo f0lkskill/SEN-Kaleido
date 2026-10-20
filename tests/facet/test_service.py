@@ -1,4 +1,4 @@
-"""facet 服务测试：规则拦截、模型评分与报告落库。"""
+﻿"""facet 服务测试：规则拦截、模型评分与报告落库。"""
 
 import json
 import sys
@@ -33,6 +33,7 @@ _LLM_CONTENT = json.dumps(
         "strengths": ["步骤清晰"],
         "issues": ["图像说明较少"],
         "suggestions": ["补充关键步骤图"],
+        "prompts": ["补充关键步骤图，并配教师口述指令。"],
     },
     ensure_ascii=False,
 )
@@ -77,21 +78,27 @@ def _setup(tmp_path, content="朗读：春天来了。\n\n![春天](spring.png)"
 
 
 def test_evaluate_persists_report(tmp_path):
-    service, client, resources, resource_id, _, _ = _setup(tmp_path)
+    service, client, resources, resource_id, profile, _ = _setup(tmp_path)
     report = service.evaluate(resource_id)
-    assert report["verdict"] == "pass"
+    assert report["verdict"] == "review"
     assert report["score"] == 83
     assert report["blocking"] is False
     assert report["model"] == "stub"
     assert report["dimensions"][0]["name"] == "障碍适配"
     assert report["summary"].startswith("资源整体适合")
     assert "补充关键步骤图" in report["suggestions"]
+    assert report["prompts"] == ["补充关键步骤图，并配教师口述指令。"]
     assert len(client.calls) == 1
+
+    board = service.profile_service.get_prompt_board(profile["profile_id"])
+    assert board[0]["text"] == "补充关键步骤图，并配教师口述指令。"
+    assert board[0]["source_resource_id"] == resource_id
+    assert board[0]["enabled"] is True
 
     stored = service.get_report(resource_id)
     assert stored["score"] == 83
     saved_resource = resources.get(resource_id)
-    assert saved_resource["facet"]["verdict"] == "pass"
+    assert saved_resource["facet"]["verdict"] == "review"
 
 
 def test_rule_errors_block_and_prevent_approval(tmp_path):

@@ -29,8 +29,9 @@
 2. 规则检查已发现的硬性错误必须纳入 issues，不得忽略。
 3. summary 用 100-200 字说明整体质量与主要风险，面向教师。
 4. strengths / issues / suggestions 各 1-4 条，每条一句话，具体可操作。
-5. 分数使用整数，不要输出百分号或区间。
-6. 只输出 JSON，不要 Markdown 代码块或额外解释。
+5. prompts 输出 1-4 条可直接用于后续资源生成的补充提示词，只写“应当怎么做”的要求，不重复问题描述，不包含学生姓名等隐私信息。
+6. 分数使用整数，不要输出百分号或区间。
+7. 只输出 JSON，不要 Markdown 代码块或额外解释。
 
 【输出 JSON 结构】
-{{"summary": "……", "scores": {{"disability_fit": 85, "cognitive_load": 80, "sensory_accessibility": 75, "teaching_usability": 90}}, "strengths": ["……"], "issues": ["……"], "suggestions": ["……"]}}
+{{"summary": "……", "scores": {{"disability_fit": 85, "cognitive_load": 80, "sensory_accessibility": 75, "teaching_usability": 90}}, "strengths": ["……"], "issues": ["……"], "suggestions": ["……"], "prompts": ["为颜色词配可触摸实物，并用摸一摸、听一听的活动替代纯视觉辨认。"]}}

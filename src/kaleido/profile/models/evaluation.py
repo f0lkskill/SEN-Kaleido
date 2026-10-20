@@ -62,6 +62,33 @@ class StudentPortrait(BaseModel):
     generated_at: str | None = None  # 生成时间
 
 
+class GenerationPrompt(BaseModel):
+    """画像下方的生成提示词规则板条目。"""
+
+    prompt_id: str
+    text: str
+    source_resource_id: str | None = None  # 由哪份资源的质量校验提炼而来
+    source_topic: str = ""
+    source_score: int | None = None
+    model: str = ""
+    created_at: str = ""
+    enabled: bool = True
+
+
+class PromptBoardCreateRequest(BaseModel):
+    """手动新增生成提示词。"""
+
+    text: str
+    title: str = ""
+
+
+class PromptBoardUpdateRequest(BaseModel):
+    """修改规则板条目的文本或启用状态。"""
+
+    text: str | None = None
+    enabled: bool | None = None
+
+
 class StudentEvaluationProfile(BaseModel):
     """学生实例：属性（画像）+ 评价框架，是 profile 模块对外的最终契约。"""
 
@@ -70,6 +97,7 @@ class StudentEvaluationProfile(BaseModel):
     attributes: "StudentAttributes"
     framework: EvaluationFramework
     portrait: StudentPortrait | None = None  # 证据分析生成的学情画像
+    prompt_board: list[GenerationPrompt] = Field(default_factory=list)  # 画像下方规则板
     created_at: str | None = None
     updated_at: str | None = None
 

@@ -15,7 +15,12 @@ _SUGGESTIONS = {
     "complex_terms": "用更口语化的词替换抽象术语，必要时配例子。",
     "sensory_missing": "补充与学生感官偏好匹配的线索（图像/语音/动手操作）。",
     "empty_alt_text": "为图像补充简洁的替代文本，方便视觉障碍学生理解。",
+    "visual_conflict": "删除 emoji、表格或图片提示，改为编号朗读清单和教师口述指令。",
+    "color_no_tactile": "为颜色概念增加可触摸实物、纹理标签或温度/形状对比。",
 }
+
+_EMOJI_RE = re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]")
+_TACTILE_MARKERS = ("摸", "纹理", "实物", "温度", "形状", "触觉", "粗糙", "光滑")
 
 
 def _issue(code: str, level: str, message: str) -> dict:
@@ -91,6 +96,40 @@ def evaluate(
             issues.append(
                 _issue("empty_alt_text", "warning", "图像缺少替代文本（alt）")
             )
+
+        constraints = attributes.get("adaptation_constraints") or {}
+        if constraints.get("avoid_visual_ref"):
+            references: list[str] = []
+            if _EMOJI_RE.search(text):
+                references.append("emoji")
+            if re.search(r"^\s*\|", text, re.MULTILINE):
+                references.append("表格")
+            if "![" in text:
+                references.append("图片")
+            if references:
+                issues.append(
+                    _issue(
+                        "visual_conflict",
+                        "warning",
+                        f"正文使用了{'、'.join(references)}，与 avoid_visual_ref 约束冲突",
+                    )
+                )
+            disabilities = attributes.get("disabilities") or []
+            has_color_topic = any(
+                word in text for word in ("颜色", "红色", "黄色", "蓝色", "绿色")
+            )
+            if (
+                "visual" in disabilities
+                and has_color_topic
+                and not any(marker in text for marker in _TACTILE_MARKERS)
+            ):
+                issues.append(
+                    _issue(
+                        "color_no_tactile",
+                        "warning",
+                        "颜色概念缺少触觉、实物或多感官替代",
+                    )
+                )
 
     errors = sum(1 for item in issues if item["level"] == "error")
     warnings = sum(1 for item in issues if item["level"] == "warning")

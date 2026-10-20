@@ -139,6 +139,39 @@ def test_list_and_preview_and_meta(tmp_path):
     _status, body = call("GET", "/api/v1/evaluation/rubric/participation")
     assert body["data"]["levels"]
 
+def test_prompt_board_crud(tmp_path):
+    call = _setup(tmp_path)
+    _, body = call("POST", "/api/v1/students", _payload())
+    profile_id = body["data"]["profile_id"]
+
+    status, body = call(
+        "POST",
+        f"/api/v1/students/{profile_id}/prompt-board",
+        {"text": "为颜色词配可触摸实物。"},
+    )
+    assert status.startswith("201")
+    assert body["data"][0]["text"] == "为颜色词配可触摸实物。"
+    prompt_id = body["data"][0]["prompt_id"]
+
+    status, body = call(
+        "PATCH",
+        f"/api/v1/students/{profile_id}/prompt-board/{prompt_id}",
+        {"enabled": False},
+    )
+    assert status.startswith("200")
+    assert body["data"][0]["enabled"] is False
+
+    status, body = call("GET", f"/api/v1/students/{profile_id}/prompt-board")
+    assert status.startswith("200")
+    assert len(body["data"]) == 1
+
+    status, body = call(
+        "DELETE", f"/api/v1/students/{profile_id}/prompt-board/{prompt_id}"
+    )
+    assert status.startswith("200")
+    assert body["data"] == []
+
+
 if __name__ == "__main__":
     import pytest
 

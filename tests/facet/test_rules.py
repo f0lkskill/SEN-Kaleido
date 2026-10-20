@@ -62,3 +62,30 @@ def test_complex_terms_warn():
     content = "综上所述，" * 9 + "朗读：春天来了。"
     report = evaluate(content, "courseware", {"sensory_preference": "audio_first"}, CONFIG)
     assert "complex_terms" in _codes(report)
+
+
+def test_avoid_visual_ref_flags_emoji_table_and_color_without_tactile():
+    attributes = {
+        "disabilities": ["visual"],
+        "sensory_preference": "audio_first",
+        "adaptation_constraints": {"avoid_visual_ref": True},
+    }
+    content = "# 颜色课 🎧\n\n- 红色 🍎\n- 黄色 🍌\n\n| 物体 | 颜色 |\n| --- | --- |\n| 苹果 | 红色 |"
+    report = evaluate(content, "courseware", attributes, CONFIG)
+    codes = _codes(report)
+    assert "visual_conflict" in codes
+    assert "color_no_tactile" in codes
+    assert report["blocking"] is False
+
+
+def test_avoid_visual_ref_accepts_tactile_color_activity():
+    attributes = {
+        "disabilities": ["visual"],
+        "sensory_preference": "audio_first",
+        "adaptation_constraints": {"avoid_visual_ref": True},
+    }
+    content = "朗读：摸一摸苹果，感受光滑的皮。苹果是红色。"
+    report = evaluate(content, "courseware", attributes, CONFIG)
+    codes = _codes(report)
+    assert "visual_conflict" not in codes
+    assert "color_no_tactile" not in codes

@@ -72,6 +72,10 @@ class AttributeSchema:
         constraints: dict = {}
         for key in data.disabilities:
             constraints.update(taxonomy.get(key).constraints)
+        # 视觉参照与表情符号冲突时，以无障碍约束优先
+        if constraints.get("avoid_visual_ref"):
+            constraints["add_emoji"] = False
+            constraints["visual_aid"] = False
         return StudentAttributes(
             disabilities=list(data.disabilities),
             severity=data.severity,

@@ -84,6 +84,7 @@ class FacetService:
             rules,
             pass_score=int(thresholds.get("pass", 80)),
             review_score=int(thresholds.get("review", 60)),
+            has_llm_issues=bool((llm or {}).get("issues")),
         )
         report = FacetReport(
             resource_id=resource_id,
@@ -98,6 +99,7 @@ class FacetService:
             strengths=(llm or {}).get("strengths") or [],
             issues=(llm or {}).get("issues") or [],
             suggestions=self._suggestions(llm, rules),
+            prompts=(llm or {}).get("prompts") or [],
             llm=llm,
             use_llm=req.use_llm,
             model=str((llm or {}).get("model") or ""),
@@ -107,6 +109,25 @@ class FacetService:
 
         document["facet"] = report
         self.resources.put(resource_id, document)
+        if report["prompts"] and report["profile_id"]:
+            try:
+                self.profile_service.add_prompt_board_items(
+                    str(report["profile_id"]),
+                    [
+                        {
+                            "text": prompt,
+                            "source_resource_id": resource_id,
+                            "source_topic": document.get("topic", ""),
+                            "source_score": score,
+                            "model": report["model"],
+                        }
+                        for prompt in report["prompts"]
+                    ],
+                )
+            except NotFoundError:
+                logger.warning(
+                    "资源关联学生不存在，提示词未写入规则板: %s", report["profile_id"]
+                )
         logger.info(
             "资源质量校验完成: id=%s verdict=%s score=%d blocking=%s use_llm=%s",
             resource_id,
@@ -285,6 +306,7 @@ class FacetService:
                 "strengths": [],
                 "issues": [],
                 "suggestions": [],
+                "prompts": [],
                 "parsed": False,
             }
 
@@ -317,6 +339,7 @@ class FacetService:
             "strengths": as_list("strengths", "优势"),
             "issues": as_list("issues", "问题"),
             "suggestions": as_list("suggestions", "建议", "教学建议"),
+            "prompts": as_list("prompts", "提示词", "生成提示词"),
             "parsed": True,
         }
 
@@ -349,12 +372,16 @@ class FacetService:
 
     @staticmethod
     def _verdict(
-        score: int, rules: dict, pass_score: int, review_score: int
+        score: int,
+        rules: dict,
+        pass_score: int,
+        review_score: int,
+        has_llm_issues: bool = False,
     ) -> str:
         """综合规则与得分给出通过 / 复核 / 不通过。"""
         if rules.get("blocking") or score < review_score:
             return "fail"
-        if score < pass_score or rules.get("issues"):
+        if score < pass_score or rules.get("issues") or has_llm_issues:
             return "review"
         return "pass"
 

@@ -45,6 +45,7 @@ class FacetReport(BaseModel):
     strengths: list[str] = Field(default_factory=list)
     issues: list[str] = Field(default_factory=list)
     suggestions: list[str] = Field(default_factory=list)
+    prompts: list[str] = Field(default_factory=list)
     llm: dict | None = None
     use_llm: bool = True
     model: str = ""

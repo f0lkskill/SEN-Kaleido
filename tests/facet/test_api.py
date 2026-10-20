@@ -1,4 +1,4 @@
-"""facet REST 接口测试：通过 WSGI 直接调用路由。"""
+﻿"""facet REST 接口测试：通过 WSGI 直接调用路由。"""
 
 import json
 import sys
@@ -118,7 +118,7 @@ def test_evaluate_and_get_report(tmp_path):
     call, resource_id = _setup(tmp_path)
     status, body = call("POST", f"/api/v1/facet/resources/{resource_id}/evaluate", {})
     assert status.startswith("201")
-    assert body["data"]["verdict"] == "pass"
+    assert body["data"]["verdict"] == "review"
     assert body["data"]["score"] == 90
 
     status, body = call("GET", f"/api/v1/facet/resources/{resource_id}")
