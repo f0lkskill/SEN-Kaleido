@@ -21,6 +21,10 @@ portrait:
   max_image_bytes: 8388608      # 单张图像最大字节数（8MB）
   max_evidence: 200             # 单次最多分析的证据条数
 
+# 基于原资源修订：控制原正文进入 Prompt 的长度
+revision:
+  max_source_chars: 6000        # 原资源正文最多截取字符数
+
 resource_types:
   courseware: 分层知识点课件
   exercise: 个性化练习题库

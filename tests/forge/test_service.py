@@ -196,6 +196,65 @@ def test_generate_includes_student_portrait_in_prompt(tmp_path):
     assert "增加小组活动" in result["prompt"]
 
 
+def test_generate_uses_selected_prompt_board_items(tmp_path):
+    service, profile_service, _ = _setup(tmp_path)
+    profile = profile_service.create_student(
+        CreateStudentRequest(name="小明", attributes=_attributes())
+    )
+    board = profile_service.add_prompt_board_item(
+        profile["profile_id"], "为颜色词配可触摸实物，不使用 emoji。"
+    )
+    prompt_id = board[0]["prompt_id"]
+    result = service.generate(
+        GenerateRequest(
+            profile_id=profile["profile_id"],
+            resource_type="courseware",
+            topic="认识颜色",
+            prompt_ids=[prompt_id],
+        )
+    )
+    assert "【教师选用的生成规则】" in result["prompt"]
+    assert "为颜色词配可触摸实物" in result["prompt"]
+    assert result["prompt_ids"] == [prompt_id]
+
+    profile_service.update_prompt_board_item(
+        profile["profile_id"], prompt_id, enabled=False
+    )
+    result = service.generate(
+        GenerateRequest(
+            profile_id=profile["profile_id"],
+            resource_type="courseware",
+            topic="认识颜色",
+            prompt_ids=[prompt_id],
+        )
+    )
+    assert "为颜色词配可触摸实物" not in result["prompt"]
+
+
+def test_generate_revises_from_source_resource(tmp_path):
+    service, profile_service, _ = _setup(tmp_path)
+    profile = profile_service.create_student(
+        CreateStudentRequest(name="小明", attributes=_attributes())
+    )
+    original = service.generate(
+        GenerateRequest(
+            profile_id=profile["profile_id"], resource_type="courseware", topic="原课件"
+        )
+    )
+    result = service.generate(
+        GenerateRequest(
+            profile_id=profile["profile_id"],
+            resource_type="courseware",
+            topic="修订课件",
+            source_resource_id=original["resource_id"],
+        )
+    )
+    assert "【基于原资源修订】" in result["prompt"]
+    assert f"原资源 ID：{original['resource_id']}" in result["prompt"]
+    assert "生成的课件" in result["prompt"]
+    assert result["source_resource_id"] == original["resource_id"]
+
+
 if __name__ == "__main__":
     import pytest
 
