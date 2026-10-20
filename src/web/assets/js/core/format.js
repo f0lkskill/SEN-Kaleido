@@ -123,6 +123,49 @@ export function evidenceLabels(keys) {
   return keys.map(evidenceLabel).join("、");
 }
 
+/** 证据审核状态。 */
+export const EVIDENCE_STATUS = {
+  draft: "待审核",
+  verified: "已通过",
+  rejected: "已拒绝",
+};
+
+/** 证据审核状态对应的徽章样式类。 */
+export const EVIDENCE_STATUS_CLASS = {
+  draft: "badge-warning",
+  verified: "badge-success",
+  rejected: "badge-danger",
+};
+
+/** 当前公共评价框架的观测点中文名。 */
+export const OBSERVATION = {
+  class_engagement: "课堂参与程度",
+  practice_completion: "练习完成质量",
+};
+
+/** 证据来源的媒体形态。 */
+export const EVIDENCE_MODALITY = {
+  structured: "结构化",
+  raw_media: "原始媒体",
+  artifact: "作品样本",
+  text: "文本",
+};
+
+/** 证据来源的加工方式。 */
+export const EVIDENCE_PROCESSED_BY = {
+  auto: "自动",
+  human: "人工",
+  auto_or_human: "自动/人工",
+  human_or_llm: "人工/LLM",
+};
+
+/** 证据来源的采集成本。 */
+export const EVIDENCE_COST = {
+  low: "低",
+  medium: "中",
+  high: "高",
+};
+
 /** 任务状态。 */
 export const TASK_STATUS = {
   pending: "排队中",

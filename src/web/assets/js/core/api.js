@@ -133,6 +133,19 @@ export const api = {
   deleteStudent: (id) =>
     request(`/api/v1/students/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
+  // ---- 证据管理 ----
+  listEvidence: (query) => request("/api/v1/evidence", { query }),
+  evidenceSummary: (query) => request("/api/v1/evidence/summary", { query }),
+  getEvidence: (id) => request(`/api/v1/evidence/${encodeURIComponent(id)}`),
+  createEvidence: (body) => request("/api/v1/evidence", { method: "POST", body }),
+  reviewEvidence: (id, body) =>
+    request(`/api/v1/evidence/${encodeURIComponent(id)}/review`, {
+      method: "POST",
+      body,
+    }),
+  deleteEvidence: (id) =>
+    request(`/api/v1/evidence/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
   // ---- 评价框架预览 ----
   previewFramework: (body) =>
     request("/api/v1/evaluation/framework", { method: "POST", body }),
