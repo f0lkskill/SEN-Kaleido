@@ -206,6 +206,20 @@ export const RESOURCE_STATUS = {
   rejected: "已退回",
 };
 
+/** 质量校验结论。 */
+export const FACET_VERDICT = {
+  pass: "通过",
+  review: "待复核",
+  fail: "不通过",
+};
+
+/** 质量校验结论对应的徽章样式类。 */
+export const FACET_VERDICT_CLASS = {
+  pass: "badge-success",
+  review: "badge-warning",
+  fail: "badge-danger",
+};
+
 /**
  * 通用取标签：找不到时回退为原值。
  * @param {Object} map 映射表

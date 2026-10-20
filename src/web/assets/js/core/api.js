@@ -211,6 +211,14 @@ export const api = {
   deleteResource: (id) =>
     request(`/api/v1/forge/resources/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
+  // ---- 质量校验 ----
+  evaluateResource: (id, body = {}) =>
+    request(`/api/v1/facet/resources/${encodeURIComponent(id)}/evaluate`, {
+      method: "POST",
+      body,
+    }),
+  facetConfig: () => request("/api/v1/facet/config"),
+
   // ---- 异步任务 ----
   taskTypes: () => request("/api/v1/tasks/types"),
   listTasks: (query) => request("/api/v1/tasks", { query }),

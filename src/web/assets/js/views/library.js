@@ -9,7 +9,14 @@ import { el, clear, placeholder, panel } from "../core/dom.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { confirmDialog } from "../core/dialog.js";
 import { openContextMenu } from "../core/contextmenu.js";
-import { DISABILITY, RESOURCE_STATUS, label, formatTime } from "../core/format.js";
+import {
+  DISABILITY,
+  RESOURCE_STATUS,
+  FACET_VERDICT,
+  FACET_VERDICT_CLASS,
+  label,
+  formatTime,
+} from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
 import { renderAttributes, ATTRIBUTE_OPTIONS } from "./framework.js";
 
@@ -176,6 +183,12 @@ export function createView(root, hooks = {}) {
             el("span", { class: "badge badge-info", text: typeName }),
             el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
             el("span", { class: "badge badge-warning", text: label(RESOURCE_STATUS, item.status) }),
+            item.facet
+              ? el("span", {
+                  class: `badge ${FACET_VERDICT_CLASS[item.facet.verdict] || "badge-muted"}`,
+                  text: `质量：${label(FACET_VERDICT, item.facet.verdict)}`,
+                })
+              : null,
           ]),
         ]),
       ]
@@ -205,6 +218,12 @@ export function createView(root, hooks = {}) {
       );
     }
     actions.push(
+      el("button", {
+        class: "btn btn-sm",
+        type: "button",
+        text: item.facet ? "重新校验" : "质量校验",
+        on: { click: () => evaluateResource(item) },
+      }),
       el("button", {
         class: "btn btn-sm",
         type: "button",
@@ -248,12 +267,135 @@ export function createView(root, hooks = {}) {
         ])
       ),
     ];
+    panels.push(panel("质量校验", renderFacet(item), { className: "facet-panel" }));
     // 预生成资源（未建档）直接展示临时属性
     if (!item.profile_id && item.attributes) {
       panels.push(panel("临时属性（未建档）", renderAttributes(item.attributes)));
     }
     panels.push(panel("内容", el("div", { class: "detail-md" }, [md])));
     return el("section", { class: "detail-body" }, panels);
+  }
+
+  /** 质量校验结论的列表块。 */
+  function facetList(title, values) {
+    if (!Array.isArray(values) || values.length === 0) return null;
+    return el("div", { class: "facet-block" }, [
+      el("h4", { class: "facet-subtitle", text: title }),
+      el("ul", { class: "facet-list" }, values.map((value) => el("li", { text: value }))),
+    ]);
+  }
+
+  /** 组装质量报告。 */
+  function renderFacet(item) {
+    const report = item.facet;
+    if (!report) {
+      return el("div", { class: "facet-empty" }, [
+        el("p", {
+          class: "meta",
+          text: "尚未进行质量校验。规则会检查句长、结构与感官线索，模型会评估障碍适配度。",
+        }),
+        el("button", {
+          class: "btn btn-sm",
+          type: "button",
+          text: "开始校验",
+          on: { click: () => evaluateResource(item) },
+        }),
+      ]);
+    }
+
+    const verdict = report.verdict || "review";
+    const score = Number(report.score) || 0;
+    const head = el("div", { class: "facet-head" }, [
+      el("div", { class: "facet-score" }, [
+        el("strong", { text: String(score) }),
+        el("span", { text: "/100" }),
+      ]),
+      el("div", { class: "badge-row" }, [
+        el("span", {
+          class: `badge ${FACET_VERDICT_CLASS[verdict] || "badge-muted"}`,
+          text: label(FACET_VERDICT, verdict),
+        }),
+        el("span", { class: "badge badge-muted", text: `规则分 ${report.rule_score ?? "-"}` }),
+        report.blocking
+          ? el("span", { class: "badge badge-danger", text: "存在硬性错误" })
+          : null,
+        el("span", { class: "badge badge-muted", text: formatTime(report.evaluated_at) }),
+      ]),
+    ]);
+
+    const dimensions = el(
+      "div",
+      { class: "facet-dimensions" },
+      (report.dimensions || []).map((dimension) => {
+        const hasScore = dimension.score !== null && dimension.score !== undefined;
+        const value = hasScore ? Number(dimension.score) : 0;
+        const weight = Math.round(Number(dimension.weight || 0) * 100);
+        return el("div", { class: "facet-dim" }, [
+          el("div", { class: "facet-dim-head" }, [
+            el("span", { text: `${dimension.name}（${weight}%）` }),
+            el("span", { text: hasScore ? `${value} 分` : "未评分" }),
+          ]),
+          el("div", { class: "facet-bar" }, [
+            el("span", { style: `width:${Math.max(0, Math.min(100, value))}%` }),
+          ]),
+        ]);
+      })
+    );
+
+    const blocks = [];
+    if (report.summary) {
+      blocks.push(el("p", { class: "facet-summary", text: report.summary }));
+    }
+    if (dimensions.childElementCount) {
+      blocks.push(el("h4", { class: "facet-subtitle", text: "评分维度" }), dimensions);
+    }
+    blocks.push(facetList("优势表现", report.strengths));
+    blocks.push(facetList("模型发现问题", report.issues));
+
+    const ruleIssues = (report.rules && report.rules.issues) || [];
+    if (ruleIssues.length) {
+      blocks.push(
+        el("div", { class: "facet-block" }, [
+          el("h4", { class: "facet-subtitle", text: "规则检查" }),
+          el(
+            "ul",
+            { class: "facet-issues" },
+            ruleIssues.map((issue) =>
+              el("li", { class: `facet-issue ${issue.level || "warning"}` }, [
+                el("strong", { text: issue.level === "error" ? "硬性错误" : "警告" }),
+                ` ${issue.message}`,
+                issue.suggestion
+                  ? el("span", { class: "facet-suggestion", text: `建议：${issue.suggestion}` })
+                  : null,
+              ])
+            )
+          ),
+        ])
+      );
+    }
+    blocks.push(facetList("改进建议", report.suggestions));
+
+    if (report.use_llm === false) {
+      blocks.push(el("p", { class: "meta", text: "本次仅执行规则校验，未启用模型评分。" }));
+    } else if (report.llm && report.llm.parsed === false) {
+      blocks.push(
+        el("p", { class: "meta", text: "模型返回未能解析，综合分已回退为规则分。" })
+      );
+    }
+    return el("div", { class: "facet-report" }, [head, ...blocks.filter(Boolean)]);
+  }
+
+  /** 触发质量校验并刷新详情。 */
+  async function evaluateResource(item) {
+    try {
+      const report = await api.evaluateResource(item.resource_id);
+      toastSuccess(
+        `质量校验完成：${label(FACET_VERDICT, report.verdict)}（${report.score} 分）`
+      );
+      await refresh();
+    } catch (err) {
+      toastError(err.message);
+    }
   }
 
   /** 资源右键菜单项。 */
@@ -269,6 +411,10 @@ export function createView(root, hooks = {}) {
       },
       { label: "复制 ID", onSelect: () => copyText(item.resource_id) },
       null,
+      {
+        label: item.facet ? "重新校验质量" : "质量校验",
+        onSelect: () => evaluateResource(item),
+      },
       { label: "通过", onSelect: () => setStatus(item.resource_id, "approved") },
       { label: "退回", onSelect: () => setStatus(item.resource_id, "rejected") },
       null,
