@@ -172,6 +172,30 @@ def test_generate_stream_error_on_missing_source(tmp_path):
     assert events[0]["type"] == "error"
 
 
+def test_generate_includes_student_portrait_in_prompt(tmp_path):
+    service, profile_service, _ = _setup(tmp_path)
+    profile = profile_service.create_student(
+        CreateStudentRequest(name="小明", attributes=_attributes())
+    )
+    profile_service.save_portrait(
+        profile["profile_id"],
+        {
+            "summary": "该生课堂参与主动，练习完成质量较好。",
+            "strengths": ["主动举手"],
+            "needs": ["同伴协作机会"],
+            "suggestions": ["增加小组活动"],
+        },
+    )
+    result = service.generate(
+        GenerateRequest(
+            profile_id=profile["profile_id"], resource_type="courseware", topic="认识四季"
+        )
+    )
+    assert "【学生画像（基于证据生成）】" in result["prompt"]
+    assert "该生课堂参与主动" in result["prompt"]
+    assert "增加小组活动" in result["prompt"]
+
+
 if __name__ == "__main__":
     import pytest
 

@@ -33,14 +33,31 @@ class ForgeService:
         # 资源落库到 vault 的 resources 集合（envelope=true，带创建/更新时间）
         self.resources = self.vault.collection("resources")
 
-    def _resolve_attributes(self, request: GenerateRequest) -> dict:
-        """从已建档画像或临时属性中解析出规范化的学生属性。"""
+    def _resolve_context(self, request: GenerateRequest) -> tuple[dict, dict | None]:
+        """从已建档画像或临时属性中解析学生属性与已生成的画像。"""
         if request.profile_id:
-            return self.profile_service.get_student(request.profile_id)["attributes"]
+            profile = self.profile_service.get_student(request.profile_id)
+            return profile["attributes"], profile.get("portrait")
         if request.attributes is not None:
             preview = self.profile_service.preview_framework(request.attributes)
-            return preview["attributes"]
+            return preview["attributes"], None
         raise ValidationError("必须提供 profile_id 或 attributes")
+
+    @staticmethod
+    def _portrait_text(portrait: dict | None) -> str:
+        """把学生画像整理为可拼入 Prompt 的文本。"""
+        if not portrait or not portrait.get("summary"):
+            return ""
+        lines = [str(portrait["summary"]).strip()]
+        for label, key in (
+            ("优势表现", "strengths"),
+            ("需要支持", "needs"),
+            ("教学建议", "suggestions"),
+        ):
+            values = portrait.get(key) or []
+            if values:
+                lines.append(f"{label}：" + "；".join(str(item) for item in values))
+        return "\n".join(lines)
 
     @staticmethod
     def _disabilities(attributes: dict) -> list[str]:
@@ -84,7 +101,12 @@ class ForgeService:
             lines.append(f"- 本学生同时具备「{self._disability_name(key)}」：{requirement}")
         return "\n".join(lines)
 
-    def _build_messages(self, request: GenerateRequest, attributes: dict) -> tuple[list, str]:
+    def _build_messages(
+        self,
+        request: GenerateRequest,
+        attributes: dict,
+        portrait: dict | None = None,
+    ) -> tuple[list, str]:
         """拼装分层 Prompt，返回 (messages, 系统提示词)。"""
         labels = self.config.get("resource_types", {})
         if request.resource_type not in labels:
@@ -112,6 +134,13 @@ class ForgeService:
         extras = self._extra_layer_requirements(attributes, self._primary_disability(attributes))
         if extras:
             system_prompt = f"{system_prompt}\n\n【多障碍叠加要求】\n{extras}"
+        portrait_text = self._portrait_text(portrait)
+        if portrait_text:
+            system_prompt = (
+                f"{system_prompt}\n\n【学生画像（基于证据生成）】\n{portrait_text}\n\n"
+                "请将上述学生画像作为本次资源设计的重要依据，在内容难度、活动形式与"
+                "支持策略上体现画像中的优势、需求与教学建议。"
+            )
         messages = [
             {"role": "system", "content": system_prompt},
             {
@@ -123,8 +152,8 @@ class ForgeService:
 
     def generate(self, request: GenerateRequest) -> dict:
         """生成资源并落库（初始状态 draft，等待教师确认）。"""
-        attributes = self._resolve_attributes(request)
-        messages, system_prompt = self._build_messages(request, attributes)
+        attributes, portrait = self._resolve_context(request)
+        messages, system_prompt = self._build_messages(request, attributes, portrait)
         _logger.info(
             "开始生成资源: type=%s topic=%s profile=%s",
             request.resource_type,
@@ -167,8 +196,8 @@ class ForgeService:
         正文为空时不入库，避免产生"空资源"。
         """
         try:
-            attributes = self._resolve_attributes(request)
-            messages, system_prompt = self._build_messages(request, attributes)
+            attributes, portrait = self._resolve_context(request)
+            messages, system_prompt = self._build_messages(request, attributes, portrait)
         except Exception as exc:  # noqa: BLE001
             _logger.warning("流式生成前置校验失败: %s", exc)
             yield {"type": "error", "message": str(exc)}
