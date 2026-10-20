@@ -168,6 +168,35 @@ def test_list_and_filter(tmp_path):
         service.shutdown()
 
 
+def test_external_task_lifecycle(tmp_path):
+    """HTTP 外部任务登记后可手动推进 running/succeeded/failed。"""
+    service = _service(tmp_path)
+    try:
+        task = service.create_external("forge.generate", {"topic": "认识四季"})
+        assert task["status"] == PENDING
+
+        service.mark_running(task["task_id"])
+        running = service.get(task["task_id"])
+        assert running["status"] == "running"
+        assert running["attempts"] == 1
+        assert running["started_at"]
+
+        service.mark_succeeded(task["task_id"], {"resource_id": "r_1"})
+        done = service.get(task["task_id"])
+        assert done["status"] == SUCCEEDED
+        assert done["result"] == {"resource_id": "r_1"}
+        assert done["finished_at"]
+
+        failed_task = service.create_external("forge.generate", {})
+        service.mark_running(failed_task["task_id"])
+        service.mark_failed(failed_task["task_id"], "boom")
+        failed = service.get(failed_task["task_id"])
+        assert failed["status"] == FAILED
+        assert "boom" in failed["error"]
+    finally:
+        service.shutdown()
+
+
 if __name__ == "__main__":
     import pytest
 

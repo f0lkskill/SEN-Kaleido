@@ -78,7 +78,7 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
             if PortraitService is not None
             else None
         )
-        app.merge(create_forge_app(forge_service, portrait_service))
+        app.merge(create_forge_app(forge_service, portrait_service, task_service))
         task_service.register(
             "forge.generate",
             lambda payload: forge_service.generate(GenerateRequest(**payload)),

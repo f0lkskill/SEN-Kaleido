@@ -13,8 +13,31 @@ from kaleido.common.response import fail, ok
 from kaleido.forge.models import GenerateRequest
 from kaleido.forge.portrait import PortraitService
 from kaleido.forge.service import ForgeService
+from kaleido.tasks.service import TaskService
 
 _logger = get_logger("forge.api")
+
+
+def _task_summary(result: Any) -> dict:
+    """提取任务面板需要的精简结果，避免整篇正文塞进任务记录。"""
+    if not isinstance(result, dict):
+        return {"value": result}
+    summary = {
+        key: result[key]
+        for key in ("resource_id", "profile_id", "model", "status", "prompt_template_key")
+        if key in result
+    }
+    quality = result.get("quality")
+    if isinstance(quality, dict):
+        summary["quality"] = {
+            "ok": quality.get("ok"),
+            "score": quality.get("score"),
+            "issues": len(quality.get("issues") or []),
+        }
+    text = result.get("summary")
+    if isinstance(text, str) and len(text) <= 200:
+        summary["summary"] = text
+    return summary or {"keys": sorted(result)}
 
 
 def _sse(events: Iterator[dict]) -> Iterator[str]:
@@ -26,6 +49,7 @@ def _sse(events: Iterator[dict]) -> Iterator[str]:
 def create_app(
     service: ForgeService | None = None,
     portrait_service: PortraitService | None = None,
+    task_service: TaskService | None = None,
 ) -> Bottle:
     """构建 forge 的 Bottle 应用。"""
     # bottle 路由装饰器类型标注有缺陷，用 Any 视图规避误报
@@ -50,13 +74,54 @@ def create_app(
         response.status = status
         return ok(data)
 
+    def run_recorded(task_type: str, payload: dict, action):
+        """把 HTTP 同步生成登记为任务，便于任务面板观察长任务。"""
+        if task_service is None:
+            return action()
+        task = task_service.create_external(task_type, payload)
+        task_id = task["task_id"]
+        task_service.mark_running(task_id)
+        try:
+            result = action()
+        except Exception as exc:
+            task_service.mark_failed(task_id, str(exc))
+            raise
+        task_service.mark_succeeded(task_id, _task_summary(result))
+        return result
+
+    def record_stream(events: Iterator[dict], payload: dict) -> Iterator[dict]:
+        """给流式生成套一层任务生命周期记录。"""
+        if task_service is None:
+            yield from events
+            return
+        task = task_service.create_external("forge.generate", payload)
+        task_id = task["task_id"]
+        task_service.mark_running(task_id)
+        finished = False
+        try:
+            for event in events:
+                event_type = event.get("type")
+                if event_type == "done":
+                    task_service.mark_succeeded(task_id, _task_summary(event))
+                    finished = True
+                elif event_type == "error":
+                    task_service.mark_failed(
+                        task_id, str(event.get("message") or "生成失败")
+                    )
+                    finished = True
+                yield event
+        finally:
+            if not finished:
+                task_service.mark_failed(task_id, "生成流提前结束或连接中断")
+
     @app.post("/api/v1/forge/generate")
     def generate():
         """生成资源。"""
 
         def action():
             payload = cast("dict[str, Any]", request.json) or {}
-            return svc.generate(GenerateRequest(**payload))
+            req = GenerateRequest(**payload)
+            return run_recorded("forge.generate", req.model_dump(), lambda: svc.generate(req))
 
         return run(action, status=201)
 
@@ -72,7 +137,7 @@ def create_app(
         response.content_type = "text/event-stream; charset=utf-8"
         response.set_header("Cache-Control", "no-cache")
         response.set_header("X-Accel-Buffering", "no")
-        return _sse(svc.generate_stream(req))
+        return _sse(record_stream(svc.generate_stream(req), req.model_dump()))
 
     @app.get("/api/v1/forge/resources")
     def list_resources():
@@ -118,7 +183,14 @@ def create_app(
     @app.post("/api/v1/forge/students/<profile_id>/portrait")
     def generate_portrait(profile_id):
         """分析学生全部证据并生成学情画像。"""
-        return run(lambda: portrait.generate(profile_id), status=201)
+        return run(
+            lambda: run_recorded(
+                "forge.portrait",
+                {"profile_id": profile_id},
+                lambda: portrait.generate(profile_id),
+            ),
+            status=201,
+        )
 
     return app
 

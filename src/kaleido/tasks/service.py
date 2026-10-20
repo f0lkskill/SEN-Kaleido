@@ -141,6 +141,81 @@ class TaskService:
         except Exception as exc:
             raise NotFoundError(f"任务不存在: {task_id}") from exc
 
+    def _get_or_none(self, task_id: str) -> dict | None:
+        """读取任务，缺失时返回 ``None``（供外部任务收尾）。"""
+        try:
+            return self.tasks.get(task_id)
+        except Exception:  # noqa: BLE001 - 任务可能已被删除
+            logger.warning("外部任务不存在，跳过收尾: id=%s", task_id)
+            return None
+
+    def create_external(
+        self, task_type: str, payload: dict | None = None
+    ) -> dict:
+        """登记由 HTTP 请求等外部路径直接执行的任务（不入队）。
+
+        用于流式生成等无法交给工作线程执行、但需要在任务面板可见的
+        长任务：先建 ``pending`` 记录，执行方再调用 :meth:`mark_running`
+        / :meth:`mark_succeeded` / :meth:`mark_failed` 更新状态。
+        """
+        task_id = self.tasks.next_id()
+        now = self._now()
+        document = {
+            "task_id": task_id,
+            "task_type": task_type,
+            "status": PENDING,
+            "payload": payload or {},
+            "result": None,
+            "error": None,
+            "priority": 0,
+            "attempts": 0,
+            "max_attempts": 1,
+            "defer_off_peak": False,
+            "created_at": now,
+            "updated_at": now,
+            "started_at": None,
+            "finished_at": None,
+        }
+        self.tasks.put(task_id, document)
+        logger.info("登记外部任务: id=%s type=%s", task_id, task_type)
+        return document
+
+    def mark_running(self, task_id: str) -> None:
+        """把外部任务标记为执行中。"""
+        document = self._get_or_none(task_id)
+        if document is None or document.get("status") == CANCELLED:
+            return
+        document["status"] = RUNNING
+        document["attempts"] = int(document.get("attempts", 0)) + 1
+        document["started_at"] = self._now()
+        document["updated_at"] = self._now()
+        self.tasks.put(task_id, document)
+
+    def mark_succeeded(self, task_id: str, result: dict | None = None) -> None:
+        """把外部任务标记为成功；期间被取消则保留取消态。"""
+        document = self._get_or_none(task_id)
+        if document is None or document.get("status") == CANCELLED:
+            return
+        document["status"] = SUCCEEDED
+        document["result"] = result
+        document["error"] = None
+        document["finished_at"] = self._now()
+        document["updated_at"] = self._now()
+        self.tasks.put(task_id, document)
+        logger.info("外部任务完成: id=%s", task_id)
+
+    def mark_failed(self, task_id: str, error: str) -> None:
+        """把外部任务标记为失败。"""
+        document = self._get_or_none(task_id)
+        if document is None or document.get("status") == CANCELLED:
+            return
+        document["status"] = FAILED
+        document["error"] = error
+        document["finished_at"] = self._now()
+        document["updated_at"] = self._now()
+        self.tasks.put(task_id, document)
+        logger.error("外部任务失败: id=%s error=%s", task_id, error)
+
     def list_tasks(
         self,
         task_type: str | None = None,

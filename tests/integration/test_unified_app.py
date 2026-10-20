@@ -182,6 +182,74 @@ def test_forge_generate_via_task(tmp_path, monkeypatch):
     assert result["result"]["resource_id"].startswith("r_")
 
 
+def _task_items(app, task_type="forge.generate"):
+    """读取指定类型的任务列表。"""
+    _, _, raw = _call(
+        app, "GET", "/api/v1/tasks", query=f"task_type={task_type}&size=50"
+    )
+    return _json(raw)["data"]["items"]
+
+
+def test_forge_generate_records_task(tmp_path, monkeypatch):
+    """同步生成接口会在任务队列留下 succeeded 记录。"""
+    monkeypatch.setenv("SEN_KALEIDO_LLM_PROVIDER", "stub")
+    app = _app(tmp_path)
+    body = {
+        "attributes": {
+            "disabilities": ["visual"],
+            "severity": "mild",
+            "cognitive_level": "primary_3",
+            "learning_pace": "medium",
+        },
+        "resource_type": "courseware",
+        "topic": "认识四季",
+    }
+    status, _, raw = _call(app, "POST", "/api/v1/forge/generate", body)
+    assert status.startswith("201")
+    resource_id = _json(raw)["data"]["resource_id"]
+
+    items = _task_items(app)
+    assert len(items) == 1
+    task = items[0]
+    assert task["status"] == "succeeded"
+    assert task["task_type"] == "forge.generate"
+    assert task["result"]["resource_id"] == resource_id
+    assert task["started_at"] and task["finished_at"]
+
+
+def test_forge_stream_records_task(tmp_path, monkeypatch):
+    """流式生成同样会在任务队列留下 succeeded 记录。"""
+    monkeypatch.setenv("SEN_KALEIDO_LLM_PROVIDER", "stub")
+    app = _app(tmp_path)
+    body = {
+        "attributes": {
+            "disabilities": ["hearing"],
+            "severity": "moderate",
+            "cognitive_level": "primary_5",
+            "learning_pace": "slow",
+        },
+        "resource_type": "exercise",
+        "topic": "看图识字",
+    }
+    status, _, raw = _call(app, "POST", "/api/v1/forge/generate/stream", body)
+    assert status.startswith("200")
+    text = raw.decode("utf-8")
+    assert '"type": "done"' in text
+    resource_id = None
+    for line in text.splitlines():
+        if line.startswith("data: "):
+            event = json.loads(line[6:])
+            if event.get("type") == "done":
+                resource_id = event["resource_id"]
+    assert resource_id
+
+    items = _task_items(app)
+    assert len(items) == 1
+    task = items[0]
+    assert task["status"] == "succeeded"
+    assert task["result"]["resource_id"] == resource_id
+
+
 if __name__ == "__main__":
     import pytest
 
