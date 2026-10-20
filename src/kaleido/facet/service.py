@@ -85,6 +85,9 @@ class FacetService:
             pass_score=int(thresholds.get("pass", 80)),
             review_score=int(thresholds.get("review", 60)),
             has_llm_issues=bool((llm or {}).get("issues")),
+            llm_incomplete=bool(
+                llm and (llm.get("parsed") is False or llm.get("truncated"))
+            ),
         )
         report = FacetReport(
             resource_id=resource_id,
@@ -208,12 +211,13 @@ class FacetService:
         result = self.client.complete(
             messages,
             temperature=0.1,
-            max_tokens=2048,
             response_format={"type": "json_object"},
         )
         parsed = self._parse_result(result.content)
         parsed["model"] = result.model
         parsed["usage"] = result.usage
+        parsed["finish_reason"] = getattr(result, "finish_reason", "")
+        parsed["truncated"] = parsed["finish_reason"] == "length"
         return parsed
 
     def _attributes_text(self, attributes: dict) -> str:
@@ -299,9 +303,9 @@ class FacetService:
         try:
             data = json.loads(cleaned)
         except (json.JSONDecodeError, TypeError):
-            logger.warning("质量评分 JSON 解析失败，回退为纯文本摘要")
+            logger.warning("质量评分 JSON 解析失败，回退为规则分")
             return {
-                "summary": text,
+                "summary": "模型评分返回格式不完整，本次综合分回退为规则分。",
                 "scores": {},
                 "strengths": [],
                 "issues": [],
@@ -377,11 +381,12 @@ class FacetService:
         pass_score: int,
         review_score: int,
         has_llm_issues: bool = False,
+        llm_incomplete: bool = False,
     ) -> str:
         """综合规则与得分给出通过 / 复核 / 不通过。"""
         if rules.get("blocking") or score < review_score:
             return "fail"
-        if score < pass_score or rules.get("issues") or has_llm_issues:
+        if score < pass_score or rules.get("issues") or has_llm_issues or llm_incomplete:
             return "review"
         return "pass"
 

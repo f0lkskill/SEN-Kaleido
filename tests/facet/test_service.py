@@ -89,6 +89,7 @@ def test_evaluate_persists_report(tmp_path):
     assert "补充关键步骤图" in report["suggestions"]
     assert report["prompts"] == ["补充关键步骤图，并配教师口述指令。"]
     assert len(client.calls) == 1
+    assert "max_tokens" not in client.calls[0]
 
     board = service.profile_service.get_prompt_board(profile["profile_id"])
     assert board[0]["text"] == "补充关键步骤图，并配教师口述指令。"
@@ -131,8 +132,9 @@ def test_llm_parse_failure_falls_back(tmp_path):
     client.content = "模型只返回了一段说明"
     report = service.evaluate(resource_id)
     assert report["llm"]["parsed"] is False
+    assert report["verdict"] == "review"
     assert report["score"] == report["rule_score"]
-    assert "模型只返回了一段说明" in report["summary"]
+    assert "回退为规则分" in report["summary"]
 
 
 def test_config_summary(tmp_path):

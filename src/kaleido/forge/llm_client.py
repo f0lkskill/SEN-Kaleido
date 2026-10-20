@@ -26,6 +26,7 @@ class LLMResult(BaseModel):
     content: str
     model: str = ""
     usage: dict = Field(default_factory=dict)
+    finish_reason: str = ""
 
 
 class LLMClient(Protocol):
@@ -140,7 +141,12 @@ class DeepSeekClient:
                     )
                     logger.warning("生成异常: %s", last_error)
                     continue
-                return LLMResult(content=content, model=data.get("model", self.model), usage=usage)
+                return LLMResult(
+                    content=content,
+                    model=data.get("model", self.model),
+                    usage=usage,
+                    finish_reason=str(finish or ""),
+                )
             except requests.HTTPError as exc:
                 # 保留响应体，便于定位模型名/参数/额度等接口级错误
                 resp = exc.response
