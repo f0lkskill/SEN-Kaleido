@@ -174,6 +174,7 @@
   margin-bottom: var(--space-4);
 }
 
+/* 表单/筛选器标签：保持中性白底，不抢内容的视觉焦点 */
 .field label {
   align-self: flex-start;
   display: inline-flex;
@@ -181,13 +182,14 @@
   gap: var(--space-1);
   margin-bottom: 2px;
   padding: 3px var(--space-3);
-  border: 1px solid var(--color-primary-soft);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-primary-soft);
-  color: var(--color-primary-dark);
-  font-weight: 700;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
   font-size: var(--font-small);
   line-height: 1.4;
+  white-space: nowrap;
 }
 
 .field .req {
@@ -228,8 +230,10 @@ textarea {
 
 .checks {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
+  /* 每列最宽 220px，避免开关被拉伸得过长、右侧留白过多 */
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  gap: 18px 20px;
+  justify-content: start;
 }
 
 @media (max-width: 520px) {
@@ -238,70 +242,106 @@ textarea {
   }
 }
 
-/* ---- 单/多选：滑动开关（名称融入控件，统一高度） ---- */
+/* ---- 单/多选：整块胶囊即开关（加大标题 + 内嵌旋钮 + 渐变蒙版） ---- */
 .check {
   position: relative;
-  display: inline-flex;
+  isolation: isolate;
+  display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: center;
   width: 100%;
-  min-height: 44px;
-  padding: var(--space-2) var(--space-3);
+  min-height: 58px;
+  padding: 12px 46px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-surface-alt);
-  font-size: var(--font-body);
-  font-weight: 500;
+  background: var(--color-surface);
+  color: var(--color-text);
+  /* 标题大于常规控件，接近胶囊上下边缘，形成“压住”的视觉重心 */
+  font-size: calc(var(--font-heading) * 1.28);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
   cursor: pointer;
   user-select: none;
-  transition: border-color 0.18s ease, background 0.18s ease;
+  transition: border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .check:hover {
-  border-color: var(--color-primary);
+  border-color: #aab6c8;
 }
 
+/* 原生勾选框铺满整块胶囊：整块可点、可聚焦 */
 .check input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
-  position: relative;
-  flex: none;
-  width: 42px;
-  height: 24px;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
-  border-radius: 999px;
-  background: var(--color-border);
+  opacity: 0;
   cursor: pointer;
-  transition: background 0.2s ease;
 }
 
-.check input[type="checkbox"]::after {
+/* 渐变蒙版：关闭时透明，启用时淡入，避免蓝白硬切换 */
+.check::after {
   content: "";
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at calc(100% - 22px) 50%, rgba(255, 255, 255, 0.38), transparent 46%),
+    linear-gradient(120deg, var(--color-primary), #5b8def);
+  opacity: 0;
+  transition: opacity 0.28s ease;
+  pointer-events: none;
+}
+
+/* 旋钮：保持在胶囊内部，左右滑动 */
+.check::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease;
+  border: 1px solid #c3cee0;
+  box-shadow: 0 4px 10px rgba(30, 50, 90, 0.14);
+  transform: translateY(-50%);
+  transition: left 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+  pointer-events: none;
 }
 
-.check input[type="checkbox"]:checked {
-  background: var(--color-primary);
+/* 启用态：渐变蒙版淡入，文字反白，旋钮滑到右侧内沿 */
+.check:has(input[type="checkbox"]:checked) {
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(47, 109, 240, 0.26);
 }
 
-.check input[type="checkbox"]:checked::after {
-  transform: translateX(18px);
+.check:has(input[type="checkbox"]:checked)::after {
+  opacity: 1;
 }
 
-.check input[type="checkbox"]:focus-visible {
-  outline: 2px solid var(--color-primary);
+.check:has(input[type="checkbox"]:checked)::before {
+  left: calc(100% - 44px);
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(10, 30, 80, 0.26);
+}
+
+/* 键盘焦点落在整块胶囊上 */
+.check:has(input[type="checkbox"]:focus-visible) {
+  outline: 3px solid var(--color-focus);
   outline-offset: 2px;
 }
 
-.check input[type="checkbox"]:disabled {
+.check:has(input[type="checkbox"]:disabled) {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -691,22 +731,9 @@ details.disclosure > summary {
   font-size: var(--font-body);
 }
 
-/* ---- 学生档案：详情面板 ---- */
-.detail-body {
-  animation: panel-in 0.28s ease both;
-}
-
-@keyframes panel-in {
-  from {
-    opacity: 0;
-    transform: translateX(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
+/* ---- 学生档案：详情面板 ----
+   进入动画由列表卡片承担；详情面板直接以最终状态呈现，
+   避免无头截图或动画时间线未推进时面板停留在透明帧。 */
 .detail-body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -750,18 +777,18 @@ details.disclosure > summary {
   background: var(--color-surface-alt);
 }
 
+/* 单独属性标签：与 .badge 同款浅蓝底/深蓝字，不做内容标题的实色强调 */
 .attr-name {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
   padding: 3px var(--space-3);
-  border: 1px solid var(--color-border);
   border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-weight: 600;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  font-weight: 500;
   font-size: var(--font-small);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .attr-value {
@@ -931,12 +958,20 @@ details.disclosure > summary {
   margin-top: var(--space-4);
 }
 
+/* 板块标题：内容标题使用实色渐变蓝药丸，与筛选器标签区分 */
 .panel-title {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
   margin: 0 0 var(--space-3);
-  color: var(--color-text-muted);
+  padding: 3px var(--space-3);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(120deg, var(--color-primary), #5b8def);
+  color: #fff;
   font-size: var(--font-small);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
 }
 
 
@@ -1099,6 +1134,67 @@ details.disclosure > summary {
   background: var(--color-surface);
   box-shadow: var(--shadow-md);
   animation: modal-in 0.26s cubic-bezier(0.2, 0.85, 0.3, 1.1) both;
+}
+
+/* 长表单：标题与操作按钮吸附，用两端渐隐的细线分隔，避免生硬切断 */
+.modal:not(.modal-sm) .modal-head {
+  position: sticky;
+  top: calc(-1 * var(--space-5));
+  z-index: 3;
+  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-5)) var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+  background: var(--color-surface);
+}
+
+.modal:not(.modal-sm) .modal-head::after {
+  content: "";
+  position: absolute;
+  left: var(--space-5);
+  right: var(--space-5);
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-border) 22%,
+    var(--color-border) 78%,
+    transparent
+  );
+}
+
+.modal .form-actions {
+  position: sticky;
+  bottom: calc(-1 * var(--space-5));
+  z-index: 3;
+  margin: var(--space-4) calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
+  padding: var(--space-3) var(--space-5) var(--space-5);
+  background: var(--color-surface);
+  box-shadow: 0 -14px 20px -20px rgba(20, 32, 60, 0.28);
+}
+
+.modal .form-actions::before {
+  content: "";
+  position: absolute;
+  left: var(--space-5);
+  right: var(--space-5);
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-border) 22%,
+    var(--color-border) 78%,
+    transparent
+  );
+}
+
+/* 弹窗内表单略紧凑，减少滚动距离 */
+.modal .field {
+  margin-bottom: var(--space-3);
+}
+
+.modal .panel + .panel {
+  margin-top: var(--space-3);
 }
 
 .modal-overlay.leaving .modal {
@@ -1460,6 +1556,7 @@ input[type="text"]:focus,
 input[type="number"]:focus,
 select:focus,
 textarea:focus {
+  outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-soft);
 }

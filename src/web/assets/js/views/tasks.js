@@ -67,7 +67,7 @@ export function createView(root) {
         ]),
         el("div", { class: "field-row" }, [
           el("div", { class: "field" }, [
-            el("label", { text: "优先级（越大越先执行）" }),
+            el("label", { text: "优先级", title: "数值越大越先执行" }),
             priorityInput,
           ]),
           el("div", { class: "field" }, [
