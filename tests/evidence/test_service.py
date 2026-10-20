@@ -13,6 +13,7 @@ import pytest
 
 from kaleido.common.errors import ValidationError
 from kaleido.evidence.models import (
+    ClassifyEvidenceRequest,
     CreateEvidenceRequest,
     ReviewEvidenceRequest,
     UpdateEvidenceRequest,
@@ -144,3 +145,102 @@ def test_list_filters_and_summary(tmp_path):
     assert summary["by_status"]["draft"] == 1
     assert summary["by_source"]["classroom_observation"] == 1
     assert summary["by_source"]["teacher_rating"] == 1
+
+
+def test_create_public_evidence_without_owner(tmp_path):
+    _student, service = _setup(tmp_path)
+    record = service.create(
+        CreateEvidenceRequest(
+            scope="public",
+            source_type="classroom_observation",
+            content="走廊观察：学生主动向同伴问好。",
+        )
+    )
+    assert record["scope"] == "public"
+    assert record["student_id"] == ""
+    assert record["observation_key"] == ""
+    assert record["media_type"] == "text"
+
+    listing = service.list(scope="public")
+    assert listing["total"] == 1
+    summary = service.summary()
+    assert summary["by_scope"]["public"] == 1
+    assert summary["by_scope"]["classified"] == 0
+
+
+def test_public_evidence_rejects_owner(tmp_path):
+    student, service = _setup(tmp_path)
+    with pytest.raises(ValidationError):
+        service.create(
+            CreateEvidenceRequest(
+                scope="public",
+                student_id=student["profile_id"],
+                source_type="classroom_observation",
+                content="不应关联学生",
+            )
+        )
+
+
+def test_classified_evidence_requires_student_and_observation(tmp_path):
+    _student, service = _setup(tmp_path)
+    with pytest.raises(ValidationError):
+        service.create(
+            CreateEvidenceRequest(
+                scope="classified",
+                source_type="classroom_observation",
+                content="缺少学生与观测点",
+            )
+        )
+
+
+def test_image_evidence_requires_attachment(tmp_path):
+    _student, service = _setup(tmp_path)
+    with pytest.raises(ValidationError):
+        service.create(
+            CreateEvidenceRequest(
+                scope="public",
+                source_type="image_capture",
+                media_type="image",
+                content="学生绘画作品",
+            )
+        )
+
+    record = service.create(
+        CreateEvidenceRequest(
+            scope="public",
+            source_type="image_capture",
+            media_type="image",
+            content="学生绘画作品",
+            attachments=["/assets/samples/sample_evidence_image.svg"],
+        )
+    )
+    assert record["media_type"] == "image"
+    listing = service.list(media_type="image")
+    assert listing["total"] == 1
+
+
+def test_classify_public_evidence(tmp_path):
+    student, service = _setup(tmp_path)
+    record = service.create(
+        CreateEvidenceRequest(
+            scope="public",
+            source_type="classroom_observation",
+            content="课堂中主动举手两次。",
+        )
+    )
+    classified = service.classify(
+        record["evidence_id"],
+        ClassifyEvidenceRequest(
+            student_id=student["profile_id"],
+            observation_key="class_engagement",
+        ),
+    )
+    assert classified["scope"] == "classified"
+    assert classified["student_id"] == student["profile_id"]
+    assert classified["observation_key"] == "class_engagement"
+    assert classified["title"] == "课堂参与程度"
+
+    summary = service.summary()
+    assert summary["by_scope"]["public"] == 0
+    assert summary["by_scope"]["classified"] == 1
+

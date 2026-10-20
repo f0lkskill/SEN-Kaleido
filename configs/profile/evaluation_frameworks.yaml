@@ -46,7 +46,7 @@ public_indicators:
         name: 课堂参与程度
         method: qualitative
         frequency: per_lesson
-        evidence_sources: [classroom_observation, teacher_rating]
+        evidence_sources: [classroom_observation, teacher_rating, video_event]
         rubric: participation
   - key: practice_quality
     name: 练习完成质量
@@ -56,5 +56,5 @@ public_indicators:
         name: 练习完成质量
         method: quantitative
         frequency: weekly
-        evidence_sources: [work_sample, item_response, teacher_rating]
+        evidence_sources: [work_sample, item_response, teacher_rating, image_capture]
         rubric: practice

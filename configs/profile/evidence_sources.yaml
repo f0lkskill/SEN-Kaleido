@@ -20,6 +20,11 @@ evidence_sources:
     modality: artifact
     processed_by: human
     cost: medium
+  image_capture:
+    name: 图像采集
+    modality: image
+    processed_by: human_or_llm
+    cost: medium
   teacher_rating:
     name: 教师评分
     modality: structured

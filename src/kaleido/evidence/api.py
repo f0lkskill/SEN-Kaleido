@@ -12,6 +12,7 @@ from kaleido.common.errors import KaleidoError
 from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.evidence.models import (
+    ClassifyEvidenceRequest,
     CreateEvidenceRequest,
     ReviewEvidenceRequest,
     UpdateEvidenceRequest,
@@ -64,6 +65,8 @@ def create_app(service: EvidenceService | None = None) -> Bottle:
                 observation_key=query.get("observation_key") or None,
                 source_type=query.get("source_type") or None,
                 status=query.get("status") or None,
+                scope=query.get("scope") or None,
+                media_type=query.get("media_type") or None,
                 page=int(query.get("page", 1)),
                 size=int(query.get("size", 20)),
             )
@@ -76,7 +79,10 @@ def create_app(service: EvidenceService | None = None) -> Bottle:
 
         def action():
             query = cast("dict[str, str]", request.query)
-            return svc.summary(student_id=query.get("student_id") or None)
+            return svc.summary(
+                student_id=query.get("student_id") or None,
+                scope=query.get("scope") or None,
+            )
 
         return run(action)
 
@@ -102,6 +108,16 @@ def create_app(service: EvidenceService | None = None) -> Bottle:
         def action():
             payload = cast("dict[str, Any]", request.json) or {}
             return svc.review(evidence_id, ReviewEvidenceRequest(**payload))
+
+        return run(action)
+
+    @app.post("/api/v1/evidence/<evidence_id>/classify")
+    def classify_evidence(evidence_id):
+        """把公有证据归类到学生与观测点。"""
+
+        def action():
+            payload = cast("dict[str, Any]", request.json) or {}
+            return svc.classify(evidence_id, ClassifyEvidenceRequest(**payload))
 
         return run(action)
 

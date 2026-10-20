@@ -27,9 +27,11 @@ collections:
     id_prefix: e
     id_zerofill: 5
     index_fields:
+      - scope
       - student_id
       - observation_key
       - source_type
+      - media_type
       - status
       - collected_at
   feedback:
