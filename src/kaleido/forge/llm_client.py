@@ -242,6 +242,7 @@ def create_client(config: dict) -> LLMClient:
     """
     provider = os.environ.get("SEN_KALEIDO_LLM_PROVIDER") or config.get("provider")
     if provider == "stub":
+        logger.warning("模型提供方被设为 stub，将使用离线桩，不会调用真实 AI")
         return StubClient()
     client = DeepSeekClient(config)
     if not client.has_credentials():
@@ -255,4 +256,10 @@ def create_client(config: dict) -> LLMClient:
             "如需真实生成请在 .env 配置 DEEPSEEK_API_KEY"
         )
         return StubClient()
+    logger.info(
+        "模型客户端: %s model=%s key_env=%s",
+        type(client).__name__,
+        client.model,
+        client.api_key_env,
+    )
     return client

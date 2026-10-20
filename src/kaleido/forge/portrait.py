@@ -11,7 +11,6 @@
 import base64
 import json
 import mimetypes
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -19,6 +18,7 @@ from urllib.parse import unquote, urlsplit
 
 from kaleido.common.config import load_yaml
 from kaleido.common.errors import ValidationError
+from kaleido.common.json_utils import loads_json_object
 from kaleido.common.logging import get_logger
 from kaleido.common.paths import EVIDENCE_MEDIA_DIR, WEB_DIR
 from kaleido.evidence.repository import EvidenceRepository
@@ -328,18 +328,18 @@ class PortraitService:
     @staticmethod
     def _parse_result(content: str) -> dict:
         """解析模型 JSON；失败时把原文作为画像描述，避免整次分析作废。"""
-        text = (content or "").strip()
-        cleaned = re.sub(r"^```(?:json)?\s*", "", text)
-        cleaned = re.sub(r"\s*```$", "", cleaned).strip()
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start >= 0 and end > start:
-            cleaned = cleaned[start : end + 1]
-        try:
-            data = json.loads(cleaned)
-        except (json.JSONDecodeError, TypeError):
+        data = loads_json_object(
+            content,
+            preferred_keys=("summary", "strengths", "needs", "suggestions"),
+        )
+        if data is None:
             logger.warning("画像 JSON 解析失败，回退为纯文本描述")
-            return {"summary": text, "strengths": [], "needs": [], "suggestions": []}
+            return {
+                "summary": (content or "").strip(),
+                "strengths": [],
+                "needs": [],
+                "suggestions": [],
+            }
 
         def as_list(*keys: str) -> list[str]:
             for key in keys:
@@ -357,7 +357,7 @@ class PortraitService:
             or ""
         ).strip()
         return {
-            "summary": summary or text,
+            "summary": summary or (content or "").strip(),
             "strengths": as_list("strengths", "优势"),
             "needs": as_list("needs", "需求"),
             "suggestions": as_list("suggestions", "建议", "教学建议"),

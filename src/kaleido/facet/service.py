@@ -1,11 +1,11 @@
 """facet 业务服务：规则校验 + 模型适配度评分 + 质量报告落库。"""
 
 import json
-import re
 from datetime import datetime
 
 from kaleido.common.config import load_yaml
 from kaleido.common.errors import NotFoundError
+from kaleido.common.json_utils import loads_json_object
 from kaleido.common.logging import get_logger
 from kaleido.facet.models import FacetEvaluationRequest, FacetReport
 from kaleido.facet.rules import evaluate as evaluate_rules
@@ -293,16 +293,18 @@ class FacetService:
     @staticmethod
     def _parse_result(content: str) -> dict:
         """解析模型 JSON；解析失败时保留原文摘要，避免整次校验作废。"""
-        text = (content or "").strip()
-        cleaned = re.sub(r"^```(?:json)?\s*", "", text)
-        cleaned = re.sub(r"\s*```$", "", cleaned).strip()
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start >= 0 and end > start:
-            cleaned = cleaned[start : end + 1]
-        try:
-            data = json.loads(cleaned)
-        except (json.JSONDecodeError, TypeError):
+        data = loads_json_object(
+            content,
+            preferred_keys=(
+                "summary",
+                "scores",
+                "strengths",
+                "issues",
+                "suggestions",
+                "prompts",
+            ),
+        )
+        if data is None:
             logger.warning("质量评分 JSON 解析失败，回退为规则分")
             return {
                 "summary": "模型评分返回格式不完整，本次综合分回退为规则分。",
@@ -338,7 +340,7 @@ class FacetService:
             data.get("summary") or data.get("description") or data.get("总结") or ""
         ).strip()
         return {
-            "summary": summary or text,
+            "summary": summary or "模型评分返回缺少摘要。",
             "scores": scores,
             "strengths": as_list("strengths", "优势"),
             "issues": as_list("issues", "问题"),
