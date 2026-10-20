@@ -1,4 +1,4 @@
-"""示例证据灌入脚本。
+﻿"""示例证据灌入脚本。
 
 为证据管理页面准备可直接查看的示例数据，覆盖：
 - 公有证据（未归类）：纯文本、图像、视频；
@@ -42,7 +42,7 @@ SAMPLES = [
         "media_type": "image",
         "title": "示例·学生绘画作品（图像）",
         "content": "暖色调绘画作品，画面包含房屋、树木与草地。",
-        "attachments": ["/assets/samples/sample_evidence_image.svg"],
+        "attachments": ["/assets/samples/sample_evidence_image.png"],
         "collector": "示例教师",
         "review": "verified",
     },
@@ -74,7 +74,7 @@ SAMPLES = [
         "media_type": "image",
         "title": "示例·练习作品（已归类）",
         "content": "完成 8/10 题，书写清晰，图形题全部正确。",
-        "attachments": ["/assets/samples/sample_evidence_image.svg"],
+        "attachments": ["/assets/samples/sample_evidence_image.png"],
         "collector": "示例教师",
     },
 ]
