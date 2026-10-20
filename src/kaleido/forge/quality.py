@@ -24,8 +24,27 @@ _EXERCISE_PARTS = ("读题稿", "答案")
 
 def _is_table_separator(line: str) -> bool:
     """判断是否为 Markdown 表格分隔行（如 ``| --- | --- |``）。"""
-    stripped = line.strip().strip("|").replace(" ", "")
-    return bool(stripped) and set(stripped) <= {"-", ":"} and "-" in stripped
+    cells = line.strip().strip("|").split("|")
+    if not cells:
+        return False
+    for cell in cells:
+        stripped = cell.strip().replace(" ", "")
+        if not stripped or not set(stripped) <= {"-", ":"} or "-" not in stripped:
+            return False
+    return True
+
+
+def _sentence_text(text: str) -> str:
+    """剔除图片行与表格行，避免 Markdown 语法被误判为长句。"""
+    lines: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("|") or (
+            stripped.startswith("![") and stripped.endswith(")")
+        ):
+            continue
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def analyze(content: str, resource_type: str, max_sentence_len: int | None = None) -> dict:
@@ -38,7 +57,11 @@ def analyze(content: str, resource_type: str, max_sentence_len: int | None = Non
     limit = max_sentence_len or _SENTENCE_LIMITS.get(resource_type, 16)
     issues: list[dict] = []
 
-    sentences = [part.strip() for part in _SENTENCE_SPLIT.split(text) if part.strip()]
+    sentences = [
+        part.strip()
+        for part in _SENTENCE_SPLIT.split(_sentence_text(text))
+        if part.strip()
+    ]
     long_sentences = [
         {"length": len(sentence), "text": sentence[:40]}
         for sentence in sentences

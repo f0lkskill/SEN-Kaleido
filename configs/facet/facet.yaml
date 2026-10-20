@@ -1,0 +1,67 @@
+# kaleido-facet 配置：质量校验维度、权重与规则阈值
+# 规则引擎做硬性拦截，模型评分提供适配度与可解释建议。
+
+# 评分维度与权重（权重总和应为 1）
+dimensions:
+  disability_fit: 障碍适配
+  cognitive_load: 认知负荷
+  sensory_accessibility: 感官可及
+  teaching_usability: 教学可用
+
+weights:
+  disability_fit: 0.30
+  cognitive_load: 0.25
+  sensory_accessibility: 0.25
+  teaching_usability: 0.20
+
+thresholds:
+  pass: 80                 # 综合得分达到该值且无警告时通过
+  review: 60               # 低于该值判定为不通过
+  max_content_chars: 6000  # 送入模型评分的正文字符上限
+  complex_term_limit: 8    # 复杂术语出现次数上限（超过则警告）
+
+# 各资源类型允许的单句最大字数
+max_sentence_chars:
+  exercise: 12
+  courseware: 16
+  rehabilitation: 16
+  interaction: 14
+  iep: 20
+
+# 各资源类型建议的正文长度上限（超过仅警告，不硬性拦截）
+max_characters:
+  exercise: 6000
+  courseware: 8000
+  rehabilitation: 6000
+  interaction: 5000
+  iep: 8000
+
+# 抽象、书面化术语：特殊教育材料中过多会增加理解负担
+complex_terms:
+  - 综上所述
+  - 毋庸置疑
+  - 与此同时
+  - 显著
+  - 机制
+  - 维度
+  - 范式
+  - 赋能
+  - 协同
+  - 系统性
+  - 深层次
+  - 多维度
+
+# 不同感官偏好下应出现的最小可及线索
+sensory_markers:
+  visual_first: ["![", "|", "①", "②", "△", "○", "□", "★", "→"]
+  audio_first: ["朗读", "听", "语音", "音频", "口头"]
+  tactile_aided: ["触摸", "摸一摸", "实物", "操作", "拼一拼", "摆一摆"]
+  mixed: []
+
+# 硬性错误码：命中后 verdict=fail，并阻止资源直接审核通过
+hard_codes:
+  - empty
+  - unclosed_code
+  - table_no_separator
+  - missing_读题稿
+  - missing_答案
