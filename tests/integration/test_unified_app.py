@@ -257,6 +257,71 @@ def test_forge_stream_records_task(tmp_path, monkeypatch):
     assert task["result"]["resource_id"] == resource_id
 
 
+def test_evidence_verified_triggers_loop_task(tmp_path):
+    """证据审核通过后自动投递 loop.evaluate 并生成评价快照。"""
+    app = _app(tmp_path)
+    status, _, raw = _call(
+        app,
+        "POST",
+        "/api/v1/students",
+        {
+            "name": "小评",
+            "attributes": {
+                "disabilities": ["visual"],
+                "severity": "moderate",
+                "cognitive_level": "primary_3",
+                "learning_pace": "medium",
+            },
+        },
+    )
+    assert status.startswith("201")
+    student_id = _json(raw)["data"]["profile_id"]
+
+    status, _, raw = _call(
+        app,
+        "POST",
+        "/api/v1/evidence",
+        {
+            "student_id": student_id,
+            "observation_key": "class_engagement",
+            "source_type": "classroom_observation",
+            "media_type": "text",
+            "content": "课堂中主动举手两次。",
+            "level": 4,
+        },
+    )
+    assert status.startswith("201")
+    evidence_id = _json(raw)["data"]["evidence_id"]
+
+    status, _, raw = _call(
+        app,
+        "POST",
+        f"/api/v1/evidence/{evidence_id}/review",
+        {"status": "verified", "verified_by": "教师"},
+    )
+    assert status.startswith("200")
+
+    task = None
+    for _ in range(60):
+        items = _task_items(app, "loop.evaluate")
+        if items and items[0]["status"] in ("succeeded", "failed"):
+            task = items[0]
+            break
+        time.sleep(0.05)
+    assert task is not None, "自动触发的学情评价任务未完成"
+    assert task["status"] == "succeeded"
+    assert task["payload"]["trigger"] == "evidence_verified"
+
+    status, _, raw = _call(
+        app, "GET", f"/api/v1/loop/students/{student_id}/latest"
+    )
+    assert status.startswith("200")
+    snapshot = _json(raw)["data"]
+    assert snapshot["student_id"] == student_id
+    assert snapshot["status"] == "partial"
+    assert snapshot["dimension_scores"]["participation"] == 1.0
+
+
 if __name__ == "__main__":
     import pytest
 

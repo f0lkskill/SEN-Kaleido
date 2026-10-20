@@ -25,9 +25,28 @@ def task_summary(result: Any) -> dict:
             "prompt_template_key",
             "verdict",
             "score",
+            "snapshot_id",
+            "period",
+            "coverage",
+            "dimension_scores",
+            "missing_observations",
+            "evidence_count",
+            "computed_at",
+            "overall_score",
+            "rule_score",
+            "blocking",
+            "dimensions",
+            "issues",
+            "suggestions",
+            "strengths",
         )
         if key in result
     }
+    content = result.get("content")
+    if isinstance(content, str) and content:
+        limit = 12000
+        summary["content"] = content[:limit]
+        summary["content_truncated"] = len(content) > limit
     quality = result.get("quality")
     if isinstance(quality, dict):
         summary["quality"] = {
@@ -83,12 +102,18 @@ def record_stream(
     task = task_service.create_external(task_type, payload)
     task_id = task["task_id"]
     task_service.mark_running(task_id)
+    content_parts: list[str] = []
     finished = False
     try:
         for event in events:
             event_type = event.get("type")
-            if event_type == "done":
-                task_service.mark_succeeded(task_id, task_summary(event))
+            if event_type == "content":
+                content_parts.append(str(event.get("text") or ""))
+            elif event_type == "done":
+                result = dict(event)
+                if content_parts and not result.get("content"):
+                    result["content"] = "".join(content_parts)
+                task_service.mark_succeeded(task_id, task_summary(result))
                 finished = True
             elif event_type == "error":
                 task_service.mark_failed(

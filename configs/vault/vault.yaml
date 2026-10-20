@@ -34,6 +34,14 @@ collections:
       - media_type
       - status
       - collected_at
+  evaluations:
+    id_prefix: es
+    id_zerofill: 5
+    index_fields:
+      - student_id
+      - status
+      - period
+      - computed_at
   feedback:
     id_prefix: f
     id_zerofill: 5

@@ -8,6 +8,7 @@
 - 教师草稿经审核后才能作为已确认证据使用。
 """
 
+from collections.abc import Callable
 from datetime import datetime
 
 from kaleido.common.errors import NotFoundError, ValidationError
@@ -47,10 +48,17 @@ def _now() -> str:
 class EvidenceService:
     """证据管理业务服务。"""
 
-    def __init__(self, repository=None, student_repository=None):
+    def __init__(
+        self,
+        repository=None,
+        student_repository=None,
+        on_verified: Callable[[str], None] | None = None,
+    ):
         # 依赖可注入；测试时传入指向临时目录的仓库
         self.repository = repository or EvidenceRepository()
         self.students = student_repository or StudentRepository()
+        # 证据审核通过后的回调（统一入口用于自动投递 loop.evaluate）
+        self.on_verified = on_verified
 
     def _source_defs(self) -> dict:
         """读取证据来源定义（随配置热重载更新）。"""
@@ -271,6 +279,16 @@ class EvidenceService:
             request.status,
             request.verified_by,
         )
+        # 审核通过后自动触发学情评价；回调失败不影响证据审核本身
+        if (
+            request.status == STATUS_VERIFIED
+            and record.student_id
+            and self.on_verified is not None
+        ):
+            try:
+                self.on_verified(record.student_id)
+            except Exception:
+                logger.exception("证据审核后自动触发 loop 失败: student=%s", record.student_id)
         return record.model_dump()
 
     def delete(self, evidence_id: str) -> dict:

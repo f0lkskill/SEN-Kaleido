@@ -1,0 +1,5 @@
+# kaleido-loop 配置：证据汇总与评价快照
+scoring:
+  value_scale: 100          # 非 0~1 的量化值按 100 分制归一化
+  status_ok_coverage: 1.0   # 覆盖率达标时快照状态为 ok
+  max_evidence: 10000       # 单次汇总的证据上限，避免异常数据拖垮请求

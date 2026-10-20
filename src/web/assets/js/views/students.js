@@ -11,6 +11,9 @@ import {
   DISABILITY,
   SEVERITY,
   COGNITIVE_LEVEL,
+  DIMENSION,
+  EVALUATION_STATUS,
+  EVALUATION_STATUS_CLASS,
   label,
   labels,
   formatTime,
@@ -337,6 +340,7 @@ export function createView(root, hooks = {}) {
       panel(null, head),
       panel("学生属性", renderAttributes(attributes)),
       panel("学习节奏", renderLearningPace(attributes)),
+      panel("学情评价快照", renderEvaluationSnapshot(item)),
       panel("维度与学习节奏关系", renderFlow(attributes, item.framework)),
       // 画像默认收起，点击标题展开
       enhanceDisclosure(
@@ -361,6 +365,109 @@ export function createView(root, hooks = {}) {
       ),
       el("p", { class: "meta detail-meta", text: `更新时间：${formatTime(item.updated_at)}` }),
     ]);
+  }
+
+  /** 渲染证据驱动的学情评价快照。 */
+  function renderEvaluationSnapshot(item) {
+    const snapshot = item.evaluation;
+    const wrap = el("div", { class: "evaluation-snapshot" });
+    const button = el("button", {
+      class: "btn btn-sm",
+      type: "button",
+      text: snapshot ? "重算评价" : "生成评价",
+      on: { click: (event) => recalculateLoop(item, event.currentTarget) },
+    });
+    const head = el("div", { class: "evaluation-head" }, [
+      el("div", { class: "badge-row" }, [
+        snapshot
+          ? el("span", {
+              class: `badge ${EVALUATION_STATUS_CLASS[snapshot.status] || "badge-muted"}`,
+              text: label(EVALUATION_STATUS, snapshot.status),
+            })
+          : null,
+        snapshot
+          ? el("span", {
+              class: "badge badge-muted",
+              text: `覆盖 ${Math.round(Number(snapshot.coverage || 0) * 100)}%`,
+            })
+          : null,
+        snapshot
+          ? el("span", {
+              class: "badge badge-muted",
+              text: `${snapshot.period || "-"} · ${snapshot.evidence_count || 0} 条证据`,
+            })
+          : null,
+      ]),
+      button,
+    ]);
+    wrap.append(head);
+
+    if (!snapshot) {
+      wrap.append(
+        placeholder(
+          "尚未生成评价快照。学生证据审核通过后会自动重算，也可点击「生成评价」手动触发。"
+        )
+      );
+      return wrap;
+    }
+
+    const dimensions = Object.entries(snapshot.dimension_scores || {});
+    if (dimensions.length === 0) {
+      wrap.append(placeholder("当前没有可用分值，请先补充并审核带等级或量化值的证据。"));
+    } else {
+      for (const [key, value] of dimensions) {
+        const percent = Math.round(Number(value) * 100);
+        wrap.append(
+          el("div", { class: "evaluation-dim" }, [
+            el("div", { class: "evaluation-dim-head" }, [
+              el("span", { text: label(DIMENSION, key) }),
+              el("strong", { text: `${percent}%` }),
+            ]),
+            el("div", { class: "meter" }, [
+              el("div", { class: "meter-fill", style: `width:${percent}%` }),
+            ]),
+          ])
+        );
+      }
+    }
+
+    const missing = (snapshot.missing_observations || []).map(
+      (key) => (snapshot.observation_names || {})[key] || key
+    );
+    if (missing.length > 0) {
+      wrap.append(
+        el("p", { class: "meta", text: `证据不足：${missing.join("、")}` })
+      );
+    }
+    wrap.append(
+      el("p", {
+        class: "meta",
+        text:
+          `有效证据 ${snapshot.scored_evidence_count || 0}/${snapshot.evidence_count || 0} · ` +
+          `计算于 ${formatTime(snapshot.computed_at)}`,
+      })
+    );
+    return wrap;
+  }
+
+  /** 手动触发一次学情评价快照计算。 */
+  async function recalculateLoop(item, button) {
+    const original = button ? button.textContent : "";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "计算中…";
+    }
+    try {
+      await api.evaluateLoop(item.profile_id);
+      toastSuccess("评价快照已更新");
+      await refreshDetail(item);
+    } catch (err) {
+      toastError(err.message);
+      if (button && button.isConnected) {
+        button.disabled = false;
+        button.textContent = original || "重算评价";
+      }
+    }
   }
 
   /** 渲染学生画像摘要（基于证据生成）。 */
@@ -574,7 +681,11 @@ export function createView(root, hooks = {}) {
     activeId = profileId;
     const scrollY = window.scrollY;
     try {
-      const item = await api.getStudent(profileId);
+      const [item, snapshot] = await Promise.all([
+        api.getStudent(profileId),
+        api.latestEvaluation(profileId).catch(() => null),
+      ]);
+      item.evaluation = snapshot;
       clear(detailBox);
       detailBox.append(buildDetail(item));
     } catch (err) {

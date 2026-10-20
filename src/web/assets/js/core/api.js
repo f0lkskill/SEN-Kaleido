@@ -238,6 +238,19 @@ export const api = {
     }),
   facetConfig: () => request("/api/v1/facet/config"),
 
+  // ---- 反馈迭代 / 评价快照 ----
+  evaluateLoop: (studentId, body = {}) =>
+    request(`/api/v1/loop/students/${encodeURIComponent(studentId)}/evaluate`, {
+      method: "POST",
+      body,
+    }),
+  latestEvaluation: (studentId) =>
+    request(`/api/v1/loop/students/${encodeURIComponent(studentId)}/latest`),
+  listEvaluations: (studentId, query) =>
+    request(`/api/v1/loop/students/${encodeURIComponent(studentId)}/snapshots`, {
+      query,
+    }),
+
   // ---- 异步任务 ----
   taskTypes: () => request("/api/v1/tasks/types"),
   listTasks: (query) => request("/api/v1/tasks", { query }),

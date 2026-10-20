@@ -181,6 +181,36 @@ export const EVIDENCE_COST = {
   high: "高",
 };
 
+/** 任务类型中文名。 */
+export const TASK_TYPE = {
+  "forge.generate": "资源生成",
+  "forge.portrait": "画像分析",
+  "facet.evaluate": "质量校验",
+  "loop.evaluate": "学情评价",
+};
+
+/** 任务类型说明与触发时机提示。 */
+export const TASK_TYPE_HINT = {
+  "forge.generate": "提交后由后台队列生成资源；勾选闲时则等到夜间或周末执行。",
+  "forge.portrait": "提交后汇总该学生已审核证据并生成画像。",
+  "facet.evaluate": "提交后执行规则 + 模型质量评分，报告写回资源。",
+  "loop.evaluate": "证据审核通过后自动触发；也可在此手动指定学生立即重算。",
+};
+
+/** 评价快照状态。 */
+export const EVALUATION_STATUS = {
+  ok: "覆盖完整",
+  partial: "部分覆盖",
+  insufficient: "证据不足",
+};
+
+/** 评价快照状态对应的徽章样式类。 */
+export const EVALUATION_STATUS_CLASS = {
+  ok: "badge-success",
+  partial: "badge-warning",
+  insufficient: "badge-muted",
+};
+
 /** 任务状态。 */
 export const TASK_STATUS = {
   pending: "排队中",

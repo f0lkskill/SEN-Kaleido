@@ -23,10 +23,14 @@ from kaleido.evidence.service import EvidenceService
 from kaleido.facet.api import create_app as create_facet_app
 from kaleido.facet.service import FacetService
 from kaleido.forge.models import GenerateRequest
+from kaleido.loop.api import create_app as create_loop_app
+from kaleido.loop.models import LoopEvaluateRequest
+from kaleido.loop.service import LoopService
 from kaleido.profile.api import create_app as create_profile_app
 from kaleido.profile.repository import StudentRepository
 from kaleido.profile.service import ProfileService
 from kaleido.tasks.api import create_app as create_tasks_app
+from kaleido.tasks.models import CreateTaskRequest
 from kaleido.tasks.service import TaskService
 from kaleido.vault import Vault
 from kaleido.vault.api import create_app as create_vault_app
@@ -57,15 +61,29 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
     app.merge(create_profile_app(profile_service))
     app.merge(create_vault_app(vault))
 
+    # 异步任务服务尽早创建：证据审核通过等事件需要自动投递 loop 任务
+    task_service = TaskService(vault=vault)
+    loop_service: LoopService | None = None
+
+    def trigger_loop(student_id: str, trigger: str = "evidence_verified") -> None:
+        """把自动触发的学情评价投递到任务队列。"""
+        if loop_service is None:
+            return
+        task_service.submit(
+            CreateTaskRequest(
+                task_type="loop.evaluate",
+                payload={"student_id": student_id, "trigger": trigger},
+            )
+        )
+
     # 证据管理：与学生档案共用同一 vault 与仓库，保证跨模块一致
     evidence_service = EvidenceService(
         repository=EvidenceRepository(vault=vault),
         student_repository=profile_repository,
+        on_verified=trigger_loop,
     )
     app.merge(create_evidence_app(evidence_service))
 
-    # 异步任务服务：注册 forge 生成处理器，供批量/闲时调度使用
-    task_service = TaskService(vault=vault)
     forge_service = None
     if create_forge_app is not None and ForgeService is not None:
         forge_service = ForgeService(profile_service=profile_service, vault=vault)
@@ -102,6 +120,22 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
         "facet.evaluate",
         lambda payload: facet_service.evaluate(str(payload.get("resource_id") or "")),
     )
+
+    # 反馈迭代：证据审核通过后自动重算，也支持手动触发
+    loop_service = LoopService(
+        profile_service=profile_service,
+        evidence_repository=EvidenceRepository(vault=vault),
+        vault=vault,
+    )
+    app.merge(create_loop_app(loop_service, task_service=task_service))
+    task_service.register(
+        "loop.evaluate",
+        lambda payload: loop_service.evaluate_student(
+            str(payload.get("student_id") or ""),
+            LoopEvaluateRequest(period=payload.get("period")),
+        ),
+    )
+
     app.merge(create_tasks_app(task_service))
 
     # ---- 可选访问日志（默认关闭，设 SEN_KALEIDO_ACCESS_LOG=1 开启） ----
