@@ -5,11 +5,11 @@ llm:
   model: deepseek-flash
   temperature: 0.7
   # 推理型模型会把额度消耗在推理上导致正文为空，故留足上限（可用 4096/8192）
-  max_tokens: 8192
+  max_tokens: 999999999999999
   timeout: 120
   retries: 2
   # 密钥读取顺序：llm.api_key 配置 → 环境变量 api_key_env → 项目根 .env 文件
-  api_key_env: DEEPSEEK_API_KEY
+  api_key_env: sk-f3fd5aa2cc48492c89925180c6c66323
   # 也可直接填写 api_key；但更推荐放 .env（已被 .gitignore 忽略，避免密钥入库）
   # api_key: ""
 
