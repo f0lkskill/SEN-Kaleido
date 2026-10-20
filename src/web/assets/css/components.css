@@ -645,18 +645,33 @@ details.disclosure > summary {
   flex: 1;
 }
 
-/* 工具条右侧操作区：与筛选保持同一行 */
+/* 带操作按钮的工具条：筛选可换行，操作区始终固定在首行右侧 */
+.toolbar-with-actions {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.toolbar-filters {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.toolbar-with-actions .field {
+  flex: 1 1 0;
+  min-width: 130px;
+  max-width: 220px;
+}
+
 .toolbar-actions {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
-}
-
-/* 筛选结果统计：紧贴工具条下方，弱化展示 */
-.toolbar-summary {
-  margin: calc(var(--space-2) * -1) 0 var(--space-3);
-  padding-inline: var(--space-1);
+  margin-left: auto;
 }
 
 /* ---- 左右分栏（任务队列 / 资源生成） ---- */

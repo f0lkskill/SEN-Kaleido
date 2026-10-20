@@ -112,7 +112,6 @@ export function createView(root, hooks = {}) {
   let mediaFilter;
   let sourceFilter;
   let statusFilter;
-  let summaryBox;
   let listBox;
   let detailBox;
   let layout;
@@ -132,18 +131,18 @@ export function createView(root, hooks = {}) {
     mediaFilter = filterSelect("media_type", Object.entries(MEDIA_TYPE), "全部媒体");
     sourceFilter = filterSelect("source_type", []);
     statusFilter = filterSelect("status", Object.entries(EVIDENCE_STATUS));
-    summaryBox = el("div", { class: "badge-row toolbar-summary" });
     listBox = el("div", { class: "student-list" });
     detailBox = el("div", { class: "student-detail", hidden: true });
     layout = el("div", { class: "student-layout" }, [listBox, detailBox]);
 
-    const toolbar = el("div", { class: "toolbar" }, [
-      el("div", { class: "field" }, [el("label", { text: "归属" }), scopeFilter]),
-      el("div", { class: "field" }, [el("label", { text: "媒体" }), mediaFilter]),
-      el("div", { class: "field" }, [el("label", { text: "学生" }), studentFilter]),
-      el("div", { class: "field" }, [el("label", { text: "来源" }), sourceFilter]),
-      el("div", { class: "field" }, [el("label", { text: "状态" }), statusFilter]),
-      el("div", { class: "spacer" }),
+    const toolbar = el("div", { class: "toolbar toolbar-with-actions" }, [
+      el("div", { class: "toolbar-filters" }, [
+        el("div", { class: "field" }, [el("label", { text: "归属" }), scopeFilter]),
+        el("div", { class: "field" }, [el("label", { text: "媒体" }), mediaFilter]),
+        el("div", { class: "field" }, [el("label", { text: "学生" }), studentFilter]),
+        el("div", { class: "field" }, [el("label", { text: "来源" }), sourceFilter]),
+        el("div", { class: "field" }, [el("label", { text: "状态" }), statusFilter]),
+      ]),
       el("div", { class: "toolbar-actions" }, [
         el("button", { class: "btn", type: "button", text: "刷新", on: { click: refresh } }),
         el("button", {
@@ -160,7 +159,7 @@ export function createView(root, hooks = {}) {
       select.addEventListener("change", refresh);
     }
 
-    root.append(el("section", { class: "card" }, [toolbar, summaryBox, layout]));
+    root.append(el("section", { class: "card" }, [toolbar, layout]));
   }
 
   /** 来源定义（后端失败时回退到静态键名）。 */
@@ -208,24 +207,6 @@ export function createView(root, hooks = {}) {
     return observationNames[key] || String(key || "-");
   }
 
-  /** 汇总计数。 */
-  async function loadSummary() {
-    try {
-      const data = await api.evidenceSummary({ student_id: studentFilter.value });
-      const byStatus = data.by_status || {};
-      const byScope = data.by_scope || {};
-      clear(summaryBox);
-      summaryBox.append(
-        badge(`公有 ${byScope.public || 0}`, "badge-info"),
-        badge(`归类 ${byScope.classified || 0}`, "badge-muted"),
-        badge(`待审核 ${byStatus.draft || 0}`, "badge-warning")
-      );
-    } catch (err) {
-      clear(summaryBox);
-      summaryBox.append(badge("统计不可用"));
-    }
-  }
-
   /** 收起详情面板（带回弹动画）。 */
   function closeDetail() {
     if (detailBox.hidden) return;
@@ -267,17 +248,14 @@ export function createView(root, hooks = {}) {
     clear(listBox);
     listBox.append(placeholder("正在加载…", "loading"));
     try {
-      const [data] = await Promise.all([
-        api.listEvidence({
-          student_id: studentFilter.value,
-          scope: scopeFilter.value,
-          media_type: mediaFilter.value,
-          source_type: sourceFilter.value,
-          status: statusFilter.value,
-          size: 100,
-        }),
-        loadSummary(),
-      ]);
+      const data = await api.listEvidence({
+        student_id: studentFilter.value,
+        scope: scopeFilter.value,
+        media_type: mediaFilter.value,
+        source_type: sourceFilter.value,
+        status: statusFilter.value,
+        size: 100,
+      });
       clear(listBox);
       if (data.items.length === 0) {
         listBox.append(placeholder("暂无证据，点击右上角新增。"));
@@ -323,7 +301,6 @@ export function createView(root, hooks = {}) {
       listBox.append(
         el("div", { class: "evidence-group-head" }, [
           badge(group.title, group.className),
-          badge(`${group.items.length} 条`),
         ])
       );
       appendCards(group.items);
