@@ -11,6 +11,7 @@ from kaleido.common.errors import KaleidoError
 from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.forge.models import GenerateRequest
+from kaleido.forge.portrait import PortraitService
 from kaleido.forge.service import ForgeService
 
 _logger = get_logger("forge.api")
@@ -22,11 +23,15 @@ def _sse(events: Iterator[dict]) -> Iterator[str]:
         yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 
 
-def create_app(service: ForgeService | None = None) -> Bottle:
+def create_app(
+    service: ForgeService | None = None,
+    portrait_service: PortraitService | None = None,
+) -> Bottle:
     """构建 forge 的 Bottle 应用。"""
     # bottle 路由装饰器类型标注有缺陷，用 Any 视图规避误报
     app = cast(Any, Bottle())
     svc = service or ForgeService()
+    portrait = portrait_service or PortraitService()
 
     def run(action, status: int = 200):
         """统一执行包装：异常映射为统一响应并设置状态码。"""
@@ -109,6 +114,11 @@ def create_app(service: ForgeService | None = None) -> Bottle:
     def resource_types():
         """可用资源类型。"""
         return run(svc.resource_types)
+
+    @app.post("/api/v1/forge/students/<profile_id>/portrait")
+    def generate_portrait(profile_id):
+        """分析学生全部证据并生成学情画像。"""
+        return run(lambda: portrait.generate(profile_id), status=201)
 
     return app
 

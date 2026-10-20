@@ -5,13 +5,21 @@ llm:
   model: deepseek-flash
   temperature: 0.7
   # 推理型模型会把额度消耗在推理上导致正文为空，故留足上限（可用 4096/8192）
-  max_tokens: 999999999999999
+  max_tokens: 8192
   timeout: 120
   retries: 2
   # 密钥读取顺序：llm.api_key 配置 → 环境变量 api_key_env → 项目根 .env 文件
-  api_key_env: sk-f3fd5aa2cc48492c89925180c6c66323
+  api_key_env: DEEPSEEK_API_KEY
   # 也可直接填写 api_key；但更推荐放 .env（已被 .gitignore 忽略，避免密钥入库）
   # api_key: ""
+  # 视觉理解与文本生成共用 deepseek-flash；如需单独指定可改 vision_model
+  vision_model: deepseek-flash
+
+# 学生画像分析：把某学生全部证据（文本 + 图像）送入视觉模型归纳
+portrait:
+  max_images: 6                 # 单次最多送入的图像张数
+  max_image_bytes: 8388608      # 单张图像最大字节数（8MB）
+  max_evidence: 200             # 单次最多分析的证据条数
 
 resource_types:
   courseware: 分层知识点课件

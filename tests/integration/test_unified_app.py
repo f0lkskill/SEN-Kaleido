@@ -111,6 +111,7 @@ def test_forge_task_registered(tmp_path):
     status, _, raw = _call(app, "GET", "/api/v1/tasks/types")
     assert status.startswith("200")
     assert "forge.generate" in _json(raw)["data"]["task_types"]
+    assert "forge.portrait" in _json(raw)["data"]["task_types"]
 
 
 def test_forge_generate_via_task(tmp_path, monkeypatch):

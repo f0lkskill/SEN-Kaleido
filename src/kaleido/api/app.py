@@ -32,10 +32,12 @@ from kaleido.vault.api import create_app as create_vault_app
 # forge 依赖可能未安装（例如纯画像部署），延迟导入以免整体不可用
 try:  # pragma: no cover - 取决于部署形态
     from kaleido.forge.api import create_app as create_forge_app
+    from kaleido.forge.portrait import PortraitService
     from kaleido.forge.service import ForgeService
 except Exception:  # noqa: BLE001
     create_forge_app = None  # type: ignore[assignment]
     ForgeService = None  # type: ignore[assignment]
+    PortraitService = None  # type: ignore[assignment]
 
 
 def create_app(vault: Vault | None = None, profile_service: ProfileService | None = None) -> Bottle:
@@ -64,11 +66,27 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
     task_service = TaskService(vault=vault)
     if create_forge_app is not None and ForgeService is not None:
         forge_service = ForgeService(profile_service=profile_service, vault=vault)
-        app.merge(create_forge_app(forge_service))
+        portrait_service = (
+            PortraitService(
+                profile_service=profile_service,
+                vault=vault,
+                client=forge_service.client,
+            )
+            if PortraitService is not None
+            else None
+        )
+        app.merge(create_forge_app(forge_service, portrait_service))
         task_service.register(
             "forge.generate",
             lambda payload: forge_service.generate(GenerateRequest(**payload)),
         )
+        if portrait_service is not None:
+            task_service.register(
+                "forge.portrait",
+                lambda payload: portrait_service.generate(
+                    str(payload.get("profile_id") or "")
+                ),
+            )
     app.merge(create_tasks_app(task_service))
 
     # ---- 可选访问日志（默认关闭，设 SEN_KALEIDO_ACCESS_LOG=1 开启） ----

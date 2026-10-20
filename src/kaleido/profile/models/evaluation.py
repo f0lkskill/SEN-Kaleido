@@ -48,6 +48,20 @@ class EvaluationFramework(BaseModel):
     prompt_template_key: str = ""
 
 
+class StudentPortrait(BaseModel):
+    """基于学生证据生成的学情画像摘要。"""
+
+    summary: str = ""  # 面向教师的一段画像描述
+    strengths: list[str] = Field(default_factory=list)  # 优势表现
+    needs: list[str] = Field(default_factory=list)  # 待支持需求
+    suggestions: list[str] = Field(default_factory=list)  # 教学建议
+    evidence_count: int = 0  # 参与分析的证据条数
+    image_count: int = 0  # 送入视觉模型的图像数
+    video_count: int = 0  # 视频证据数（以结构化描述参与分析）
+    model: str = ""  # 生成所用模型
+    generated_at: str | None = None  # 生成时间
+
+
 class StudentEvaluationProfile(BaseModel):
     """学生实例：属性（画像）+ 评价框架，是 profile 模块对外的最终契约。"""
 
@@ -55,6 +69,7 @@ class StudentEvaluationProfile(BaseModel):
     name: str
     attributes: "StudentAttributes"
     framework: EvaluationFramework
+    portrait: StudentPortrait | None = None  # 证据分析生成的学情画像
     created_at: str | None = None
     updated_at: str | None = None
 

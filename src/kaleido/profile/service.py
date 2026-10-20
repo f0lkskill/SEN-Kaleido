@@ -12,7 +12,7 @@ from kaleido.common.logging import get_logger
 from kaleido.profile.attributes import AttributeSchema
 from kaleido.profile.config_loader import load_config, load_rubric, reload_config
 from kaleido.profile.framework import FrameworkEngine
-from kaleido.profile.models.evaluation import StudentEvaluationProfile
+from kaleido.profile.models.evaluation import StudentEvaluationProfile, StudentPortrait
 from kaleido.profile.models.student import (
     CreateStudentRequest,
     StudentAttributesInput,
@@ -116,6 +116,15 @@ class ProfileService:
         self.repository.delete(profile_id)
         logger.info("删除档案: id=%s", profile_id)
         return {"profile_id": profile_id}
+
+    def save_portrait(self, profile_id: str, portrait: dict) -> dict:
+        """保存证据分析生成的学生画像，并刷新档案更新时间。"""
+        profile = self.repository.get(profile_id)
+        profile.portrait = StudentPortrait(**portrait)
+        profile.updated_at = _now()
+        self.repository.save(profile)
+        logger.info("保存学生画像: id=%s model=%s", profile_id, profile.portrait.model)
+        return profile.model_dump()
 
     def preview_framework(self, attributes: StudentAttributesInput) -> dict:
         """仅预览属性解析与框架生成结果，不落库。"""

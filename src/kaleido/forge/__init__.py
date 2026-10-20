@@ -6,6 +6,7 @@
 
 from kaleido.forge.llm_client import DeepSeekClient, LLMClient, LLMResult, StubClient, create_client
 from kaleido.forge.models import GeneratedResource, GenerateRequest
+from kaleido.forge.portrait import PortraitService
 from kaleido.forge.service import ForgeService
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "GeneratedResource",
     "LLMClient",
     "LLMResult",
+    "PortraitService",
     "StubClient",
     "create_client",
 ]

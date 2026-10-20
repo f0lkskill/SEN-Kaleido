@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from collections.abc import Iterator
-from typing import Protocol
+from typing import Any, Protocol
 
 import requests
 from pydantic import BaseModel, Field
@@ -31,8 +31,8 @@ class LLMResult(BaseModel):
 class LLMClient(Protocol):
     """模型客户端协议。"""
 
-    def complete(self, messages: list[dict[str, str]], **overrides) -> LLMResult:
-        """输入对话消息，返回补全结果。"""
+    def complete(self, messages: list[dict[str, Any]], **overrides) -> LLMResult:
+        """输入对话消息，返回补全结果；消息内容支持文本或多模态内容块。"""
         ...
 
 
@@ -70,7 +70,7 @@ class DeepSeekClient:
             raise ConfigError(f"未设置环境变量 {self.api_key_env}（或配置 api_key）")
         return key
 
-    def complete(self, messages: list[dict[str, str]], **overrides) -> LLMResult:
+    def complete(self, messages: list[dict[str, Any]], **overrides) -> LLMResult:
         """调用 ``/chat/completions``，失败时按配置重试。"""
         payload = {
             "model": overrides.get("model", self.model),
@@ -79,6 +79,8 @@ class DeepSeekClient:
             "max_tokens": overrides.get("max_tokens", self.config.get("max_tokens", 2048)),
             "stream": False,
         }
+        if overrides.get("response_format"):
+            payload["response_format"] = overrides["response_format"]
         headers = {
             "Authorization": f"Bearer {self._api_key()}",
             "Content-Type": "application/json",
@@ -125,6 +127,13 @@ class DeepSeekClient:
             except requests.HTTPError as exc:
                 # 保留响应体，便于定位模型名/参数/额度等接口级错误
                 resp = exc.response
+                if resp is not None and resp.status_code == 402:
+                    last_error = UpstreamError(
+                        "模型账户余额不足（402 Payment Required），"
+                        "请充值或切换离线桩客户端（SEN_KALEIDO_LLM_PROVIDER=stub）"
+                    )
+                    logger.error("模型账户余额不足: %s", exc)
+                    break
                 body = resp.text[:500] if resp is not None else ""
                 logger.error("模型接口返回错误: %s %s", exc, body)
                 last_error = UpstreamError(f"接口错误 {exc}：{body}")
@@ -194,7 +203,7 @@ class StubClient:
         self.usage = usage or {"total_tokens": 0}
         self.calls: list[dict] = []
 
-    def complete(self, messages: list[dict[str, str]], **overrides) -> LLMResult:
+    def complete(self, messages: list[dict[str, Any]], **overrides) -> LLMResult:
         self.calls.append({"messages": messages, **overrides})
         return LLMResult(content=self.content, model="stub", usage=self.usage)
 
