@@ -3,15 +3,23 @@
 统一约定与其它模块一致：响应包裹、异常映射、依赖注入。
 """
 
+import shutil
+import uuid
+from datetime import datetime
+from pathlib import Path
 from typing import Any, cast
 
-from bottle import Bottle, request, response
+from bottle import Bottle, abort, request, response, static_file
 from pydantic import ValidationError as PydanticValidationError
 
-from kaleido.common.errors import KaleidoError
+from kaleido.common.errors import KaleidoError, ValidationError
 from kaleido.common.logging import get_logger
+from kaleido.common.paths import EVIDENCE_MEDIA_DIR
 from kaleido.common.response import fail, ok
 from kaleido.evidence.models import (
+    MEDIA_IMAGE,
+    MEDIA_TEXT,
+    MEDIA_VIDEO,
     ClassifyEvidenceRequest,
     CreateEvidenceRequest,
     ReviewEvidenceRequest,
@@ -20,6 +28,23 @@ from kaleido.evidence.models import (
 from kaleido.evidence.service import EvidenceService
 
 _logger = get_logger("evidence.api")
+
+# 上传文件类型白名单与大小限制
+_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
+_VIDEO_SUFFIXES = {".mp4", ".webm", ".ogg", ".mov"}
+_TEXT_SUFFIXES = {".txt", ".md"}
+_MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+
+
+def _media_type_for_suffix(suffix: str) -> str | None:
+    """按扩展名判定媒体类型。"""
+    if suffix in _IMAGE_SUFFIXES:
+        return MEDIA_IMAGE
+    if suffix in _VIDEO_SUFFIXES:
+        return MEDIA_VIDEO
+    if suffix in _TEXT_SUFFIXES:
+        return MEDIA_TEXT
+    return None
 
 
 def create_app(service: EvidenceService | None = None) -> Bottle:
@@ -85,6 +110,52 @@ def create_app(service: EvidenceService | None = None) -> Bottle:
             )
 
         return run(action)
+
+    @app.post("/api/v1/evidence/upload")
+    def upload_evidence_file():
+        """上传证据附件（文本 / 图像 / 视频）。"""
+
+        def action():
+            upload = request.files.get("file")
+            if upload is None or not upload.filename:
+                raise ValidationError("缺少上传文件")
+            original = Path(str(upload.filename).replace("\\", "/")).name
+            suffix = Path(original).suffix.lower()
+            media_type = _media_type_for_suffix(suffix)
+            if media_type is None:
+                raise ValidationError("仅支持文本、图像、视频文件")
+            try:
+                upload.file.seek(0, 2)
+                size = upload.file.tell()
+                upload.file.seek(0)
+            except OSError:
+                size = 0
+            if size > _MAX_UPLOAD_BYTES:
+                raise ValidationError("文件过大，单个文件不能超过 100MB")
+
+            EVIDENCE_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            stored = f"{stamp}_{uuid.uuid4().hex[:10]}{suffix}"
+            with (EVIDENCE_MEDIA_DIR / stored).open("wb") as handle:
+                shutil.copyfileobj(upload.file, handle)
+            return {
+                "filename": stored,
+                "original_name": original,
+                "media_type": media_type,
+                "size": size,
+                "url": f"/api/v1/evidence/files/{stored}",
+            }
+
+        return run(action, status=201)
+
+    @app.get("/api/v1/evidence/files/<filename:path>")
+    def evidence_file(filename):
+        """读取已上传的证据附件（支持视频 Range 请求）。"""
+        # 禁止路径穿越，只允许媒体目录下的单层文件名
+        if Path(filename).name != filename:
+            abort(404, "Not Found")
+        response.set_header("Cache-Control", "public, max-age=3600")
+        return static_file(filename, root=str(EVIDENCE_MEDIA_DIR))
 
     @app.get("/api/v1/evidence/<evidence_id>")
     def get_evidence(evidence_id):
