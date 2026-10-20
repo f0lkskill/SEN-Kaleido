@@ -73,15 +73,24 @@ class DeepSeekClient:
             )
         return key
 
+    def _max_tokens(self, overrides: dict) -> int | None:
+        """解析输出上限；未配置时不传该参数，交给 API 使用思考模式默认额度。"""
+        value = overrides["max_tokens"] if "max_tokens" in overrides else self.config.get("max_tokens")
+        if value in (None, "", 0):
+            return None
+        return int(value)
+
     def complete(self, messages: list[dict[str, Any]], **overrides) -> LLMResult:
         """调用 ``/chat/completions``，失败时按配置重试。"""
+        max_tokens = self._max_tokens(overrides)
         payload = {
             "model": overrides.get("model", self.model),
             "messages": messages,
             "temperature": overrides.get("temperature", self.config.get("temperature", 0.7)),
-            "max_tokens": overrides.get("max_tokens", self.config.get("max_tokens", 2048)),
             "stream": False,
         }
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         if overrides.get("response_format"):
             payload["response_format"] = overrides["response_format"]
         headers = {
@@ -89,7 +98,11 @@ class DeepSeekClient:
             "Content-Type": "application/json",
         }
         url = f"{self.base_url}/chat/completions"
-        logger.info("模型请求: model=%s max_tokens=%s", payload["model"], payload["max_tokens"])
+        logger.info(
+            "模型请求: model=%s max_tokens=%s",
+            payload["model"],
+            payload.get("max_tokens", "API 默认"),
+        )
         last_error: Exception | None = None
         for _ in range(self.retries + 1):
             try:
@@ -122,7 +135,8 @@ class DeepSeekClient:
                         detail = "模型返回了空内容"
                     last_error = UpstreamError(
                         f"{detail}（finish_reason={finish or '未知'}）；"
-                        "请提高 configs/forge/forge.yaml 的 max_tokens，或改用非推理模型"
+                        "请在 configs/forge/forge.yaml 中设置 max_tokens: null 使用思考模式默认额度，"
+                        "或改用非推理模型"
                     )
                     logger.warning("生成异常: %s", last_error)
                     continue
@@ -151,13 +165,15 @@ class DeepSeekClient:
         产出形如 ``{"type": "reasoning"|"content", "text": str}`` 的事件：
         推理模型会先持续产出 ``reasoning``（思考过程），随后产出 ``content``（正文）。
         """
+        max_tokens = self._max_tokens(overrides)
         payload = {
             "model": overrides.get("model", self.model),
             "messages": messages,
             "temperature": overrides.get("temperature", self.config.get("temperature", 0.7)),
-            "max_tokens": overrides.get("max_tokens", self.config.get("max_tokens", 2048)),
             "stream": True,
         }
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
         headers = {
             "Authorization": f"Bearer {self._api_key()}",
             "Content-Type": "application/json",

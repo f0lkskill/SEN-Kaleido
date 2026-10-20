@@ -111,6 +111,29 @@ def test_deepseek_request_and_result(monkeypatch):
     assert captured["url"] == "https://api.deepseek.com/chat/completions"
     assert captured["headers"]["Authorization"] == "Bearer secret"
     assert captured["json"]["stream"] is False
+    assert "max_tokens" not in captured["json"]
+
+
+def test_max_tokens_override_is_sent(monkeypatch):
+    monkeypatch.setenv("TEST_KEY", "secret")
+    captured: dict = {}
+
+    def fake_post(url, json, headers, timeout):
+        captured.update(json=json)
+        return FakeResponse(
+            {
+                "model": "deepseek-flash",
+                "choices": [{"message": {"content": "ok"}}],
+                "usage": {},
+            }
+        )
+
+    monkeypatch.setattr(llm_client.requests, "post", fake_post)
+    client = DeepSeekClient(
+        {"api_key_env": "TEST_KEY", "max_tokens": None, "retries": 0}
+    )
+    client.complete([{"role": "user", "content": "x"}], max_tokens=123)
+    assert captured["json"]["max_tokens"] == 123
 
 
 def test_deepseek_retries_then_upstream_error(monkeypatch):

@@ -308,7 +308,8 @@ class ForgeService:
         if not content:
             yield {
                 "type": "error",
-                "message": "模型未返回正文内容（推理可能占满 max_tokens），请重试或提高 max_tokens",
+                "message": "模型未返回正文内容（思考可能占满输出额度或达到上下文上限），"
+                "请重试或精简输入",
             }
             return
 

@@ -68,7 +68,7 @@ llm:
   base_url: https://api.deepseek.com
   model: deepseek-flash
   temperature: 0.7
-  max_tokens: 2048
+  max_tokens: null              # 不设硬上限，使用 API 思考模式默认额度
   timeout: 60
   retries: 2
   api_key_env: DEEPSEEK_API_KEY
