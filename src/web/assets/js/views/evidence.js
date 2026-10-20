@@ -5,7 +5,7 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder, panel } from "../core/dom.js";
+import { el, clear, placeholder, panel, revealDetail } from "../core/dom.js";
 import {
   EVIDENCE_STATUS,
   EVIDENCE_STATUS_CLASS,
@@ -108,7 +108,6 @@ function isPublic(item) {
  */
 export function createView(root, hooks = {}) {
   let studentFilter;
-  let scopeFilter;
   let mediaFilter;
   let sourceFilter;
   let statusFilter;
@@ -127,7 +126,6 @@ export function createView(root, hooks = {}) {
     clear(root);
 
     studentFilter = filterSelect("student_id", [], "全部学生");
-    scopeFilter = filterSelect("scope", Object.entries(EVIDENCE_SCOPE), "全部归属");
     mediaFilter = filterSelect("media_type", Object.entries(MEDIA_TYPE), "全部媒体");
     sourceFilter = filterSelect("source_type", []);
     statusFilter = filterSelect("status", Object.entries(EVIDENCE_STATUS));
@@ -137,7 +135,6 @@ export function createView(root, hooks = {}) {
 
     const toolbar = el("div", { class: "toolbar toolbar-with-actions" }, [
       el("div", { class: "toolbar-filters" }, [
-        el("div", { class: "field" }, [el("label", { text: "归属" }), scopeFilter]),
         el("div", { class: "field" }, [el("label", { text: "媒体" }), mediaFilter]),
         el("div", { class: "field" }, [el("label", { text: "学生" }), studentFilter]),
         el("div", { class: "field" }, [el("label", { text: "来源" }), sourceFilter]),
@@ -155,7 +152,7 @@ export function createView(root, hooks = {}) {
     ]);
 
     // 选择即筛选
-    for (const select of [studentFilter, scopeFilter, mediaFilter, sourceFilter, statusFilter]) {
+    for (const select of [studentFilter, mediaFilter, sourceFilter, statusFilter]) {
       select.addEventListener("change", refresh);
     }
 
@@ -250,7 +247,6 @@ export function createView(root, hooks = {}) {
     try {
       const data = await api.listEvidence({
         student_id: studentFilter.value,
-        scope: scopeFilter.value,
         media_type: mediaFilter.value,
         source_type: sourceFilter.value,
         status: statusFilter.value,
@@ -286,10 +282,6 @@ export function createView(root, hooks = {}) {
     const appendCards = (groupItems) => {
       for (const item of groupItems) listBox.append(evidenceCard(item, index++));
     };
-    if (scopeFilter.value) {
-      appendCards(items);
-      return;
-    }
     const publicItems = items.filter(isPublic);
     const classifiedItems = items.filter((item) => !isPublic(item));
     const groups = [
@@ -632,6 +624,9 @@ export function createView(root, hooks = {}) {
       clear(detailBox);
       detailBox.append(placeholder(`加载失败：${err.message}`));
       toastError(err.message);
+    } finally {
+      // 窄屏详情堆叠在列表下方：渲染完成后滚动到详情
+      revealDetail(detailBox);
     }
   }
 

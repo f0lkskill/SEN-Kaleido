@@ -51,6 +51,7 @@ function buildShell() {
       on: { click: () => activate(tab.id) },
     });
     button.dataset.tab = tab.id;
+    button.tabIndex = -1;
     tabbar.append(button);
 
     // 视图容器
@@ -63,6 +64,22 @@ function buildShell() {
     });
     main.append(section);
   }
+
+  // 标签键盘导航：方向键切换、Home/End 跳到首尾（自动激活）
+  tabbar.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const buttons = Array.from(tabbar.querySelectorAll('[role="tab"]'));
+    const current = buttons.indexOf(document.activeElement);
+    if (current < 0) return;
+    event.preventDefault();
+    let next = current;
+    if (event.key === "ArrowLeft") next = (current - 1 + buttons.length) % buttons.length;
+    else if (event.key === "ArrowRight") next = (current + 1) % buttons.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = buttons.length - 1;
+    buttons[next].focus();
+    buttons[next].click();
+  });
 }
 
 /** 切换到指定标签。 */
@@ -84,7 +101,11 @@ function activate(id) {
     const selected = item.id === id;
     const button = qs(`#tab-${item.id}`);
     const section = qs(`#view-${item.id}`);
-    if (button) button.setAttribute("aria-selected", String(selected));
+    if (button) {
+      button.setAttribute("aria-selected", String(selected));
+      // roving tabindex：只有当前标签进入 Tab 序列，切换用方向键
+      button.tabIndex = selected ? 0 : -1;
+    }
     if (section) section.hidden = !selected;
   }
 

@@ -123,6 +123,31 @@
   font-size: var(--font-small);
 }
 
+/* 高对比度下去掉球面高光，避免影响读数 */
+html[data-contrast="high"] .facet-orb::before {
+  background: var(--color-surface);
+}
+
+/* 窄屏：缩小球体并允许一行放下更多维度 */
+@media (max-width: 900px) {
+  .facet-dimensions {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+
+  .facet-orb {
+    width: 80px;
+    height: 80px;
+  }
+
+  .facet-orb::before {
+    inset: 8px;
+  }
+
+  .facet-orb-core strong {
+    font-size: calc(1.3rem * var(--font-scale));
+  }
+}
+
 .facet-block {
   margin-top: var(--space-3);
 }

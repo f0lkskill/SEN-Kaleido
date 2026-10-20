@@ -77,6 +77,18 @@ export function panel(title, body, { className = "" } = {}) {
 }
 
 /**
+ * 窄屏（学生档案/证据/资源库的 master-detail 堆叠）时，
+ * 把详情面板滚动到视口，避免用户点击后以为没有反应。
+ * @param {HTMLElement} detailBox 详情容器
+ */
+export function revealDetail(detailBox) {
+  if (!detailBox) return;
+  if (window.matchMedia("(max-width: 899px)").matches) {
+    detailBox.scrollIntoView({ block: "start" });
+  }
+}
+
+/**
  * 让原生 <details> 支持平滑的展开 / 收起高度过渡。
  * 原理：把 summary 之后的内容包进高度过渡容器，拦截点击手动控制 open 时机，
  * 收起时先播放过渡、结束再关闭，避免内容瞬间消失。

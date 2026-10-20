@@ -5,7 +5,14 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder, panel, enhanceDisclosure } from "../core/dom.js";
+import {
+  el,
+  clear,
+  placeholder,
+  panel,
+  enhanceDisclosure,
+  revealDetail,
+} from "../core/dom.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { confirmDialog } from "../core/dialog.js";
 import { openContextMenu } from "../core/contextmenu.js";
@@ -568,6 +575,9 @@ export function createView(root, hooks = {}) {
       clear(detailBox);
       detailBox.append(placeholder(`加载失败：${err.message}`));
       toastError(err.message);
+    } finally {
+      // 窄屏详情堆叠在列表下方：渲染完成后滚动到详情
+      revealDetail(detailBox);
     }
   }
 

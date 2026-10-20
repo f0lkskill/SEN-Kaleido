@@ -6,7 +6,14 @@
  */
 
 import { api } from "../core/api.js";
-import { el, clear, placeholder, enhanceDisclosure, panel } from "../core/dom.js";
+import {
+  el,
+  clear,
+  placeholder,
+  enhanceDisclosure,
+  panel,
+  revealDetail,
+} from "../core/dom.js";
 import {
   DISABILITY,
   SEVERITY,
@@ -693,8 +700,13 @@ export function createView(root, hooks = {}) {
       detailBox.append(placeholder(`加载失败：${err.message}`));
       toastError(err.message);
     } finally {
-      // 切换档案时保持页面滚动位置，不跳到顶部
-      window.scrollTo(0, scrollY);
+      if (window.matchMedia("(max-width: 899px)").matches) {
+        // 窄屏详情堆叠在列表下方：渲染完成后滚动到详情，避免以为没反应
+        revealDetail(detailBox);
+      } else {
+        // 桌面分栏：切换档案时保持页面滚动位置，不跳到顶部
+        window.scrollTo(0, scrollY);
+      }
     }
   }
 

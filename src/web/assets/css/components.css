@@ -351,8 +351,8 @@ select:hover {
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
   gap: 8px;
   max-width: 520px;
-  /* 在 flex 列容器中居中，但不能用 margin auto（会把网格挤成内容宽度） */
-  align-self: center;
+  /* 与上方标签左对齐，避免多选组整体居中造成错位 */
+  align-self: start;
 }
 
 @media (max-width: 700px) {
@@ -2193,4 +2193,16 @@ textarea:focus {
 
 .evaluation-dim-head strong {
   color: var(--color-primary-dark);
+}
+
+/* 窄屏点击列表后滚动详情时避开吸顶标签栏 */
+.student-detail {
+  scroll-margin-top: 88px;
+}
+
+/* 窄屏工具条：筛选与操作按钮允许换行，避免按钮挤压字段 */
+@media (max-width: 900px) {
+  .toolbar-with-actions {
+    flex-wrap: wrap;
+  }
 }
