@@ -245,6 +245,16 @@ export function createView(root, hooks = {}) {
             el("span", { class: "badge badge-muted", text: `模型：${event.model || "-"}` }),
             el("span", { class: "badge badge-warning", text: `状态：${event.status}` })
           );
+          // 后端口径的质量检查结果（结构化，样式由前端组统一）
+          if (event.quality) {
+            if (event.quality.ok) {
+              meta.append(el("span", { class: "badge badge-success", text: "质量检查通过" }));
+            } else {
+              for (const issue of event.quality.issues || []) {
+                meta.append(el("span", { class: "badge badge-warning", text: issue.message }));
+              }
+            }
+          }
           promptBox.append(
             enhanceDisclosure(
               el("details", { class: "disclosure" }, [

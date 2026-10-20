@@ -9,6 +9,7 @@ from kaleido.common.logging import get_logger
 from kaleido.forge.llm_client import LLMClient, create_client
 from kaleido.forge.models import GenerateRequest
 from kaleido.forge.prompts import load_template, render
+from kaleido.forge.quality import analyze
 from kaleido.profile.service import ProfileService
 from kaleido.vault import Vault
 
@@ -131,6 +132,7 @@ class ForgeService:
             request.profile_id,
         )
         result = self.client.complete(messages)
+        quality = analyze(result.content, request.resource_type)
 
         resource_id = self.resources.next_id()
         document = {
@@ -144,14 +146,16 @@ class ForgeService:
             "usage": result.usage,
             "status": "draft",
             "attributes": attributes,
+            "quality": quality,
         }
         self.resources.put(resource_id, document)
         _logger.info(
-            "生成完成: resource_id=%s model=%s tokens=%s content_len=%d",
+            "生成完成: resource_id=%s model=%s tokens=%s content_len=%d quality_issues=%d",
             resource_id,
             result.model,
             (result.usage or {}).get("total_tokens"),
             len(result.content or ""),
+            len(quality["issues"]),
         )
         return {"resource_id": resource_id, "prompt": system_prompt, **document}
 
@@ -202,6 +206,7 @@ class ForgeService:
             }
             return
 
+        quality = analyze(content, request.resource_type)
         resource_id = self.resources.next_id()
         document = {
             "resource_type": request.resource_type,
@@ -214,15 +219,22 @@ class ForgeService:
             "usage": {},
             "status": "draft",
             "attributes": attributes,
+            "quality": quality,
         }
         self.resources.put(resource_id, document)
-        _logger.info("流式生成完成: resource_id=%s content_len=%d", resource_id, len(content))
+        _logger.info(
+            "流式生成完成: resource_id=%s content_len=%d quality_issues=%d",
+            resource_id,
+            len(content),
+            len(quality["issues"]),
+        )
         yield {
             "type": "done",
             "resource_id": resource_id,
             "model": document["model"],
             "status": "draft",
             "prompt": system_prompt,
+            "quality": quality,
         }
 
     def list_resources(
