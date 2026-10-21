@@ -18,10 +18,13 @@ import { confirmDialog } from "../core/dialog.js";
 import { openContextMenu } from "../core/contextmenu.js";
 import {
   DISABILITY,
+  SEVERITY,
+  COGNITIVE_LEVEL,
   RESOURCE_STATUS,
   FACET_VERDICT,
   FACET_VERDICT_CLASS,
   label,
+  labels,
   formatTime,
 } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
@@ -50,6 +53,7 @@ export function createView(root, hooks = {}) {
   let layout;
   let counter;
   let typeMap = {}; // 资源类型键 -> 中文名
+  let studentMap = new Map(); // 学生档案缓存
   let closeTimer = null;
   let activeId = null; // 当前选中的资源 ID
   let evaluating = false; // 质量校验进行中，避免重复提交
@@ -189,12 +193,59 @@ export function createView(root, hooks = {}) {
           el("h4", { text: item.topic }),
           el("div", { class: "badge-row" }, [
             el("span", { class: "badge badge-info", text: typeName }),
-            el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
+            // el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
             el("span", { class: "badge badge-warning", text: label(RESOURCE_STATUS, item.status) }),
-            item.facet
+            // item.facet
+            //   ? el("span", {
+            //       class: `badge ${FACET_VERDICT_CLASS[item.facet.verdict] || "badge-muted"}`
+            //       // text: `质量：${label(FACET_VERDICT, item.facet.verdict)}`,
+            //     })
+            //   : null,
+          ]),
+        ]),
+      ]
+    );
+  }
+
+  /** 来源学生信息板；点击跳转到学生档案。 */
+  function renderSourceStudent(item, student) {
+    if (!item.profile_id) return null;
+    const attributes = (student && student.attributes) || item.attributes || {};
+    const name = (student && student.name) || item.profile_id;
+    return el(
+      "button",
+      {
+        class: "student-card detail-source-student",
+        type: "button",
+        title: "查看学生档案",
+        "aria-label": `查看来源学生 ${name}`,
+        on: {
+          click: () => {
+            if (hooks.onShowStudent) hooks.onShowStudent(item.profile_id);
+          },
+        },
+      },
+      [
+        el("span", { class: "avatar", text: (name || "?").slice(0, 1) }),
+        el("span", { class: "student-card-body" }, [
+          el("h4", { text: name }),
+          el("div", { class: "badge-row" }, [
+            attributes.disabilities
               ? el("span", {
-                  class: `badge ${FACET_VERDICT_CLASS[item.facet.verdict] || "badge-muted"}`,
-                  text: `质量：${label(FACET_VERDICT, item.facet.verdict)}`,
+                  class: "badge badge-info",
+                  text: labels(DISABILITY, attributes.disabilities),
+                })
+              : null,
+            attributes.severity
+              ? el("span", {
+                  class: "badge badge-muted",
+                  text: label(SEVERITY, attributes.severity),
+                })
+              : null,
+            attributes.cognitive_level
+              ? el("span", {
+                  class: "badge badge-muted",
+                  text: `认知：${label(COGNITIVE_LEVEL, attributes.cognitive_level)}`,
                 })
               : null,
           ]),
@@ -204,25 +255,15 @@ export function createView(root, hooks = {}) {
   }
 
   /** 组装资源详情（标题为资源类型，Markdown 正文 + 元信息标签）。 */
-  function renderDetail(item) {
+  function renderDetail(item, student) {
     const typeName = typeMap[item.resource_type] || item.resource_type;
     const md = el("div", { class: "md" });
     md.innerHTML = renderMarkdown(item.content || "");
 
     const actions = [];
-    // 有来源学生时提供快捷跳转；预生成（临时属性）则无此按钮
+    // 有来源学生时提供修订入口；预生成（临时属性）则无此按钮
     if (item.profile_id) {
       actions.push(
-        el("button", {
-          class: "btn btn-sm",
-          type: "button",
-          text: "来源学生",
-          on: {
-            click: () => {
-              if (hooks.onShowStudent) hooks.onShowStudent(item.profile_id);
-            },
-          },
-        }),
         el("button", {
           class: "btn btn-sm",
           type: "button",
@@ -268,11 +309,12 @@ export function createView(root, hooks = {}) {
         el("span", { class: "avatar avatar-lg", text: (typeName || "?").slice(0, 1) }),
         el("h3", { text: typeName }),
       ]),
-      el("div", { class: "detail-actions" }, actions),
+      renderSourceStudent(item, student),
     ]);
+    const actionBar = el("div", { class: "detail-actions detail-actions-row" }, actions);
 
     const panels = [
-      panel(null, head),
+      panel(null, [head, actionBar]),
       panel(
         "资源信息",
         el("div", { class: "badge-row" }, [
@@ -600,8 +642,13 @@ export function createView(root, hooks = {}) {
     }
     try {
       const item = await api.getResource(resourceId);
+      let student = item.profile_id ? studentMap.get(item.profile_id) : null;
+      if (item.profile_id && !student) {
+        student = await api.getStudent(item.profile_id).catch(() => null);
+        if (student) studentMap.set(item.profile_id, student);
+      }
       clear(detailBox);
-      detailBox.append(renderDetail(item));
+      detailBox.append(renderDetail(item, student));
     } catch (err) {
       clear(detailBox);
       detailBox.append(placeholder(`加载失败：${err.message}`));
