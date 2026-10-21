@@ -1,6 +1,7 @@
 """facet 业务服务：规则校验 + 模型适配度评分 + 质量报告落库。"""
 
 import json
+from collections.abc import Callable
 from datetime import datetime
 
 from kaleido.common.config import load_yaml
@@ -9,7 +10,7 @@ from kaleido.common.json_utils import loads_json_object
 from kaleido.common.logging import get_logger
 from kaleido.facet.models import FacetEvaluationRequest, FacetReport
 from kaleido.facet.rules import evaluate as evaluate_rules
-from kaleido.forge.llm_client import LLMClient, create_client
+from kaleido.forge.llm_client import LLMClient, create_client, stream_complete
 from kaleido.forge.prompts import render
 from kaleido.profile.service import ProfileService
 from kaleido.vault import Vault
@@ -58,9 +59,12 @@ class FacetService:
         self.resources = self.vault.collection("resources")
 
     def evaluate(
-        self, resource_id: str, request: FacetEvaluationRequest | None = None
+        self,
+        resource_id: str,
+        request: FacetEvaluationRequest | None = None,
+        on_event: Callable[[dict], None] | None = None,
     ) -> dict:
-        """校验资源并保存质量报告。"""
+        """校验资源并保存质量报告；模型评分过程通过 ``on_event`` 实时上报。"""
         req = request or FacetEvaluationRequest()
         document = self._load_resource(resource_id)
         profile = self._load_profile(document.get("profile_id"))
@@ -72,7 +76,13 @@ class FacetService:
         llm = None
         if req.use_llm:
             llm = self._score_with_llm(
-                document, profile, attributes, rules, content, resource_type
+                document,
+                profile,
+                attributes,
+                rules,
+                content,
+                resource_type,
+                on_event=on_event,
             )
 
         weights = self.config.get("weights") or {}
@@ -185,6 +195,7 @@ class FacetService:
         rules: dict,
         content: str,
         resource_type: str,
+        on_event: Callable[[dict], None] | None = None,
     ) -> dict:
         """调用模型输出适配度评分与质性问题。"""
         thresholds = self.config.get("thresholds") or {}
@@ -208,8 +219,10 @@ class FacetService:
             resource_type,
             len(content),
         )
-        result = self.client.complete(
+        result = stream_complete(
+            self.client,
             messages,
+            on_event=on_event,
             temperature=0.1,
             response_format={"type": "json_object"},
         )

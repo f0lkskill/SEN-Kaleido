@@ -137,6 +137,35 @@ def test_llm_parse_failure_falls_back(tmp_path):
     assert "回退为规则分" in report["summary"]
 
 
+class _StreamingStub:
+    """带流式能力的评分桩：先思考，再输出 JSON。"""
+
+    def __init__(self, content: str):
+        self.content = content
+        self.model = "stub-stream"
+
+    def complete(self, messages, **overrides):  # pragma: no cover
+        raise AssertionError("流式路径不应调用 complete")
+
+    def stream(self, messages, **overrides):
+        yield {"type": "reasoning", "text": "先看规则。"}
+        yield {"type": "content", "text": self.content}
+
+
+def test_evaluate_streams_reasoning(tmp_path):
+    """模型评分过程通过 on_event 实时上报思考与正文。"""
+    service, _, _, resource_id, _, _ = _setup(tmp_path)
+    service.client = _StreamingStub(_LLM_CONTENT)
+    events: list[dict] = []
+
+    report = service.evaluate(resource_id, on_event=events.append)
+
+    assert any(event["type"] == "reasoning" for event in events)
+    assert any(event["type"] == "content" for event in events)
+    assert report["model"] == "stub-stream"
+    assert report["verdict"] == "review"
+
+
 def test_config_summary(tmp_path):
     service, _, _, _, _, _ = _setup(tmp_path)
     summary = service.config_summary()

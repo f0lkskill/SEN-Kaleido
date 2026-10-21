@@ -5,6 +5,7 @@ HTTP 同步接口（如资源生成、质量校验、画像分析）不经过后
 提供统一的登记与状态收尾逻辑，避免各模块重复实现。
 """
 
+import inspect
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -95,11 +96,25 @@ def task_summary(result: Any) -> dict:
     return summary or {"keys": sorted(result)}
 
 
+def _invoke_with_progress(
+    action: Callable[..., Any],
+    progress: Callable[[dict], None],
+) -> Any:
+    """按处理器参数数量决定是否注入进度回调。"""
+    try:
+        arity = len(inspect.signature(action).parameters)
+    except (TypeError, ValueError):
+        arity = 0
+    if arity >= 1:
+        return action(progress)
+    return action()
+
+
 def record_task(
     task_service: TaskService | None,
     task_type: str,
     payload: dict,
-    action: Callable[[], Any],
+    action: Callable[..., Any],
 ) -> Any:
     """执行同步业务并把整个过程登记为任务记录。
 
@@ -107,12 +122,13 @@ def record_task(
     业务异常会在任务标记失败后原样抛出，由 API 层统一映射响应。
     """
     if task_service is None:
-        return action()
+        return _invoke_with_progress(action, lambda event: None)
     task = task_service.create_external(task_type, payload)
     task_id = task["task_id"]
     task_service.mark_running(task_id)
+    progress = lambda event: task_service.record_progress(task_id, event)
     try:
-        result = action()
+        result = _invoke_with_progress(action, progress)
     except Exception as exc:
         task_service.mark_failed(task_id, str(exc))
         raise
@@ -137,6 +153,7 @@ def record_stream(
     finished = False
     try:
         for event in events:
+            task_service.record_progress(task_id, event)
             event_type = event.get("type")
             if event_type == "content":
                 content_parts.append(str(event.get("text") or ""))

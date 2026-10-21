@@ -63,6 +63,8 @@ tests/tasks/
 ```yaml
 worker_count: 2                     # 后台工作线程数
 max_recoveries: 3                   # 进程重启后中断任务的最大自动恢复次数
+progress_max_chars: 4000            # 任务面板保留的思考/正文增量字符数
+progress_interval_seconds: 0.5      # 流式进度写盘间隔
 schedule:
   defer_poll_seconds: 5             # 闲时任务未到窗口时的轮询间隔
   off_peak:
@@ -95,6 +97,17 @@ pending ──(工作线程取用)──► running ──┬─► succeeded
 - 每个任务用 `recoveries` 记录恢复次数，超过 `max_recoveries` 才标记失败，
   避免“启动即崩溃”造成无限重启；
 - 处理器尚未注册的任务保持原状，待注册后再恢复。
+
+### 5.2 流式进度
+
+大模型调用统一走流式，任务文档额外保存 `reasoning`（思考）与
+`stream_content`（正文增量）：
+
+- 处理器声明为 `(payload, progress)` 两个参数时，服务会注入进度回调；
+- 增量按 `progress_interval_seconds` 节流写盘，只保留最近
+  `progress_max_chars` 字符，避免任务 JSON 无限膨胀；
+- HTTP 流式接口通过 `record_stream` 同步写入进度；
+- 任务面板轮询任务列表即可实时展示思考内容。
 
 ## 六、闲时调度
 

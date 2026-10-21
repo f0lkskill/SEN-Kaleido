@@ -277,6 +277,10 @@ export function createView(root) {
         listBox.append(placeholder("暂无任务。"));
       } else {
         for (const item of data.items) listBox.append(taskItem(item));
+        // 思考内容自动滚动到最新位置
+        for (const pre of listBox.querySelectorAll(".task-reasoning-text")) {
+          pre.scrollTop = pre.scrollHeight;
+        }
       }
       const pinned = data.items.find((item) => isPinned(item.task_id));
       if (pinned) updatePinnedTask(pinned, taskSummary(pinned));
@@ -379,6 +383,18 @@ export function createView(root) {
             el("span", { class: `status ${statusClass}`, text: label(TASK_STATUS, item.status) }),
           ]),
           el("p", { class: "task-item-summary", text: taskSummary(item) }),
+          item.reasoning
+            ? el("div", { class: "task-reasoning" }, [
+                el("span", {
+                  class: "task-reasoning-label",
+                  text: item.status === "running" ? "思考中…" : "思考过程",
+                }),
+                el("pre", {
+                  class: "task-reasoning-text",
+                  text: String(item.reasoning).slice(-1200),
+                }),
+              ])
+            : null,
           el("p", {
             class: "meta",
             text: `尝试 ${item.attempts}/${item.max_attempts} · 创建 ${formatTime(
@@ -537,6 +553,21 @@ export function createView(root) {
         el("div", { class: "task-error" }, [
           el("strong", { text: "执行错误" }),
           el("p", { text: task.error }),
+        ])
+      );
+    }
+
+    if (String(task.reasoning || "").trim()) {
+      body.append(
+        panel("思考过程", [
+          el("pre", { class: "output reasoning", text: task.reasoning }),
+        ])
+      );
+    }
+    if (String(task.stream_content || "").trim()) {
+      body.append(
+        panel("实时输出", [
+          el("pre", { class: "output", text: task.stream_content }),
         ])
       );
     }

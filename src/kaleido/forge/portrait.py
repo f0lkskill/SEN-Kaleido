@@ -11,6 +11,7 @@
 import base64
 import json
 import mimetypes
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -22,7 +23,7 @@ from kaleido.common.json_utils import loads_json_object
 from kaleido.common.logging import get_logger
 from kaleido.common.paths import EVIDENCE_MEDIA_DIR, WEB_DIR
 from kaleido.evidence.repository import EvidenceRepository
-from kaleido.forge.llm_client import LLMClient, create_client
+from kaleido.forge.llm_client import LLMClient, create_client, stream_complete
 from kaleido.forge.prompts import render
 from kaleido.profile.config_loader import load_config
 from kaleido.profile.service import ProfileService
@@ -85,8 +86,12 @@ class PortraitService:
         self.max_image_bytes = int(settings.get("max_image_bytes", 8 * 1024 * 1024))
         self.max_evidence = int(settings.get("max_evidence", 200))
 
-    def generate(self, profile_id: str) -> dict:
-        """汇总学生证据、调用视觉模型并写回画像。"""
+    def generate(
+        self,
+        profile_id: str,
+        on_event: Callable[[dict], None] | None = None,
+    ) -> dict:
+        """汇总学生证据、流式调用视觉模型并写回画像。"""
         profile = self.profile_service.get_student(profile_id)
         items = self._load_evidence(profile_id)
         if not items:
@@ -114,7 +119,9 @@ class PortraitService:
         ).strip()
         if vision_model:
             overrides["model"] = vision_model
-        result = self.client.complete(messages, **overrides)
+        result = stream_complete(
+            self.client, messages, on_event=on_event, **overrides
+        )
         parsed = self._parse_result(result.content)
         portrait = {
             "summary": parsed["summary"],

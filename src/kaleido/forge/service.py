@@ -1,10 +1,15 @@
 """forge 业务服务：把学生画像 + 生成要求组合为 Prompt 并调用模型。"""
 
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from kaleido.common.config import load_yaml
-from kaleido.common.errors import ConfigError, NotFoundError, ValidationError
+from kaleido.common.errors import (
+    ConfigError,
+    NotFoundError,
+    UpstreamError,
+    ValidationError,
+)
 from kaleido.common.logging import get_logger
 from kaleido.forge.llm_client import LLMClient, create_client
 from kaleido.forge.models import GenerateRequest
@@ -221,46 +226,29 @@ class ForgeService:
         ]
         return messages, system_prompt
 
-    def generate(self, request: GenerateRequest) -> dict:
-        """生成资源并落库（初始状态 draft，等待教师确认）。"""
+    def generate(
+        self,
+        request: GenerateRequest,
+        on_event: Callable[[dict], None] | None = None,
+    ) -> dict:
+        """生成资源并落库（流式累积，初始状态 draft，等待教师确认）。"""
         attributes, portrait, prompt_board = self._resolve_context(request)
-        messages, system_prompt = self._build_messages(
-            request, attributes, portrait, prompt_board
-        )
-        _logger.info(
-            "开始生成资源: type=%s topic=%s profile=%s",
-            request.resource_type,
-            request.topic,
-            request.profile_id,
-        )
-        result = self.client.complete(messages)
-        quality = analyze(result.content, request.resource_type)
+        self._build_messages(request, attributes, portrait, prompt_board)
 
-        resource_id = self.resources.next_id()
-        document = {
-            "resource_type": request.resource_type,
-            "topic": request.topic,
-            "profile_id": request.profile_id,
-            "disability": self._primary_disability(attributes),
-            "content": result.content,
-            "prompt_template_key": attributes.get("prompt_template_key", ""),
-            "model": result.model,
-            "usage": result.usage,
-            "status": "draft",
-            "attributes": attributes,
-            "source_resource_id": request.source_resource_id,
-            "prompt_ids": request.prompt_ids,
-            "quality": quality,
-        }
-        self.resources.put(resource_id, document)
-        _logger.info(
-            "生成完成: resource_id=%s model=%s tokens=%s content_len=%d quality_issues=%d",
-            resource_id,
-            result.model,
-            (result.usage or {}).get("total_tokens"),
-            len(result.content or ""),
-            len(quality["issues"]),
-        )
+        resource_id = ""
+        system_prompt = ""
+        for event in self.generate_stream(request):
+            if on_event is not None:
+                on_event(event)
+            event_type = event.get("type")
+            if event_type == "error":
+                raise UpstreamError(str(event.get("message") or "生成失败"))
+            if event_type == "done":
+                resource_id = str(event.get("resource_id") or "")
+                system_prompt = str(event.get("prompt") or "")
+        if not resource_id:
+            raise UpstreamError("生成未返回资源 ID")
+        document = self.resources.get(resource_id)
         return {"resource_id": resource_id, "prompt": system_prompt, **document}
 
     def generate_stream(self, request: GenerateRequest) -> Iterator[dict]:

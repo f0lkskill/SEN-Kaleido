@@ -63,7 +63,9 @@ def create_app(
                 task_service,
                 "facet.evaluate",
                 task_payload,
-                lambda: svc.evaluate(resource_id, req),
+                lambda progress: svc.evaluate(
+                    resource_id, req, on_event=progress
+                ),
             )
 
         return run(action, status=202 if queued else 201)

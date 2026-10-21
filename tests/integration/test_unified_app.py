@@ -154,6 +154,7 @@ def test_facet_evaluate_via_unified_app(tmp_path, monkeypatch):
     task = _wait_task(app, task_id)
     assert task["status"] == "succeeded"
     assert task["result"]["resource_id"] == resource_id
+    assert task["stream_content"], "质检任务的流式输出应写入任务记录"
 
     status, _, raw = _call(app, "GET", f"/api/v1/facet/resources/{resource_id}")
     assert status.startswith("200")
@@ -237,6 +238,7 @@ def test_forge_generate_queues_task(tmp_path, monkeypatch):
     assert task["task_type"] == "forge.generate"
     resource_id = task["result"]["resource_id"]
     assert resource_id.startswith("r_")
+    assert task["stream_content"], "生成任务的流式输出应写入任务记录"
 
     status, _, raw = _call(app, "GET", f"/api/v1/forge/resources/{resource_id}")
     assert status.startswith("200")

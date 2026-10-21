@@ -22,6 +22,8 @@ class TaskModel(BaseModel):
     payload: dict = Field(default_factory=dict)
     result: dict | None = None  # 成功时的业务结果
     error: str | None = None  # 失败原因
+    reasoning: str = ""  # 模型思考过程（仅保留最近一段）
+    stream_content: str = ""  # 流式正文增量（仅保留最近一段）
     priority: int = 0
     attempts: int = 0  # 已尝试次数
     max_attempts: int = 1

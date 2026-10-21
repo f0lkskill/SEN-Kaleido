@@ -8,7 +8,7 @@
 import json
 import logging
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any, Protocol
 
 import requests
@@ -165,7 +165,7 @@ class DeepSeekClient:
                 last_error = exc
         raise UpstreamError(f"云端模型调用失败: {last_error}")
 
-    def stream(self, messages: list[dict[str, str]], **overrides) -> Iterator[dict]:
+    def stream(self, messages: list[dict[str, Any]], **overrides) -> Iterator[dict]:
         """流式调用 ``/chat/completions``，逐块产出增量。
 
         产出形如 ``{"type": "reasoning"|"content", "text": str}`` 的事件：
@@ -180,6 +180,8 @@ class DeepSeekClient:
         }
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
+        if overrides.get("response_format"):
+            payload["response_format"] = overrides["response_format"]
         headers = {
             "Authorization": f"Bearer {self._api_key()}",
             "Content-Type": "application/json",
@@ -231,6 +233,43 @@ class StubClient:
     def complete(self, messages: list[dict[str, Any]], **overrides) -> LLMResult:
         self.calls.append({"messages": messages, **overrides})
         return LLMResult(content=self.content, model="stub", usage=self.usage)
+
+
+def stream_complete(
+    client: LLMClient,
+    messages: list[dict[str, Any]],
+    on_event: Callable[[dict], None] | None = None,
+    **overrides: Any,
+) -> LLMResult:
+    """以流式方式完成一次调用，并在过程中转发思考/正文增量。
+
+    客户端不支持流式时退化为一次性调用，仍向 ``on_event`` 发送一次正文。
+    返回的 ``LLMResult`` 只保证 ``content`` 与 ``model``；流式响应通常拿不到
+    usage，故 ``usage`` 为空。
+    """
+    stream = getattr(client, "stream", None)
+    if stream is None:
+        result = client.complete(messages, **overrides)
+        if on_event is not None:
+            on_event({"type": "content", "text": result.content})
+        return result
+
+    parts: list[str] = []
+    try:
+        for event in stream(messages, **overrides):
+            if on_event is not None:
+                on_event(event)
+            if event.get("type") == "content":
+                parts.append(str(event.get("text") or ""))
+    except requests.RequestException as exc:
+        raise UpstreamError(f"云端模型流式调用失败: {exc}") from exc
+    content = "".join(parts).strip()
+    if not content:
+        raise UpstreamError("模型流式返回的正文为空")
+    return LLMResult(
+        content=content,
+        model=str(overrides.get("model") or getattr(client, "model", "")),
+    )
 
 
 def create_client(config: dict) -> LLMClient:

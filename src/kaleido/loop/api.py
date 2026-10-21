@@ -70,7 +70,7 @@ def create_app(
                 task_service,
                 "loop.evaluate",
                 task_payload,
-                lambda: svc.evaluate_student(student_id, req),
+                lambda _progress: svc.evaluate_student(student_id, req),
             )
 
         return run(action, status=202 if queued else 201)

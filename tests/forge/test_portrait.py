@@ -109,6 +109,45 @@ def test_generate_portrait_from_text_and_image(tmp_path, monkeypatch):
     assert call["response_format"] == {"type": "json_object"}
 
 
+class _StreamingStub:
+    """带流式能力的画像桩：先思考，再输出 JSON。"""
+
+    def __init__(self, content: str):
+        self.content = content
+        self.model = "stub-stream"
+        self.calls: list[dict] = []
+
+    def complete(self, messages, **overrides):  # pragma: no cover
+        raise AssertionError("流式路径不应调用 complete")
+
+    def stream(self, messages, **overrides):
+        self.calls.append({"messages": messages, **overrides})
+        yield {"type": "reasoning", "text": "先看证据。"}
+        yield {"type": "content", "text": self.content}
+
+
+def test_generate_portrait_streams_reasoning(tmp_path, monkeypatch):
+    """画像分析通过 on_event 实时上报思考与正文。"""
+    service, _profile_service, student, _client = _setup(tmp_path, monkeypatch)
+    content = json.dumps(
+        {
+            "summary": "流式画像",
+            "strengths": ["主动参与"],
+            "needs": [],
+            "suggestions": [],
+        },
+        ensure_ascii=False,
+    )
+    service.client = _StreamingStub(content)
+    events: list[dict] = []
+
+    result = service.generate(student["profile_id"], on_event=events.append)
+
+    assert any(event["type"] == "reasoning" for event in events)
+    assert any(event["type"] == "content" for event in events)
+    assert result["portrait"]["summary"] == "流式画像"
+
+
 def test_generate_portrait_without_evidence_raises(tmp_path, monkeypatch):
     service, _profile_service, student, _client = _setup(tmp_path, monkeypatch)
     # 清空证据后再次生成

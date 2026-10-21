@@ -97,6 +97,9 @@ resource_types:
 - `DeepSeekClient`：`requests` 直调 `/chat/completions`，支持超时与重试，
   失败抛 `UpstreamError`（错误码 1006 / HTTP 502）。
 - `StubClient`：离线桩，返回固定内容并记录调用，供单元测试与本地联调。
+- `stream_complete(client, messages, on_event, **overrides)`：统一流式封装。
+  真实客户端走 `stream`，逐块转发 `reasoning` / `content`；不支持流式的
+  客户端自动回退 `complete`。资源生成、画像分析与质量评分均走此入口。
 - `create_client(config)`：按 `provider` 选择实现。
 
 ## 七、接口

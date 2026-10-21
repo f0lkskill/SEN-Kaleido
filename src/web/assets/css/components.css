@@ -2012,6 +2012,34 @@ textarea:focus {
   word-break: break-word;
 }
 
+.task-reasoning {
+  margin: 0 0 var(--space-1);
+  padding: var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+}
+
+.task-reasoning-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
+  font-weight: 600;
+}
+
+.task-reasoning-text {
+  max-height: 110px;
+  margin: 0;
+  overflow-y: auto;
+  color: var(--color-text-muted);
+  font-family: monospace;
+  font-size: var(--font-small);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .task-item-actions {
   display: flex;
   flex: 0 0 auto;

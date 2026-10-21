@@ -331,14 +331,37 @@ export function createView(root, hooks = {}) {
       }, 120);
     };
 
+    // 思考内容只保留最近一段并节流渲染，避免 DOM 无限增长导致卡顿
+    const REASONING_WINDOW = 4000;
+    let reasoningRaw = "";
+    let reasoningTimer = null;
+    const flushReasoning = () => {
+      reasoningTimer = null;
+      reasoningPre.textContent = reasoningRaw;
+      reasoningPre.scrollTop = reasoningPre.scrollHeight;
+    };
+    const scheduleReasoning = () => {
+      if (reasoningTimer) return;
+      reasoningTimer = window.setTimeout(flushReasoning, 120);
+    };
+
     try {
       await api.generateStream(payload, (event) => {
         if (event.type === "reasoning") {
           reasoningBox.hidden = false;
-          reasoningPre.textContent += event.text;
-          // 思考内容自动滚动到底部
-          reasoningPre.scrollTop = reasoningPre.scrollHeight;
+          reasoningRaw += event.text;
+          // 超出窗口时逐步丢弃最早的内容
+          if (reasoningRaw.length > REASONING_WINDOW) {
+            reasoningRaw = reasoningRaw.slice(
+              reasoningRaw.length - REASONING_WINDOW
+            );
+          }
+          scheduleReasoning();
         } else if (event.type === "content") {
+          if (reasoningTimer) {
+            window.clearTimeout(reasoningTimer);
+            flushReasoning();
+          }
           // 开始出正文：收起思考过程并切换状态文案（模拟对话体验）
           if (!reasoningBox.hidden && reasoningBox.open) reasoningBox.open = false;
           if (statusText) statusText.textContent = "正在生成正文…";
@@ -348,6 +371,10 @@ export function createView(root, hooks = {}) {
           contentScroll.scrollTop = contentScroll.scrollHeight;
         } else if (event.type === "done") {
           if (renderTimer) window.clearTimeout(renderTimer);
+          if (reasoningTimer) {
+            window.clearTimeout(reasoningTimer);
+            flushReasoning();
+          }
           statusEl.remove();
           flush();
           contentScroll.scrollTop = contentScroll.scrollHeight;
@@ -377,6 +404,7 @@ export function createView(root, hooks = {}) {
           toastSuccess("生成完成（草稿）");
           if (hooks.onGenerated) hooks.onGenerated();
         } else if (event.type === "error") {
+          if (reasoningTimer) window.clearTimeout(reasoningTimer);
           statusEl.remove();
           output.append(placeholder(`生成失败：${event.message}`));
           toastError(event.message);
@@ -384,6 +412,7 @@ export function createView(root, hooks = {}) {
       });
     } catch (err) {
       if (renderTimer) window.clearTimeout(renderTimer);
+      if (reasoningTimer) window.clearTimeout(reasoningTimer);
       statusEl.remove();
       output.append(placeholder(`生成失败：${err.message}`));
       toastError(err.message);

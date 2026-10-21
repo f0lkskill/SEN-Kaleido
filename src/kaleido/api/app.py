@@ -101,15 +101,19 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
         app.merge(create_forge_app(forge_service, portrait_service, task_service))
         task_service.register(
             "forge.generate",
-            lambda payload: task_summary(
-                forge_service.generate(GenerateRequest(**payload))
+            lambda payload, progress: task_summary(
+                forge_service.generate(
+                    GenerateRequest(**payload), on_event=progress
+                )
             ),
         )
         if portrait_service is not None:
             task_service.register(
                 "forge.portrait",
-                lambda payload: task_summary(
-                    portrait_service.generate(str(payload.get("profile_id") or ""))
+                lambda payload, progress: task_summary(
+                    portrait_service.generate(
+                        str(payload.get("profile_id") or ""), on_event=progress
+                    )
                 ),
             )
 
@@ -122,13 +126,14 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
     app.merge(create_facet_app(facet_service, task_service=task_service))
     task_service.register(
         "facet.evaluate",
-        lambda payload: task_summary(
+        lambda payload, progress: task_summary(
             facet_service.evaluate(
                 str(payload.get("resource_id") or ""),
                 FacetEvaluationRequest(
                     use_llm=bool(payload.get("use_llm", True)),
                     force=bool(payload.get("force", False)),
                 ),
+                on_event=progress,
             )
         ),
     )

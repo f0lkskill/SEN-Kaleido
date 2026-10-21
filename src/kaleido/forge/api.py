@@ -73,7 +73,7 @@ def create_app(
                 task_service,
                 "forge.generate",
                 req.model_dump(),
-                lambda: svc.generate(req),
+                lambda progress: svc.generate(req, on_event=progress),
             )
 
         return run(action, status=202 if queued else 201)
@@ -153,7 +153,7 @@ def create_app(
                 task_service,
                 "forge.portrait",
                 payload,
-                lambda: portrait.generate(profile_id),
+                lambda progress: portrait.generate(profile_id, on_event=progress),
             )
 
         return run(action, status=202 if queued else 201)

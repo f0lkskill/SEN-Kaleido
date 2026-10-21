@@ -14,7 +14,12 @@ import requests
 
 from kaleido.common.errors import ConfigError, UpstreamError
 from kaleido.forge import llm_client
-from kaleido.forge.llm_client import DeepSeekClient, StubClient, create_client
+from kaleido.forge.llm_client import (
+    DeepSeekClient,
+    StubClient,
+    create_client,
+    stream_complete,
+)
 
 
 class FakeResponse:
@@ -186,6 +191,45 @@ class FakeStreamResponse:
 
     def iter_lines(self, decode_unicode: bool = False):
         return iter(self._lines)
+
+
+class _StreamingClient:
+    """最小流式客户端，用于验证通用流式封装。"""
+
+    model = "stream-model"
+
+    def complete(self, messages, **overrides):  # pragma: no cover
+        raise AssertionError("流式路径不应调用 complete")
+
+    def stream(self, messages, **overrides):
+        yield {"type": "reasoning", "text": "想"}
+        yield {"type": "content", "text": "正文"}
+
+
+def test_stream_complete_forwards_events():
+    events: list[dict] = []
+    result = stream_complete(
+        _StreamingClient(),
+        [{"role": "user", "content": "x"}],
+        on_event=events.append,
+    )
+    assert result.content == "正文"
+    assert result.model == "stream-model"
+    assert events == [
+        {"type": "reasoning", "text": "想"},
+        {"type": "content", "text": "正文"},
+    ]
+
+
+def test_stream_complete_falls_back_to_complete():
+    events: list[dict] = []
+    result = stream_complete(
+        StubClient(content="一次性输出"),
+        [{"role": "user", "content": "x"}],
+        on_event=events.append,
+    )
+    assert result.content == "一次性输出"
+    assert events == [{"type": "content", "text": "一次性输出"}]
 
 
 def test_deepseek_stream_parses_deltas(monkeypatch):

@@ -4,6 +4,7 @@
 支持失败重试与闲时调度（``defer_off_peak``）。
 """
 
+import inspect
 import threading
 from collections.abc import Callable
 from datetime import datetime
@@ -28,8 +29,8 @@ SUCCEEDED = "succeeded"
 FAILED = "failed"
 CANCELLED = "cancelled"
 
-# 处理器签名：接收 payload，返回业务结果字典
-Handler = Callable[[dict], dict]
+# 处理器签名：接收 payload（可选进度回调），返回业务结果字典
+Handler = Callable[..., dict]
 
 
 class TaskService:
@@ -49,6 +50,7 @@ class TaskService:
         # 可注入时钟，便于测试闲时逻辑
         self._clock = clock or (lambda: datetime.now().astimezone())
         self._handlers: dict[str, Handler] = {}
+        self._streaming_handlers: set[str] = set()
         self._queue = TaskQueue()
         self._stop = threading.Event()
         self._threads: list[threading.Thread] = []
@@ -56,6 +58,12 @@ class TaskService:
         self._schedule_cfg = self.config.get("schedule", {})
         self._defer_poll = float(self._schedule_cfg.get("defer_poll_seconds", 5))
         self._max_recoveries = int(self.config.get("max_recoveries", 3))
+        self._progress_interval = float(
+            self.config.get("progress_interval_seconds", 0.5)
+        )
+        self._progress_max_chars = int(self.config.get("progress_max_chars", 4000))
+        self._progress_buffers: dict[str, dict] = {}
+        self._progress_lock = threading.RLock()
         if autostart:
             self.start()
 
@@ -94,12 +102,87 @@ class TaskService:
 
     # ---- 处理器注册 ----
     def register(self, task_type: str, handler: Handler) -> None:
-        """注册某类任务的处理器。"""
+        """注册某类任务的处理器。
+
+        处理器接受 ``(payload, progress)`` 两个参数时，执行过程中可通过
+        ``progress(event)`` 上报思考/正文增量；只接受 ``payload`` 时按普通
+        任务执行。
+        """
         self._handlers[task_type] = handler
+        try:
+            arity = len(inspect.signature(handler).parameters)
+        except (TypeError, ValueError):
+            arity = 1
+        if arity >= 2:
+            self._streaming_handlers.add(task_type)
+        else:
+            self._streaming_handlers.discard(task_type)
 
     def registered_types(self) -> list[str]:
         """返回已注册的任务类型。"""
         return sorted(self._handlers.keys())
+
+    # ---- 流式进度 ----
+    def record_progress(self, task_id: str, event: dict) -> None:
+        """接收模型的 reasoning/content 增量，按间隔写入任务文档。"""
+        event_type = str(event.get("type") or "")
+        text = str(event.get("text") or "")
+        if event_type not in ("reasoning", "content") or not text:
+            return
+        with self._progress_lock:
+            buffer = self._progress_buffers.setdefault(
+                task_id,
+                {"reasoning": [], "content": [], "last": 0.0, "timer": None},
+            )
+            buffer[event_type].append(text)
+            if monotonic() - buffer["last"] >= self._progress_interval:
+                self._flush_progress_locked(task_id, buffer)
+            elif buffer["timer"] is None:
+                timer = threading.Timer(
+                    self._progress_interval,
+                    self._flush_progress,
+                    args=(task_id, False),
+                )
+                timer.daemon = True
+                buffer["timer"] = timer
+                timer.start()
+
+    def _flush_progress(self, task_id: str, force: bool = False) -> None:
+        """把缓存的流式进度写入任务文档；``force`` 用于任务收尾。"""
+        with self._progress_lock:
+            buffer = self._progress_buffers.get(task_id)
+            if buffer is None:
+                return
+            timer = buffer.get("timer")
+            if timer is not None:
+                timer.cancel()
+                buffer["timer"] = None
+            if not force and monotonic() - buffer["last"] < self._progress_interval:
+                return
+            self._flush_progress_locked(task_id, buffer)
+            if force:
+                self._progress_buffers.pop(task_id, None)
+
+    def _flush_progress_locked(self, task_id: str, buffer: dict) -> None:
+        """在持有进度锁时合并缓存并写入任务文档。"""
+        try:
+            document = self.tasks.get(task_id)
+        except Exception:  # noqa: BLE001 - 任务可能已被删除
+            self._progress_buffers.pop(task_id, None)
+            return
+        for key, doc_key in (("reasoning", "reasoning"), ("content", "stream_content")):
+            chunks: list[str] = buffer[key]
+            if not chunks:
+                continue
+            value = str(document.get(doc_key) or "") + "".join(chunks)
+            document[doc_key] = value[-self._progress_max_chars :]
+            chunks.clear()
+        document["updated_at"] = self._now()
+        try:
+            self.tasks.put(task_id, document)
+        except Exception:
+            logger.exception("写入任务进度失败: id=%s", task_id)
+        buffer["last"] = monotonic()
 
     # ---- 进程重启恢复 ----
     def recover(self) -> dict:
@@ -174,6 +257,8 @@ class TaskService:
             "payload": request.payload,
             "result": None,
             "error": None,
+            "reasoning": "",
+            "stream_content": "",
             "priority": request.priority,
             "attempts": 0,
             "max_attempts": max(1, request.max_attempts),
@@ -228,6 +313,8 @@ class TaskService:
             "payload": payload or {},
             "result": None,
             "error": None,
+            "reasoning": "",
+            "stream_content": "",
             "priority": 0,
             "attempts": 0,
             "max_attempts": 1,
@@ -255,6 +342,7 @@ class TaskService:
 
     def mark_succeeded(self, task_id: str, result: dict | None = None) -> None:
         """把外部任务标记为成功；期间被取消则保留取消态。"""
+        self._flush_progress(task_id, force=True)
         document = self._get_or_none(task_id)
         if document is None or document.get("status") == CANCELLED:
             return
@@ -268,6 +356,7 @@ class TaskService:
 
     def mark_failed(self, task_id: str, error: str) -> None:
         """把外部任务标记为失败。"""
+        self._flush_progress(task_id, force=True)
         document = self._get_or_none(task_id)
         if document is None or document.get("status") == CANCELLED:
             return
@@ -359,11 +448,19 @@ class TaskService:
             document.get("attempts"),
         )
 
-        handler = self._handlers.get(document["task_type"])
+        task_type = str(document["task_type"])
+        handler = self._handlers.get(task_type)
         try:
             if handler is None:
-                raise ValidationError(f"未注册的任务类型: {document['task_type']}")
-            result = handler(document.get("payload", {}))
+                raise ValidationError(f"未注册的任务类型: {task_type}")
+            payload = document.get("payload", {})
+            if task_type in self._streaming_handlers:
+                result = handler(
+                    payload,
+                    lambda event: self.record_progress(task_id, event),
+                )
+            else:
+                result = handler(payload)
         except Exception as exc:  # noqa: BLE001 - 统一转为失败/重试
             self._handle_failure(task_id, exc)
             return
@@ -371,6 +468,7 @@ class TaskService:
 
     def _handle_success(self, task_id: str, result: dict) -> None:
         """成功收尾；若期间被取消则保留取消态。"""
+        self._flush_progress(task_id, force=True)
         document = self.tasks.get(task_id)
         if document.get("status") == CANCELLED:
             return
@@ -384,6 +482,7 @@ class TaskService:
 
     def _handle_failure(self, task_id: str, exc: Exception) -> None:
         """失败收尾：未达上限则重新入队，否则标记失败。"""
+        self._flush_progress(task_id, force=True)
         document = self.tasks.get(task_id)
         if document.get("status") == CANCELLED:
             return

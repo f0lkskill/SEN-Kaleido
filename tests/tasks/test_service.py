@@ -12,6 +12,7 @@ for _path in (ROOT, ROOT / "src"):
 
 from kaleido.common.errors import ConflictError, ValidationError
 from kaleido.tasks.models import CreateTaskRequest
+from kaleido.tasks.recording import record_stream
 from kaleido.tasks.service import (
     CANCELLED,
     FAILED,
@@ -166,6 +167,46 @@ def test_list_and_filter(tmp_path):
         assert service.list_tasks(task_type="other")["total"] == 0
     finally:
         service.shutdown()
+
+
+def test_streaming_handler_records_reasoning(tmp_path):
+    """双参数处理器可上报思考与正文增量，任务收尾时落盘。"""
+    service = _service(tmp_path)
+
+    def handler(payload, progress):
+        progress({"type": "reasoning", "text": "先看题目。"})
+        progress({"type": "reasoning", "text": "再给结论。"})
+        progress({"type": "content", "text": "正文内容"})
+        return {"ok": True}
+
+    service.register("stream", handler)
+    service.start()
+    try:
+        task = service.submit(CreateTaskRequest(task_type="stream", payload={}))
+        done = service.wait(task["task_id"])
+        assert done["status"] == SUCCEEDED
+        assert done["reasoning"] == "先看题目。再给结论。"
+        assert done["stream_content"] == "正文内容"
+    finally:
+        service.shutdown()
+
+
+def test_record_stream_records_progress(tmp_path):
+    """HTTP 流式接口的任务记录也保存思考与正文增量。"""
+    service = _service(tmp_path)
+    events = iter(
+        [
+            {"type": "reasoning", "text": "思考"},
+            {"type": "content", "text": "输出"},
+            {"type": "done", "resource_id": "r_1"},
+        ]
+    )
+    list(record_stream(service, "forge.generate", {}, events))
+
+    task = service.list_tasks()["items"][0]
+    assert task["status"] == SUCCEEDED
+    assert task["reasoning"] == "思考"
+    assert task["stream_content"] == "输出"
 
 
 def test_external_task_lifecycle(tmp_path):

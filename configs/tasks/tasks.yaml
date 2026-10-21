@@ -8,6 +8,10 @@ worker_count: 2
 # 进程重启后，中断任务最多自动恢复的次数（超过则标记失败）
 max_recoveries: 3
 
+# 流式进度落盘：思考/正文增量最多保留的字符数与写盘间隔（秒）
+progress_max_chars: 4000
+progress_interval_seconds: 0.5
+
 schedule:
   # 闲时任务未到执行窗口时的轮询间隔（秒）
   defer_poll_seconds: 5
