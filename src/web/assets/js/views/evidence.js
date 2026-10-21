@@ -317,7 +317,7 @@ export function createView(root, hooks = {}) {
         },
       },
       [
-        el("span", { class: "avatar" }, [faIcon(mediaIcon(media))]),
+        el("span", { class: "plain-icon" }, [faIcon(mediaIcon(media))]),
         el("span", { class: "student-card-body" }, [
           // 这里需要截断过长内容
           el("h4", { text: shortText || obsName }),
@@ -434,7 +434,7 @@ export function createView(root, hooks = {}) {
 
     const head = el("div", { class: "detail-head" }, [
       el("div", { class: "detail-id" }, [
-        el("span", { class: "avatar avatar-lg" }, [faIcon(mediaIcon(media))]),
+        el("span", { class: "plain-icon plain-icon-lg" }, [faIcon(mediaIcon(media))]),
         el("h3", { text: item.title || obsName }),
       ]),
       el("div", { class: "detail-actions" }, actions),

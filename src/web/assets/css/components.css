@@ -2094,6 +2094,25 @@ details.collapse[open] > summary::after {
   transform: scale(1.06);
 }
 
+/* ---- 类型图标：单图标，无圆形底板 ---- */
+.plain-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-primary);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.plain-icon-lg {
+  width: 48px;
+  height: 48px;
+  font-size: 2.6rem;
+}
+
 /* ---- 控件变化统一过渡（扩展） ---- */
 .btn {
   transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease,

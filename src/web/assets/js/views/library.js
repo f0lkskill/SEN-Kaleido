@@ -191,7 +191,7 @@ export function createView(root, hooks = {}) {
         },
       },
       [
-        el("span", { class: "avatar" }, [faIcon(resourceIcon(item.resource_type))]),
+        el("span", { class: "plain-icon" }, [faIcon(resourceIcon(item.resource_type))]),
         el("span", { class: "student-card-body" }, [
           el("h4", { text: item.topic }),
           el("div", { class: "badge-row" }, [
@@ -333,7 +333,7 @@ export function createView(root, hooks = {}) {
     const sourceStudent = renderSourceStudent(item, student);
     const head = el("div", { class: "detail-head detail-head-source" }, [
       el("div", { class: "detail-id" }, [
-        el("span", { class: "avatar avatar-lg" }, [
+        el("span", { class: "plain-icon plain-icon-lg" }, [
           faIcon(resourceIcon(item.resource_type)),
         ]),
         el("h3", { class: "detail-title", text: typeName, title: typeName }),
