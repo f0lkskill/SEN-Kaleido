@@ -4,12 +4,16 @@
  * 轮询更新只刷新文本，不重建 DOM，避免动画反复播放。
  */
 
+import { api } from "./api.js";
 import { el, clear } from "./dom.js";
 import { TASK_STATUS, TASK_TYPE, label } from "./format.js";
+
+const ACTIVE_STATUS = ["pending", "running"];
 
 let current = null;
 let host = null;
 let nodes = null;
+let pollTimer = null;
 
 /** 获取或创建固定挂载点。 */
 function ensureHost() {
@@ -31,6 +35,16 @@ function build() {
   const typeBadge = el("span", { class: "badge badge-muted" });
   const statusBadge = el("span", { class: "status" });
   const summary = el("p", { class: "task-pin-summary" });
+  const reasoningLabel = el("span", {
+    class: "task-pin-stream-label",
+    text: "思考过程",
+  });
+  const reasoning = el("pre", { class: "task-pin-stream" });
+  const reasoningBlock = el(
+    "div",
+    { class: "task-pin-stream-block", hidden: true },
+    [reasoningLabel, reasoning]
+  );
   const meta = el("p", { class: "meta" });
 
   box.append(
@@ -56,6 +70,7 @@ function build() {
         el("div", { class: "task-pin-body" }, [
           el("div", { class: "badge-row" }, [typeBadge, statusBadge]),
           summary,
+          reasoningBlock,
           meta,
         ]),
         el("div", { class: "task-pin-actions" }, [
@@ -75,6 +90,9 @@ function build() {
     typeBadge,
     statusBadge,
     summary,
+    reasoningLabel,
+    reasoningBlock,
+    reasoning,
     meta,
   };
   updateContent();
@@ -90,7 +108,40 @@ function updateContent() {
   nodes.statusBadge.className = `status ${statusClass}`;
   nodes.statusBadge.textContent = label(TASK_STATUS, task.status);
   nodes.summary.textContent = summary || "暂无输出摘要。";
+
+  const reasoning = String(task.reasoning || "").trim();
+  nodes.reasoningBlock.hidden = !reasoning;
+  nodes.reasoningLabel.textContent =
+    task.status === "running" ? "思考中…" : "思考过程";
+  nodes.reasoning.textContent = reasoning.slice(-800);
+  if (reasoning) nodes.reasoning.scrollTop = nodes.reasoning.scrollHeight;
+
   nodes.meta.textContent = task.task_id || "";
+}
+
+/** 钉住期间独立轮询，离开任务队列页后仍能刷新思考流。 */
+function schedulePoll() {
+  clearTimeout(pollTimer);
+  pollTimer = null;
+  if (!current || !ACTIVE_STATUS.includes(current.task.status)) return;
+  pollTimer = setTimeout(pollPinned, 2000);
+}
+
+async function pollPinned() {
+  pollTimer = null;
+  if (!current) return;
+  const taskId = current.task.task_id;
+  try {
+    const task = await api.getTask(taskId);
+    if (!current || current.task.task_id !== taskId) return;
+    current.task = task;
+    if (current.summarize) current.summary = current.summarize(task);
+    if (!nodes || !nodes.root || !nodes.root.isConnected) build();
+    else updateContent();
+  } catch (err) {
+    // 轮询失败不打断面板，下一次继续尝试。
+  }
+  if (current && current.task.task_id === taskId) schedulePoll();
 }
 
 /** 当前任务是否已钉住。 */
@@ -101,11 +152,15 @@ export function isPinned(taskId) {
 /**
  * 钉住任务并显示右上角缩略输出。
  * @param {Object} task 任务对象
- * @param {Object} options summary（摘要文本）与 onOpen（重新打开详情）
+ * @param {Object} options summary（摘要文本）、onOpen（重新打开详情）与 summarize（摘要生成函数）
  */
-export function pinTask(task, { summary = "", onOpen = null } = {}) {
-  current = { task, summary, onOpen };
+export function pinTask(
+  task,
+  { summary = "", onOpen = null, summarize = null } = {}
+) {
+  current = { task, summary, onOpen, summarize };
   build();
+  schedulePoll();
 }
 
 /** 刷新已钉住任务的快照（仅当任务 ID 相同），不重播入场动画。 */
@@ -115,14 +170,18 @@ export function updatePinnedTask(task, summary = "") {
   if (summary) current.summary = summary;
   if (!nodes || !nodes.root || !nodes.root.isConnected) {
     build();
+    if (!pollTimer) schedulePoll();
     return;
   }
   updateContent();
+  if (!pollTimer) schedulePoll();
 }
 
 /** 取消钉住并移除缩略面板。 */
 export function unpin() {
   current = null;
   nodes = null;
+  clearTimeout(pollTimer);
+  pollTimer = null;
   if (host) clear(host);
 }

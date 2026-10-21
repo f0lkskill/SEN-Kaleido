@@ -95,6 +95,7 @@ export function createView(root) {
   }
 
   function render() {
+    const scrollY = window.scrollY;
     const status = statusFilter.value;
     const disability = disabilityFilter.value;
     const visible = items.filter(
@@ -111,6 +112,7 @@ export function createView(root) {
           "暂无规则。到资源库对课件做质量校验后，模型提炼的共性问题会按病症沉淀到这里。"
         )
       );
+      window.scrollTo(0, scrollY);
       return;
     }
 
@@ -137,6 +139,8 @@ export function createView(root) {
         ])
       );
     }
+    // 重建列表会让页面高度瞬间归零，浏览器会把滚动位置夹到顶部；渲染后恢复。
+    window.scrollTo(0, scrollY);
   }
 
   function renderStats() {

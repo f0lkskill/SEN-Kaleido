@@ -504,6 +504,7 @@ export function createView(root) {
         onSelect: () => {
           pinTask(item, {
             summary: taskSummary(item),
+            summarize: taskSummary,
             onOpen: () => openTaskModalById(item.task_id),
           });
           toastSuccess("已钉住任务输出");
@@ -581,6 +582,7 @@ export function createView(root) {
       }
       pinTask(task, {
         summary: taskSummary(task),
+        summarize: taskSummary,
         onOpen: () => openTaskModalById(task.task_id),
       });
       pinButton.classList.add("is-pinned");
