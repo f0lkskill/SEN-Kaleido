@@ -1,4 +1,4 @@
-/**
+﻿/**
  * views/evidence.js —— 证据管理视图（左右分栏：左证据列表，右详情）
  * 证据分为「公有证据（未归类）」与「归类证据（已划分所有者）」两组展示；
  * 支持文本/图像/视频证据的新建与上传，并把公有证据归类到学生。
@@ -322,8 +322,8 @@ export function createView(root, hooks = {}) {
           // 这里需要截断过长内容
           el("h4", { text: shortText || obsName }),
           el("div", { class: "badge-row" }, [
-            badge(EVIDENCE_SCOPE[scope], scope === "public" ? "badge-info" : "badge-muted"),
-            badge(owner),
+            // badge(EVIDENCE_SCOPE[scope], scope === "public" ? "badge-info" : "badge-muted"),
+            // badge(owner),
             badge(MEDIA_TYPE[media], media === "image" ? "badge-info" : "badge-muted"),
             badge(
               label(EVIDENCE_STATUS, status),
