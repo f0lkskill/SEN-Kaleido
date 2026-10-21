@@ -5,16 +5,14 @@
 API 层与脚本都只依赖本层，不直接操作配置与存储。
 """
 
-import hashlib
 from datetime import datetime
 
-from kaleido.common.errors import ConflictError, NotFoundError, ValidationError
+from kaleido.common.errors import ConflictError
 from kaleido.common.logging import get_logger
 from kaleido.profile.attributes import AttributeSchema
 from kaleido.profile.config_loader import load_config, load_rubric, reload_config
 from kaleido.profile.framework import FrameworkEngine
 from kaleido.profile.models.evaluation import (
-    GenerationPrompt,
     StudentEvaluationProfile,
     StudentPortrait,
 )
@@ -123,103 +121,40 @@ class ProfileService:
         return {"profile_id": profile_id}
 
     def save_portrait(self, profile_id: str, portrait: dict) -> dict:
-        """保存证据分析生成的学生画像，并刷新档案更新时间。"""
+        """保存证据分析生成的学生画像，并保留已积累的个性强化提示。"""
         profile = self.repository.get(profile_id)
-        profile.portrait = StudentPortrait(**portrait)
+        incoming = StudentPortrait(**portrait)
+        if not incoming.personal_prompts and profile.portrait is not None:
+            incoming.personal_prompts = list(profile.portrait.personal_prompts)
+        profile.portrait = incoming
         profile.updated_at = _now()
         self.repository.save(profile)
         logger.info("保存学生画像: id=%s model=%s", profile_id, profile.portrait.model)
         return profile.model_dump()
 
-    def get_prompt_board(self, profile_id: str) -> list[dict]:
-        """读取画像下方的生成提示词规则板。"""
-        profile = self.repository.get(profile_id)
-        return [item.model_dump() for item in profile.prompt_board]
+    def add_personal_prompts(self, profile_id: str, prompts: list[str]) -> dict:
+        """把资源质检发现的个体差异写入画像，供后续生成强化。
 
-    def add_prompt_board_items(self, profile_id: str, items: list[dict]) -> list[dict]:
-        """把质量校验提炼的提示词追加到规则板（按文本去重）。"""
+        与病症通用规则不同，这里的每一条只适用于当前学生；不得泛化。
+        """
         profile = self.repository.get(profile_id)
-        existing = {item.text.strip() for item in profile.prompt_board}
-        now = _now()
+        portrait = profile.portrait or StudentPortrait()
+        existing = {item.strip() for item in portrait.personal_prompts}
         added = 0
-        for raw in items:
-            text = str(raw.get("text") or raw.get("prompt") or "").strip()
+        for raw in prompts:
+            text = str(raw or "").strip()
             if not text or text in existing:
                 continue
-            digest = hashlib.sha1(f"{profile_id}:{text}".encode()).hexdigest()[:10]
-            profile.prompt_board.append(
-                GenerationPrompt(
-                    prompt_id=f"pb_{digest}",
-                    text=text,
-                    source_resource_id=raw.get("source_resource_id"),
-                    source_topic=str(raw.get("source_topic") or ""),
-                    source_score=raw.get("source_score"),
-                    model=str(raw.get("model") or ""),
-                    created_at=now,
-                )
-            )
+            portrait.personal_prompts.append(text)
             existing.add(text)
             added += 1
         if added:
-            # 规则板只保留最近 50 条，避免档案无限膨胀
-            profile.prompt_board = profile.prompt_board[-50:]
-            profile.updated_at = now
+            portrait.personal_prompts = portrait.personal_prompts[-20:]
+            profile.portrait = portrait
+            profile.updated_at = _now()
             self.repository.save(profile)
-            logger.info("规则板新增提示词: id=%s count=%d", profile_id, added)
-        return [item.model_dump() for item in profile.prompt_board]
-
-    def add_prompt_board_item(self, profile_id: str, text: str, title: str = "") -> list[dict]:
-        """手动新增一条生成提示词。"""
-        content = str(text or "").strip()
-        if not content:
-            raise ValidationError("提示词内容不能为空")
-        if title:
-            content = f"{str(title).strip()}：{content}"
-        return self.add_prompt_board_items(profile_id, [{"text": content}])
-
-    def update_prompt_board_item(
-        self,
-        profile_id: str,
-        prompt_id: str,
-        text: str | None = None,
-        enabled: bool | None = None,
-    ) -> list[dict]:
-        """修改提示词文本或启用状态。"""
-        profile = self.repository.get(profile_id)
-        target = next(
-            (item for item in profile.prompt_board if item.prompt_id == prompt_id),
-            None,
-        )
-        if target is None:
-            raise NotFoundError(f"提示词不存在: {prompt_id}")
-        if text is not None:
-            content = str(text).strip()
-            if not content:
-                raise ValidationError("提示词内容不能为空")
-            if any(
-                item.text.strip() == content and item.prompt_id != prompt_id
-                for item in profile.prompt_board
-            ):
-                raise ConflictError("规则板中已存在相同提示词")
-            target.text = content
-        if enabled is not None:
-            target.enabled = bool(enabled)
-        profile.updated_at = _now()
-        self.repository.save(profile)
-        logger.info("规则板更新提示词: id=%s prompt=%s", profile_id, prompt_id)
-        return [item.model_dump() for item in profile.prompt_board]
-
-    def delete_prompt_board_item(self, profile_id: str, prompt_id: str) -> list[dict]:
-        """删除规则板中的提示词。"""
-        profile = self.repository.get(profile_id)
-        remaining = [item for item in profile.prompt_board if item.prompt_id != prompt_id]
-        if len(remaining) == len(profile.prompt_board):
-            raise NotFoundError(f"提示词不存在: {prompt_id}")
-        profile.prompt_board = remaining
-        profile.updated_at = _now()
-        self.repository.save(profile)
-        logger.info("规则板删除提示词: id=%s prompt=%s", profile_id, prompt_id)
-        return [item.model_dump() for item in profile.prompt_board]
+            logger.info("画像新增个性提示: id=%s count=%d", profile_id, added)
+        return (profile.portrait or portrait).model_dump()
 
     def preview_framework(self, attributes: StudentAttributesInput) -> dict:
         """仅预览属性解析与框架生成结果，不落库。"""

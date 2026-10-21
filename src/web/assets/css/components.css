@@ -535,7 +535,7 @@ table.data th {
 .badge-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2) var(--space-2);
 }
 
 /* 空标签行不占位 */
@@ -2232,5 +2232,103 @@ textarea:focus {
 @media (max-width: 900px) {
   .toolbar-with-actions {
     flex-wrap: wrap;
+  }
+}
+
+/* 病症通用规则集 */
+.rules-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.rules-toolbar select {
+  flex: 0 1 200px;
+  width: auto;
+  min-width: 140px;
+}
+
+.rules-stats {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.rules-stat {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+}
+
+.rules-stat strong {
+  display: block;
+  color: var(--color-primary-dark);
+  font-size: calc(var(--font-body) * 1.4);
+}
+
+.rules-stat span {
+  color: var(--color-text-muted);
+  font-size: var(--font-small);
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.rules-group {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.rules-group-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-body);
+}
+
+.rules-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.rule-item {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.rule-text {
+  margin: 0 0 var(--space-2);
+  line-height: 1.6;
+}
+
+.rule-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.rule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+@media (max-width: 700px) {
+  .rules-stats {
+    flex-wrap: wrap;
+  }
+
+  .rules-stat {
+    flex: 1 1 45%;
   }
 }

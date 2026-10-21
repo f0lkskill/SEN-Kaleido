@@ -55,38 +55,12 @@ class StudentPortrait(BaseModel):
     strengths: list[str] = Field(default_factory=list)  # 优势表现
     needs: list[str] = Field(default_factory=list)  # 待支持需求
     suggestions: list[str] = Field(default_factory=list)  # 教学建议
+    personal_prompts: list[str] = Field(default_factory=list)  # 仅针对该学生的个性强化提示
     evidence_count: int = 0  # 参与分析的证据条数
     image_count: int = 0  # 送入视觉模型的图像数
     video_count: int = 0  # 视频证据数（以结构化描述参与分析）
     model: str = ""  # 生成所用模型
     generated_at: str | None = None  # 生成时间
-
-
-class GenerationPrompt(BaseModel):
-    """画像下方的生成提示词规则板条目。"""
-
-    prompt_id: str
-    text: str
-    source_resource_id: str | None = None  # 由哪份资源的质量校验提炼而来
-    source_topic: str = ""
-    source_score: int | None = None
-    model: str = ""
-    created_at: str = ""
-    enabled: bool = True
-
-
-class PromptBoardCreateRequest(BaseModel):
-    """手动新增生成提示词。"""
-
-    text: str
-    title: str = ""
-
-
-class PromptBoardUpdateRequest(BaseModel):
-    """修改规则板条目的文本或启用状态。"""
-
-    text: str | None = None
-    enabled: bool | None = None
 
 
 class StudentEvaluationProfile(BaseModel):
@@ -97,7 +71,6 @@ class StudentEvaluationProfile(BaseModel):
     attributes: "StudentAttributes"
     framework: EvaluationFramework
     portrait: StudentPortrait | None = None  # 证据分析生成的学情画像
-    prompt_board: list[GenerationPrompt] = Field(default_factory=list)  # 画像下方规则板
     created_at: str | None = None
     updated_at: str | None = None
 

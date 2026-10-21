@@ -14,10 +14,6 @@ from pydantic import ValidationError as PydanticValidationError
 from kaleido.common.errors import KaleidoError
 from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
-from kaleido.profile.models.evaluation import (
-    PromptBoardCreateRequest,
-    PromptBoardUpdateRequest,
-)
 from kaleido.profile.models.student import (
     CreateStudentRequest,
     StudentAttributesInput,
@@ -106,40 +102,6 @@ def create_app(service: ProfileService | None = None) -> Bottle:
     def delete_student(profile_id):
         """删除学生档案。"""
         return run(lambda: svc.delete_student(profile_id))
-
-    @app.get("/api/v1/students/<profile_id>/prompt-board")
-    def get_prompt_board(profile_id):
-        """读取画像下方的生成提示词规则板。"""
-        return run(lambda: svc.get_prompt_board(profile_id))
-
-    @app.post("/api/v1/students/<profile_id>/prompt-board")
-    def add_prompt_board_item(profile_id):
-        """手动新增一条生成提示词。"""
-
-        def action():
-            payload = cast("dict[str, Any]", request.json) or {}
-            req = PromptBoardCreateRequest(**payload)
-            return svc.add_prompt_board_item(profile_id, req.text, req.title)
-
-        return run(action, status=201)
-
-    @app.patch("/api/v1/students/<profile_id>/prompt-board/<prompt_id>")
-    def update_prompt_board_item(profile_id, prompt_id):
-        """修改规则板条目的文本或启用状态。"""
-
-        def action():
-            payload = cast("dict[str, Any]", request.json) or {}
-            req = PromptBoardUpdateRequest(**payload)
-            return svc.update_prompt_board_item(
-                profile_id, prompt_id, req.text, req.enabled
-            )
-
-        return run(action)
-
-    @app.delete("/api/v1/students/<profile_id>/prompt-board/<prompt_id>")
-    def delete_prompt_board_item(profile_id, prompt_id):
-        """删除规则板条目。"""
-        return run(lambda: svc.delete_prompt_board_item(profile_id, prompt_id))
 
     @app.get("/api/v1/evaluation/dimensions")
     def dimensions():

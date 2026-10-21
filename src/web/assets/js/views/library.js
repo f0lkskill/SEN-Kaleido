@@ -425,6 +425,36 @@ export function createView(root, hooks = {}) {
     }
     blocks.push(facetList("改进建议", report.suggestions));
 
+    const common = Array.isArray(report.common_prompts) && report.common_prompts.length
+      ? report.common_prompts
+      : (report.prompts || []).map((text) => ({ disability: "", text }));
+    if (common.length) {
+      blocks.push(
+        el("div", { class: "facet-block" }, [
+          el("h4", { class: "facet-subtitle", text: "已沉淀的病症通用规则" }),
+          el(
+            "ul",
+            { class: "facet-list" },
+            common.map((item) =>
+              el("li", {
+                text: item.disability
+                  ? `${label(DISABILITY, item.disability)}：${item.text}`
+                  : item.text,
+              })
+            )
+          ),
+        ])
+      );
+    }
+    if (
+      Array.isArray(report.personal_prompts) &&
+      report.personal_prompts.length
+    ) {
+      blocks.push(
+        facetList("已写入学生画像的个性提示", report.personal_prompts)
+      );
+    }
+
     if (report.use_llm === false) {
       blocks.push(el("p", { class: "meta", text: "本次仅执行规则校验，未启用模型评分。" }));
     } else if (report.llm && report.llm.parsed === false) {

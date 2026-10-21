@@ -196,38 +196,39 @@ def test_generate_includes_student_portrait_in_prompt(tmp_path):
     assert "增加小组活动" in result["prompt"]
 
 
-def test_generate_uses_selected_prompt_board_items(tmp_path):
+def test_generate_uses_approved_disability_rules(tmp_path):
     service, profile_service, _ = _setup(tmp_path)
     profile = profile_service.create_student(
         CreateStudentRequest(name="小明", attributes=_attributes())
     )
-    board = profile_service.add_prompt_board_item(
-        profile["profile_id"], "为颜色词配可触摸实物，不使用 emoji。"
+    added = service.rule_service.add_rules(
+        "visual",
+        ["为颜色词配可触摸实物，不使用 emoji。"],
+        source_resource_id="r_00001",
+        source_topic="认识颜色",
+        source_score=85,
+        model="stub",
     )
-    prompt_id = board[0]["prompt_id"]
-    result = service.generate(
-        GenerateRequest(
-            profile_id=profile["profile_id"],
-            resource_type="courseware",
-            topic="认识颜色",
-            prompt_ids=[prompt_id],
-        )
+    rule_id = added[0]["rule_id"]
+    request = GenerateRequest(
+        profile_id=profile["profile_id"],
+        resource_type="courseware",
+        topic="认识颜色",
     )
-    assert "【教师选用的生成规则】" in result["prompt"]
-    assert "为颜色词配可触摸实物" in result["prompt"]
-    assert result["prompt_ids"] == [prompt_id]
 
-    profile_service.update_prompt_board_item(
-        profile["profile_id"], prompt_id, enabled=False
-    )
-    result = service.generate(
-        GenerateRequest(
-            profile_id=profile["profile_id"],
-            resource_type="courseware",
-            topic="认识颜色",
-            prompt_ids=[prompt_id],
-        )
-    )
+    # 待审核规则不参与生成
+    result = service.generate(request)
+    assert "为颜色词配可触摸实物" not in result["prompt"]
+
+    # 审核通过后自动注入
+    service.rule_service.set_status(rule_id, "approved")
+    result = service.generate(request)
+    assert "【病症通用生成规则】" in result["prompt"]
+    assert "为颜色词配可触摸实物" in result["prompt"]
+
+    # 拒绝后不再参与
+    service.rule_service.set_status(rule_id, "rejected")
+    result = service.generate(request)
     assert "为颜色词配可触摸实物" not in result["prompt"]
 
 

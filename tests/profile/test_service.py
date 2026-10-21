@@ -75,6 +75,21 @@ def test_preview_does_not_persist(tmp_path):
     assert service.repository.list()[1] == 0
 
 
+def test_personal_prompts_are_kept_when_portrait_regenerates(tmp_path):
+    service = _service(tmp_path)
+    student = service.create_student(
+        CreateStudentRequest(name="小明", attributes=_input())
+    )
+    service.add_personal_prompts(
+        student["profile_id"], ["该生对强光敏感。", "该生对强光敏感。"]
+    )
+    saved = service.save_portrait(
+        student["profile_id"],
+        {"summary": "新画像", "model": "m"},
+    )
+    assert saved["portrait"]["personal_prompts"] == ["该生对强光敏感。"]
+
+
 def test_metadata_endpoints(tmp_path):
     service = _service(tmp_path)
     assert "participation" in service.get_dimensions()["dimensions"]

@@ -117,6 +117,31 @@ def test_profile_route_available(tmp_path):
     assert _json(raw)["data"]["name"] == "小测"
 
 
+def test_prompt_rules_route_available(tmp_path):
+    """统一入口下规则集可列出并审核。"""
+    vault = Vault(data_dir=tmp_path)
+    profile_service = ProfileService(repository=StudentRepository(tmp_path))
+    app = create_app(vault=vault, profile_service=profile_service)
+
+    from kaleido.rules.service import PromptRuleService
+
+    rule = PromptRuleService(vault=vault).add_rules(
+        "visual", ["规则一"], source_topic="主题"
+    )[0]
+    status, _, raw = _call(app, "GET", "/api/v1/prompt-rules")
+    assert status.startswith("200")
+    assert _json(raw)["data"]["total"] == 1
+
+    status, _, raw = _call(
+        app,
+        "PATCH",
+        f"/api/v1/prompt-rules/{rule['rule_id']}",
+        {"status": "approved"},
+    )
+    assert status.startswith("200")
+    assert _json(raw)["data"]["status"] == "approved"
+
+
 def test_forge_task_registered(tmp_path):
     """forge.generate 处理器已注册到任务队列。"""
     app = _app(tmp_path)

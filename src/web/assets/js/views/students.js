@@ -356,13 +356,6 @@ export function createView(root, hooks = {}) {
           el("div", { class: "portrait-body" }, [renderPortrait(item.portrait)]),
         ])
       ),
-      // 规则板默认收起，点击标题展开
-      enhanceDisclosure(
-        el("details", { class: "panel content-disclosure" }, [
-          el("summary", { class: "panel-title", text: "生成提示词规则板" }),
-          renderPromptBoard(item),
-        ])
-      ),
       // 评价标准默认收起：标题即开关，展开后内容与标题直接融合
       enhanceDisclosure(
         el("details", { class: "panel content-disclosure" }, [
@@ -480,15 +473,21 @@ export function createView(root, hooks = {}) {
 
   /** 渲染学生画像摘要（基于证据生成）。 */
   function renderPortrait(portrait) {
-    if (!portrait || !portrait.summary) {
+    const personal = Array.isArray(portrait && portrait.personal_prompts)
+      ? portrait.personal_prompts
+      : [];
+    if (!portrait || (!portrait.summary && personal.length === 0)) {
       return placeholder("尚未生成学生画像。点击右上方「生成画像」基于该学生的证据生成。");
     }
     const wrap = el("div", { class: "portrait" });
-    wrap.append(el("p", { class: "portrait-summary", text: portrait.summary }));
+    if (portrait.summary) {
+      wrap.append(el("p", { class: "portrait-summary", text: portrait.summary }));
+    }
     const groups = [
       ["优势表现", portrait.strengths],
       ["需要支持", portrait.needs],
       ["教学建议", portrait.suggestions],
+      ["个性强化提示（仅适用于该学生）", portrait.personal_prompts],
     ];
     for (const [title, items] of groups) {
       if (!Array.isArray(items) || items.length === 0) continue;
@@ -515,135 +514,10 @@ export function createView(root, hooks = {}) {
     return wrap;
   }
 
-  /** 渲染画像下方的生成提示词规则板。 */
-  function renderPromptBoard(item) {
-    const board = Array.isArray(item.prompt_board) ? item.prompt_board : [];
-    const wrap = el("div", { class: "prompt-board" });
-    wrap.append(
-      el("p", {
-        class: "meta",
-        text: "质量校验时模型提炼的生成提示词会收录在这里；生成资源时可勾选使用。",
-      })
-    );
-
-    if (board.length === 0) {
-      wrap.append(placeholder("暂无补充提示词。可手动添加，或在资源库对课件做质量校验后自动收录。"));
-    } else {
-      const list = el("div", { class: "prompt-board-list" });
-      for (const prompt of board) {
-        const checkbox = el("input", {
-          type: "checkbox",
-          checked: Boolean(prompt.enabled),
-        });
-        checkbox.addEventListener("change", () =>
-          togglePromptBoardItem(item, prompt, checkbox.checked)
-        );
-        // 元信息与删除按钮同一行：来源/时间靠左，删除靠右
-        const meta = el("div", { class: "prompt-board-meta" }, [
-          el("div", { class: "badge-row" }, [
-            prompt.source_topic
-              ? el("span", { class: "badge badge-muted", text: `来源：${prompt.source_topic}` })
-              : null,
-            el("span", { class: "badge badge-muted", text: formatTime(prompt.created_at) }),
-          ]),
-          el("button", {
-            class: "btn btn-danger btn-sm prompt-board-delete",
-            type: "button",
-            text: "删除",
-            on: {
-              click: (event) => {
-                event.stopPropagation();
-                removePromptBoardItem(item, prompt);
-              },
-            },
-          }),
-        ]);
-
-        const row = el("div", { class: "prompt-board-item" }, [
-          el("label", { class: "check prompt-board-check" }, [
-            checkbox,
-            el("span", { class: "prompt-board-text", text: prompt.text }),
-          ]),
-          meta,
-        ]);
-        // 点击整张卡片即可启用/关闭提示词（删除按钮与复选框除外）
-        row.addEventListener("click", (event) => {
-          if (event.target.closest("button") || event.target.closest("label")) return;
-          checkbox.click();
-        });
-        list.append(row);
-      }
-      wrap.append(list);
-    }
-
-    const textarea = el("textarea", {
-      name: "prompt_board_text",
-      placeholder: "手动补充一条生成提示词，例如：颜色词必须配可触摸实物。",
-    });
-    wrap.append(
-      el("div", { class: "prompt-board-add" }, [
-        textarea,
-        el("button", {
-          class: "btn btn-sm",
-          type: "button",
-          text: "添加提示词",
-          on: { click: () => addPromptBoardItem(item, textarea) },
-        }),
-      ])
-    );
-    return wrap;
-  }
-
   /** 重新加载当前学生详情。 */
   async function refreshDetail(item) {
     const card = listBox.querySelector(`[data-profile-id="${item.profile_id}"]`);
     await showDetail(item.profile_id, card);
-  }
-
-  /** 启用/停用规则板提示词。 */
-  async function togglePromptBoardItem(item, prompt, enabled) {
-    try {
-      await api.updatePromptBoardItem(item.profile_id, prompt.prompt_id, { enabled });
-      // 本地同步即可，避免整块详情重绘导致折叠状态丢失
-      prompt.enabled = enabled;
-    } catch (err) {
-      toastError(err.message);
-      await refreshDetail(item);
-    }
-  }
-
-  /** 删除规则板提示词。 */
-  async function removePromptBoardItem(item, prompt) {
-    const ok = await confirmDialog({
-      title: "删除提示词",
-      message: "确认从规则板删除这条提示词？",
-      confirmText: "删除",
-      danger: true,
-    });
-    if (!ok) return;
-    try {
-      await api.deletePromptBoardItem(item.profile_id, prompt.prompt_id);
-      toastSuccess("提示词已删除");
-      await refreshDetail(item);
-    } catch (err) {
-      toastError(err.message);
-    }
-  }
-
-  /** 手动新增规则板提示词。 */
-  async function addPromptBoardItem(item, textarea) {
-    const text = textarea.value.trim();
-    if (!text) {
-      toastError("请填写提示词内容");
-      return;
-    }
-    try {
-      await api.addPromptBoardItem(item.profile_id, { text });
-      toastSuccess("提示词已添加");
-      await refreshDetail(item);
-    } catch (err) {
-      toastError(err.message);
-    }
   }
 
   /** 基于证据生成学生画像，并刷新详情。 */

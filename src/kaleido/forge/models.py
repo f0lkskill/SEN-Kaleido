@@ -17,7 +17,6 @@ class GenerateRequest(BaseModel):
     topic: str  # 教学主题
     extra: dict = Field(default_factory=dict)  # 补充要求
     source_resource_id: str | None = None  # 基于哪份原资源修订
-    prompt_ids: list[str] = Field(default_factory=list)  # 选用的规则板提示词
 
 
 class GeneratedResource(BaseModel):

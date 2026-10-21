@@ -6,9 +6,16 @@
 
 ## 一、模块概述
 
-`kaleido-forge` 负责把**学生画像 + 教学主题 + 资源类型**转换为分层 Prompt，
-调用云端大模型（`deepseek-flash`）生成特教资源，并写入 `kaleido-vault` 的
-`resources` 集合（初始状态 `draft`，等待教师确认）。
+`kaleido-forge` 负责把**学生画像 + 病症通用规则 + 教学主题 + 资源类型**
+转换为分层 Prompt，调用云端大模型（`deepseek-flash`）生成特教资源，并写入
+`kaleido-vault` 的 `resources` 集合（初始状态 `draft`，等待教师确认）。
+
+规则来源分两层，边界严格区分：
+
+- **病症通用规则**（`kaleido-rules`）：同类病症学生的共性问题，由资源质检
+  沉淀并经教师审核通过；生成时按学生障碍自动注入。
+- **学生个性强化提示**（`profile.portrait.personal_prompts`）：只适用于当前
+  学生的个体差异，不得泛化为通用规则，也不得在资源中暴露隐私。
 
 ### 1.1 职责边界
 
@@ -28,6 +35,9 @@ GenerateRequest
    │  profile_id / attributes
    ▼
 ProfileService ──► 规范化属性（含 constraints / prompt_template_key）
+   │              └─► portrait.personal_prompts（仅该学生）
+   │
+PromptRuleService ──► 已审核的病症通用规则（按 disabilities）
    │
    ▼
 PromptLoader（prompts/<template_key>.txt）
@@ -90,6 +100,10 @@ resource_types:
 - 渲染缺失字段为空串，避免个别属性缺省导致失败。
 - 硬性约束（如 `voice_first`、`require_caption`、`step_by_step`）由 profile
   属性层产出并注入，保证「画像 → 生成」口径一致。
+- 系统提示词追加【病症通用生成规则】与【规则使用边界】：
+  - 通用规则必须逐条落实，但不得写成某个学生的个人经历或隐私；
+  - 个性强化提示只适用于当前学生，冲突时以个性提示为准并采用更保守策略。
+- 不再读取或接受学生个人提示词规则板；`prompt_ids` 字段已废弃。
 
 ## 六、模型客户端
 
@@ -126,6 +140,9 @@ resource_types:
 
 - **profile**：`profile_id` 走 `ProfileService.get_student`；临时属性走
   `preview_framework` 取得规范化结果（含 `adaptation_constraints`）。
+  画像中的 `personal_prompts` 作为该学生的个性强化提示注入。
+- **rules**：`PromptRuleService.approved_for(disabilities)` 取该学生全部病症
+  下已审核通过的通用规则；未审核或已拒绝的规则不参与生成。
 - **vault**：生成结果写入 `resources` 集合（`envelope=true`，索引字段
   `resource_type / disability / status`），便于 match 层检索。
 
@@ -135,8 +152,9 @@ resource_types:
 |---|---|
 | `test_llm_client.py` | 桩调用、配置工厂、缺密钥、请求构造、重试与错误映射 |
 | `test_prompts.py` | 四类模板渲染、约束注入、缺失占位、缺失模板 |
-| `test_service.py` | 画像/属性两种来源、Prompt 拼装、落库、筛选 |
+| `test_service.py` | 画像/属性两种来源、病症规则注入、Prompt 拼装、落库、筛选 |
 | `test_api.py` | 生成、详情、列表、非法请求、资源类型 |
+| `tests/rules/` | 规则沉淀、去重、审核、删除与生成取用 |
 
 全部离线（`StubClient`），不依赖真实 API Key。
 

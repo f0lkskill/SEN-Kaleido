@@ -16,6 +16,7 @@ from kaleido.forge.models import GenerateRequest
 from kaleido.forge.prompts import load_template, render
 from kaleido.forge.quality import analyze
 from kaleido.profile.service import ProfileService
+from kaleido.rules.service import PromptRuleService
 from kaleido.vault import Vault
 
 _logger = get_logger("forge.service")
@@ -30,6 +31,7 @@ class ForgeService:
         profile_service: ProfileService | None = None,
         vault: Vault | None = None,
         config: dict | None = None,
+        rule_service: PromptRuleService | None = None,
     ):
         self.config = config or load_yaml("forge", "forge")
         self.client: LLMClient = client or create_client(self.config.get("llm", {}))
@@ -37,34 +39,43 @@ class ForgeService:
         self.vault = vault or Vault()
         # 资源落库到 vault 的 resources 集合（envelope=true，带创建/更新时间）
         self.resources = self.vault.collection("resources")
+        self.rule_service = rule_service or PromptRuleService(vault=self.vault)
 
     def _resolve_context(
         self, request: GenerateRequest
     ) -> tuple[dict, dict | None, list[dict]]:
-        """解析学生属性、画像与规则板提示词。"""
+        """解析学生属性、画像与该学生病症下已通过的通用规则。"""
         if request.profile_id:
             profile = self.profile_service.get_student(request.profile_id)
+            attributes = profile["attributes"]
             return (
-                profile["attributes"],
+                attributes,
                 profile.get("portrait"),
-                profile.get("prompt_board") or [],
+                self._approved_rules(attributes),
             )
         if request.attributes is not None:
             preview = self.profile_service.preview_framework(request.attributes)
-            return preview["attributes"], None, []
+            attributes = preview["attributes"]
+            return attributes, None, self._approved_rules(attributes)
         if request.source_resource_id:
             source = self.get_resource(request.source_resource_id)
             source_profile_id = source.get("profile_id")
             if source_profile_id:
                 profile = self.profile_service.get_student(str(source_profile_id))
+                attributes = profile["attributes"]
                 return (
-                    profile["attributes"],
+                    attributes,
                     profile.get("portrait"),
-                    profile.get("prompt_board") or [],
+                    self._approved_rules(attributes),
                 )
             if source.get("attributes"):
-                return source["attributes"], None, []
+                attributes = source["attributes"]
+                return attributes, None, self._approved_rules(attributes)
         raise ValidationError("必须提供 profile_id、attributes 或 source_resource_id")
+
+    def _approved_rules(self, attributes: dict) -> list[dict]:
+        """取该学生全部病症下已通过审核的通用规则。"""
+        return self.rule_service.approved_for(self._disabilities(attributes))
 
     @staticmethod
     def _portrait_text(portrait: dict | None) -> str:
@@ -76,6 +87,7 @@ class ForgeService:
             ("优势表现", "strengths"),
             ("需要支持", "needs"),
             ("教学建议", "suggestions"),
+            ("个性强化提示（仅适用于该学生）", "personal_prompts"),
         ):
             values = portrait.get(key) or []
             if values:
@@ -124,17 +136,25 @@ class ForgeService:
             lines.append(f"- 本学生同时具备「{self._disability_name(key)}」：{requirement}")
         return "\n".join(lines)
 
-    @staticmethod
-    def _selected_prompts(board: list[dict], prompt_ids: list[str]) -> list[dict]:
-        """按教师选择从规则板中取出启用中的提示词。"""
-        wanted = set(prompt_ids)
-        if not wanted:
-            return []
-        return [
-            item
-            for item in board
-            if item.get("prompt_id") in wanted and item.get("enabled", True)
+    def _rules_block(self, rules: list[dict]) -> str:
+        """把已审核的病症通用规则与使用边界拼入系统提示词。"""
+        if not rules:
+            return ""
+        lines = [
+            f"- 【{self._disability_name(str(item.get('disability') or ''))}】"
+            f"{item.get('text')}"
+            for item in rules
         ]
+        return (
+            "【病症通用生成规则】\n"
+            "以下规则来自同类病症资源的质检沉淀，已由教师审核通过；"
+            "它们描述的是共性问题，必须逐条落实：\n"
+            + "\n".join(lines)
+            + "\n\n【规则使用边界】\n"
+            "- 病症通用规则适用于同类学生，不得写成该学生的个人经历或隐私。\n"
+            "- 学生画像中的个性强化提示只适用于当前学生，不得泛化为通用规则。\n"
+            "- 若通用规则与个性提示冲突，以个性提示为准，并采用更保守的支持策略。"
+        )
 
     def _source_block(self, source_resource_id: str | None) -> str:
         """把原资源正文整理为修订上下文。"""
@@ -150,7 +170,7 @@ class ForgeService:
             f"- 原资源主题：{topic or '未填写'}\n"
             f"- 原资源正文（节选）：\n{content[:max_chars] or '（空）'}\n\n"
             "请基于原资源重新生成一份完整的新资源：保留有效的分层结构与短句风格，"
-            "逐条落实教师选用的生成规则；不要只输出修改说明，也不要简单复制原文。"
+            "逐条落实病症通用规则与学生个性强化提示；不要只输出修改说明，也不要简单复制原文。"
         )
 
     def _build_messages(
@@ -158,7 +178,7 @@ class ForgeService:
         request: GenerateRequest,
         attributes: dict,
         portrait: dict | None = None,
-        prompt_board: list[dict] | None = None,
+        rules: list[dict] | None = None,
     ) -> tuple[list, str]:
         """拼装分层 Prompt，返回 (messages, 系统提示词)。"""
         labels = self.config.get("resource_types", {})
@@ -198,13 +218,9 @@ class ForgeService:
                 "请将上述学生画像作为本次资源设计的重要依据，在内容难度、活动形式与"
                 "支持策略上体现画像中的优势、需求与教学建议。"
             )
-        selected = self._selected_prompts(prompt_board or [], request.prompt_ids)
-        if selected:
-            system_prompt = (
-                f"{system_prompt}\n\n【教师选用的生成规则】\n"
-                + "\n".join(f"- {item['text']}" for item in selected)
-                + "\n\n以上规则是教师从画像规则板中选定的硬性补充要求，必须逐条落实。"
-            )
+        rules_block = self._rules_block(rules or [])
+        if rules_block:
+            system_prompt = f"{system_prompt}\n\n{rules_block}"
         source_block = self._source_block(request.source_resource_id)
         if source_block:
             system_prompt = f"{system_prompt}\n\n{source_block}"
@@ -232,8 +248,8 @@ class ForgeService:
         on_event: Callable[[dict], None] | None = None,
     ) -> dict:
         """生成资源并落库（流式累积，初始状态 draft，等待教师确认）。"""
-        attributes, portrait, prompt_board = self._resolve_context(request)
-        self._build_messages(request, attributes, portrait, prompt_board)
+        attributes, portrait, rules = self._resolve_context(request)
+        self._build_messages(request, attributes, portrait, rules)
 
         resource_id = ""
         system_prompt = ""
@@ -259,9 +275,9 @@ class ForgeService:
         正文为空时不入库，避免产生"空资源"。
         """
         try:
-            attributes, portrait, prompt_board = self._resolve_context(request)
+            attributes, portrait, rules = self._resolve_context(request)
             messages, system_prompt = self._build_messages(
-                request, attributes, portrait, prompt_board
+                request, attributes, portrait, rules
             )
         except Exception as exc:  # noqa: BLE001
             _logger.warning("流式生成前置校验失败: %s", exc)
@@ -315,7 +331,6 @@ class ForgeService:
             "status": "draft",
             "attributes": attributes,
             "source_resource_id": request.source_resource_id,
-            "prompt_ids": request.prompt_ids,
             "quality": quality,
         }
         self.resources.put(resource_id, document)

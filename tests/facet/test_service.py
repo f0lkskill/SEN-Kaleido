@@ -33,7 +33,13 @@ _LLM_CONTENT = json.dumps(
         "strengths": ["步骤清晰"],
         "issues": ["图像说明较少"],
         "suggestions": ["补充关键步骤图"],
-        "prompts": ["补充关键步骤图，并配教师口述指令。"],
+        "common_prompts": [
+            {
+                "disability": "visual",
+                "text": "补充关键步骤图，并配教师口述指令。",
+            }
+        ],
+        "personal_prompts": ["该生对强光敏感，资源中应避免高亮闪烁提示。"],
     },
     ensure_ascii=False,
 )
@@ -88,13 +94,26 @@ def test_evaluate_persists_report(tmp_path):
     assert report["summary"].startswith("资源整体适合")
     assert "补充关键步骤图" in report["suggestions"]
     assert report["prompts"] == ["补充关键步骤图，并配教师口述指令。"]
+    assert report["common_prompts"] == [
+        {"disability": "visual", "text": "补充关键步骤图，并配教师口述指令。"}
+    ]
+    assert report["personal_prompts"] == [
+        "该生对强光敏感，资源中应避免高亮闪烁提示。"
+    ]
     assert len(client.calls) == 1
     assert "max_tokens" not in client.calls[0]
 
-    board = service.profile_service.get_prompt_board(profile["profile_id"])
-    assert board[0]["text"] == "补充关键步骤图，并配教师口述指令。"
-    assert board[0]["source_resource_id"] == resource_id
-    assert board[0]["enabled"] is True
+    rules = service.rule_service.list_rules()["items"]
+    assert len(rules) == 1
+    assert rules[0]["disability"] == "visual"
+    assert rules[0]["text"] == "补充关键步骤图，并配教师口述指令。"
+    assert rules[0]["status"] == "pending"
+    assert rules[0]["source_resource_id"] == resource_id
+
+    saved_profile = service.profile_service.get_student(profile["profile_id"])
+    assert saved_profile["portrait"]["personal_prompts"] == [
+        "该生对强光敏感，资源中应避免高亮闪烁提示。"
+    ]
 
     stored = service.get_report(resource_id)
     assert stored["score"] == 83

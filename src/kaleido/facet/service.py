@@ -13,6 +13,7 @@ from kaleido.facet.rules import evaluate as evaluate_rules
 from kaleido.forge.llm_client import LLMClient, create_client, stream_complete
 from kaleido.forge.prompts import render
 from kaleido.profile.service import ProfileService
+from kaleido.rules.service import PromptRuleService
 from kaleido.vault import Vault
 
 logger = get_logger("facet.service")
@@ -49,6 +50,7 @@ class FacetService:
         client: LLMClient | None = None,
         vault: Vault | None = None,
         config: dict | None = None,
+        rule_service: PromptRuleService | None = None,
     ):
         self.config = config or load_yaml("facet", "facet")
         self.profile_service = profile_service or ProfileService()
@@ -57,6 +59,7 @@ class FacetService:
         )
         self.vault = vault or Vault()
         self.resources = self.vault.collection("resources")
+        self.rule_service = rule_service or PromptRuleService(vault=self.vault)
 
     def evaluate(
         self,
@@ -99,6 +102,18 @@ class FacetService:
                 llm and (llm.get("parsed") is False or llm.get("truncated"))
             ),
         )
+        common_prompts = self._normalize_common_prompts(
+            (llm or {}).get("common_prompts") or [],
+            (llm or {}).get("prompts") or [],
+            attributes,
+        )
+        personal_prompts = list(
+            dict.fromkeys(
+                str(item).strip()
+                for item in ((llm or {}).get("personal_prompts") or [])
+                if str(item).strip()
+            )
+        )[:2]
         report = FacetReport(
             resource_id=resource_id,
             profile_id=document.get("profile_id"),
@@ -112,7 +127,9 @@ class FacetService:
             strengths=(llm or {}).get("strengths") or [],
             issues=(llm or {}).get("issues") or [],
             suggestions=self._suggestions(llm, rules),
-            prompts=(llm or {}).get("prompts") or [],
+            prompts=[item["text"] for item in common_prompts],
+            common_prompts=common_prompts,
+            personal_prompts=personal_prompts,
             llm=llm,
             use_llm=req.use_llm,
             model=str((llm or {}).get("model") or ""),
@@ -122,25 +139,7 @@ class FacetService:
 
         document["facet"] = report
         self.resources.put(resource_id, document)
-        if report["prompts"] and report["profile_id"]:
-            try:
-                self.profile_service.add_prompt_board_items(
-                    str(report["profile_id"]),
-                    [
-                        {
-                            "text": prompt,
-                            "source_resource_id": resource_id,
-                            "source_topic": document.get("topic", ""),
-                            "source_score": score,
-                            "model": report["model"],
-                        }
-                        for prompt in report["prompts"]
-                    ],
-                )
-            except NotFoundError:
-                logger.warning(
-                    "资源关联学生不存在，提示词未写入规则板: %s", report["profile_id"]
-                )
+        self._store_prompts(report, document, score)
         logger.info(
             "资源质量校验完成: id=%s verdict=%s score=%d blocking=%s use_llm=%s",
             resource_id,
@@ -150,6 +149,90 @@ class FacetService:
             req.use_llm,
         )
         return report
+
+    @staticmethod
+    def _normalize_common_prompts(
+        common: list,
+        legacy_prompts: list,
+        attributes: dict,
+    ) -> list[dict]:
+        """把模型输出的共性问题规范为 ``{disability, text}``。
+
+        规则必须归属学生已有的病症；旧版仅返回 ``prompts`` 时按主障碍归档。
+        """
+        disabilities = [
+            str(item) for item in (attributes.get("disabilities") or []) if item
+        ]
+        primary = disabilities[0] if disabilities else ""
+        result: list[dict] = []
+        seen: set[tuple[str, str]] = set()
+
+        def append(disability: str, text: str) -> None:
+            if len(result) >= 4:
+                return
+            key = (disability, text)
+            if key in seen:
+                return
+            seen.add(key)
+            result.append({"disability": disability, "text": text})
+
+        for raw in common:
+            if isinstance(raw, dict):
+                text = str(raw.get("text") or raw.get("prompt") or "").strip()
+                disability = str(raw.get("disability") or "").strip() or primary
+            else:
+                text = str(raw or "").strip()
+                disability = primary
+            if not text or not disability:
+                continue
+            if disabilities and disability not in disabilities:
+                logger.warning("规则病症不在学生障碍中，已忽略: %s", disability)
+                continue
+            append(disability, text)
+
+        if not result and primary:
+            for raw in legacy_prompts:
+                text = str(raw or "").strip()
+                if text:
+                    append(primary, text)
+        return result
+
+    def _store_prompts(self, report: dict, document: dict, score: int) -> None:
+        """共性问题进入病症规则集；个性问题写入该学生画像。"""
+        common = report.get("common_prompts") or []
+        if common:
+            grouped: dict[str, list[str]] = {}
+            for item in common:
+                grouped.setdefault(str(item["disability"]), []).append(
+                    str(item["text"])
+                )
+            for disability, texts in grouped.items():
+                try:
+                    self.rule_service.add_rules(
+                        disability,
+                        texts,
+                        source_resource_id=report["resource_id"],
+                        source_topic=str(document.get("topic") or ""),
+                        source_score=score,
+                        source_profile_id=report.get("profile_id"),
+                        model=str(report.get("model") or ""),
+                    )
+                except Exception:
+                    logger.exception("写入病症规则集失败: disability=%s", disability)
+
+        personal = report.get("personal_prompts") or []
+        profile_id = report.get("profile_id")
+        if personal and profile_id:
+            try:
+                self.profile_service.add_personal_prompts(
+                    str(profile_id), list(personal)
+                )
+            except NotFoundError:
+                logger.warning(
+                    "资源关联学生不存在，个性提示未写入画像: %s", profile_id
+                )
+            except Exception:
+                logger.exception("写入画像个性提示失败: %s", profile_id)
 
     def get_report(self, resource_id: str) -> dict:
         """读取资源最近一次质量报告。"""
@@ -314,6 +397,8 @@ class FacetService:
                 "strengths",
                 "issues",
                 "suggestions",
+                "common_prompts",
+                "personal_prompts",
                 "prompts",
             ),
         )
@@ -326,6 +411,8 @@ class FacetService:
                 "issues": [],
                 "suggestions": [],
                 "prompts": [],
+                "common_prompts": [],
+                "personal_prompts": [],
                 "parsed": False,
             }
 
@@ -349,6 +436,23 @@ class FacetService:
                     return [value.strip()]
             return []
 
+        raw_common = data.get("common_prompts")
+        common_prompts: list[dict] = []
+        if isinstance(raw_common, list):
+            for item in raw_common[:4]:
+                if isinstance(item, dict):
+                    text = str(item.get("text") or item.get("prompt") or "").strip()
+                    disability = str(item.get("disability") or "").strip()
+                    if text:
+                        common_prompts.append(
+                            {"disability": disability, "text": text}
+                        )
+                elif str(item).strip():
+                    common_prompts.append(
+                        {"disability": "", "text": str(item).strip()}
+                    )
+        legacy_prompts = as_list("prompts", "提示词", "生成提示词")
+
         summary = str(
             data.get("summary") or data.get("description") or data.get("总结") or ""
         ).strip()
@@ -358,7 +462,11 @@ class FacetService:
             "strengths": as_list("strengths", "优势"),
             "issues": as_list("issues", "问题"),
             "suggestions": as_list("suggestions", "建议", "教学建议"),
-            "prompts": as_list("prompts", "提示词", "生成提示词"),
+            "prompts": [item["text"] for item in common_prompts] or legacy_prompts,
+            "common_prompts": common_prompts,
+            "personal_prompts": as_list(
+                "personal_prompts", "个性提示词", "个体提示词"
+            )[:2],
             "parsed": True,
         }
 

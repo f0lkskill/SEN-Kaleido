@@ -30,6 +30,8 @@ from kaleido.loop.service import LoopService
 from kaleido.profile.api import create_app as create_profile_app
 from kaleido.profile.repository import StudentRepository
 from kaleido.profile.service import ProfileService
+from kaleido.rules.api import create_app as create_rules_app
+from kaleido.rules.service import PromptRuleService
 from kaleido.tasks.api import create_app as create_tasks_app
 from kaleido.tasks.models import CreateTaskRequest
 from kaleido.tasks.recording import task_summary
@@ -60,7 +62,9 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
     vault = vault or Vault()
     profile_repository = StudentRepository(vault=vault)
     profile_service = profile_service or ProfileService(repository=profile_repository)
+    rule_service = PromptRuleService(vault=vault)
     app.merge(create_profile_app(profile_service))
+    app.merge(create_rules_app(rule_service))
     app.merge(create_vault_app(vault))
 
     # 异步任务服务尽早创建：证据审核通过等事件需要自动投递 loop 任务
@@ -88,7 +92,11 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
 
     forge_service = None
     if create_forge_app is not None and ForgeService is not None:
-        forge_service = ForgeService(profile_service=profile_service, vault=vault)
+        forge_service = ForgeService(
+            profile_service=profile_service,
+            vault=vault,
+            rule_service=rule_service,
+        )
         portrait_service = (
             PortraitService(
                 profile_service=profile_service,
@@ -122,6 +130,7 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
         profile_service=profile_service,
         vault=vault,
         client=forge_service.client if forge_service is not None else None,
+        rule_service=rule_service,
     )
     app.merge(create_facet_app(facet_service, task_service=task_service))
     task_service.register(

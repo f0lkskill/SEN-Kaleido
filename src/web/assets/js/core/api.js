@@ -206,24 +206,17 @@ export const api = {
   deleteStudent: (id) =>
     request(`/api/v1/students/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
-  // ---- 画像规则板 ----
-  getPromptBoard: (id) =>
-    request(`/api/v1/students/${encodeURIComponent(id)}/prompt-board`),
-  addPromptBoardItem: (id, body) =>
-    request(`/api/v1/students/${encodeURIComponent(id)}/prompt-board`, {
-      method: "POST",
+  // ---- 病症通用规则集 ----
+  listPromptRules: (query) => request("/api/v1/prompt-rules", { query }),
+  updatePromptRule: (id, body) =>
+    request(`/api/v1/prompt-rules/${encodeURIComponent(id)}`, {
+      method: "PATCH",
       body,
     }),
-  updatePromptBoardItem: (id, promptId, body) =>
-    request(
-      `/api/v1/students/${encodeURIComponent(id)}/prompt-board/${encodeURIComponent(promptId)}`,
-      { method: "PATCH", body }
-    ),
-  deletePromptBoardItem: (id, promptId) =>
-    request(
-      `/api/v1/students/${encodeURIComponent(id)}/prompt-board/${encodeURIComponent(promptId)}`,
-      { method: "DELETE" }
-    ),
+  deletePromptRule: (id) =>
+    request(`/api/v1/prompt-rules/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
 
   // ---- 证据管理 ----
   listEvidence: (query) => request("/api/v1/evidence", { query }),

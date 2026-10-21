@@ -29,9 +29,11 @@
 2. 规则检查已发现的硬性错误必须纳入 issues，不得忽略。
 3. summary 用 100-200 字说明整体质量与主要风险，面向教师。
 4. strengths / issues / suggestions 各 1-4 条，每条一句话，具体可操作。
-5. prompts 输出 1-4 条可直接用于后续资源生成的补充提示词，只写“应当怎么做”的要求，不重复问题描述，不包含学生姓名等隐私信息。
-6. 分数使用整数，不要输出百分号或区间。
-7. 只输出 JSON，不要 Markdown 代码块或额外解释。
+5. common_prompts 输出 1-4 条「病症共性问题」规则：只写同类病症学生普遍适用的“应当怎么做”，不重复问题描述，不包含学生姓名、个人经历或隐私。每条必须带 disability，且只能取学生已有障碍类型（visual / hearing / intellectual / autism）。
+6. personal_prompts 仅当该资源不适合该学生的原因确实来自个体差异（例如该生已有的经验、特定感官敏感、学习习惯），且无法泛化为病症规则时，才输出 0-2 条。这些内容会写入该学生画像做个性强化，不得包含隐私，也不得与 common_prompts 重复。
+7. 严格区分：共性问题写 common_prompts，个性问题写 personal_prompts；同一个问题只能出现在其中一个分类中。
+8. 分数使用整数，不要输出百分号或区间。
+9. 只输出 JSON，不要 Markdown 代码块或额外解释。
 
 【输出 JSON 结构】
-{{"summary": "……", "scores": {{"disability_fit": 85, "cognitive_load": 80, "sensory_accessibility": 75, "teaching_usability": 90}}, "strengths": ["……"], "issues": ["……"], "suggestions": ["……"], "prompts": ["为颜色词配可触摸实物，并用摸一摸、听一听的活动替代纯视觉辨认。"]}}
+{{"summary": "……", "scores": {{"disability_fit": 85, "cognitive_load": 80, "sensory_accessibility": 75, "teaching_usability": 90}}, "strengths": ["……"], "issues": ["……"], "suggestions": ["……"], "common_prompts": [{{"disability": "visual", "text": "为颜色词配可触摸实物，并用摸一摸、听一听的活动替代纯视觉辨认。"}}], "personal_prompts": ["该生对强光敏感，资源中应避免出现高亮闪烁提示。"]}}

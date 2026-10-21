@@ -1,0 +1,7 @@
+# kaleido-rules 配置：病症通用提示词规则集
+
+# 生成资源时，每个病症最多注入多少条已通过审核的规则
+max_rules_per_disability: 12
+
+# 单条规则的最大字符数，避免模型输出过长
+max_chars_per_rule: 240

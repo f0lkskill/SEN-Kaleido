@@ -24,13 +24,11 @@ export function createView(root, hooks = {}) {
   let tempWrapper;
   let output;
   let studentPanel;
-  let promptBoardBox;
   let sourceBanner;
   let studentsCache = [];
   let pendingProfile = null;
   let pendingSource = null;
   let sourceResourceId = null;
-  let selectedPromptIds = new Set();
 
   function build() {
     clear(root);
@@ -47,7 +45,6 @@ export function createView(root, hooks = {}) {
     output = el("div");
     output.append(placeholder("生成结果将显示在此。"));
     studentPanel = el("div", { class: "selected-student", hidden: true });
-    promptBoardBox = el("div", { class: "prompt-picker", hidden: true });
     sourceBanner = el("div", { class: "source-banner", hidden: true });
 
     studentSelect.addEventListener("change", () => {
@@ -56,7 +53,6 @@ export function createView(root, hooks = {}) {
       sourceResourceId = null;
       renderSourceBanner();
       renderSelectedStudent();
-      loadPromptBoard();
     });
 
     // 左：信息表单；右：生成结果
@@ -67,7 +63,6 @@ export function createView(root, hooks = {}) {
           studentSelect,
         ]),
         studentPanel,
-        promptBoardBox,
         tempWrapper,
       ]),
       panel("生成设置", [
@@ -174,7 +169,6 @@ export function createView(root, hooks = {}) {
     studentSelect.value = profileId;
     tempWrapper.hidden = true;
     renderSelectedStudent();
-    loadPromptBoard();
     return true;
   }
 
@@ -225,55 +219,6 @@ export function createView(root, hooks = {}) {
     );
   }
 
-  /** 加载所选学生的规则板并渲染勾选项。 */
-  async function loadPromptBoard() {
-    selectedPromptIds = new Set();
-    promptBoardBox.hidden = true;
-    clear(promptBoardBox);
-    const profileId = studentSelect.value;
-    if (!profileId) return;
-    try {
-      const board = await api.getPromptBoard(profileId);
-      // 学生切换过快时丢弃过期响应
-      if (studentSelect.value !== profileId) return;
-      if (!board.length) return;
-      selectedPromptIds = new Set(
-        board.filter((item) => item.enabled).map((item) => item.prompt_id)
-      );
-      promptBoardBox.hidden = false;
-      const list = el("div", { class: "prompt-picker-list" });
-      for (const item of board) {
-        const checkbox = el("input", {
-          type: "checkbox",
-          checked: Boolean(item.enabled),
-        });
-        checkbox.addEventListener("change", () => {
-          if (checkbox.checked) selectedPromptIds.add(item.prompt_id);
-          else selectedPromptIds.delete(item.prompt_id);
-        });
-        // label 包裹复选框：点击整张卡片即可启用/关闭
-        list.append(
-          el("label", { class: "check prompt-picker-item" }, [
-            checkbox,
-            el("span", { text: item.text }),
-          ])
-        );
-      }
-      // 规则板默认收起，点击标题展开
-      promptBoardBox.append(
-        enhanceDisclosure(
-          el("details", { class: "prompt-picker-collapse" }, [
-            el("summary", { text: "选用画像规则板提示词" }),
-            list,
-            el("p", { class: "meta", text: "仅勾选的启用提示词会加入本次生成。" }),
-          ])
-        )
-      );
-    } catch (err) {
-      toastError(`加载规则板失败：${err.message}`);
-    }
-  }
-
   /** 执行生成（流式：实时显示模型思考与正文增量）。 */
   async function doGenerate() {
     const topic = topicInput.value.trim();
@@ -288,9 +233,6 @@ export function createView(root, hooks = {}) {
     };
     if (studentSelect.value) {
       payload.profile_id = studentSelect.value;
-      if (selectedPromptIds.size) {
-        payload.prompt_ids = [...selectedPromptIds];
-      }
       if (sourceResourceId) payload.source_resource_id = sourceResourceId;
     } else {
       payload.attributes = readAttributes(tempForm);

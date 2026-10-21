@@ -45,7 +45,9 @@ class FacetReport(BaseModel):
     strengths: list[str] = Field(default_factory=list)
     issues: list[str] = Field(default_factory=list)
     suggestions: list[str] = Field(default_factory=list)
-    prompts: list[str] = Field(default_factory=list)
+    prompts: list[str] = Field(default_factory=list)  # 共性问题文本（兼容旧报告）
+    common_prompts: list[dict] = Field(default_factory=list)  # {disability, text} 病症通用规则
+    personal_prompts: list[str] = Field(default_factory=list)  # 仅针对该学生的个性强化提示
     llm: dict | None = None
     use_llm: bool = True
     model: str = ""

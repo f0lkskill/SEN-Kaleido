@@ -54,3 +54,9 @@ collections:
   knowledge:
     id_prefix: k
     id_zerofill: 4
+  prompt_rules:
+    id_prefix: pr
+    id_zerofill: 4
+    index_fields:
+      - disability
+      - status

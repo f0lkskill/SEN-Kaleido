@@ -14,7 +14,8 @@ import * as frameworkView from "./views/framework.js";
 import * as evidenceView from "./views/evidence.js";
 import * as forgeView from "./views/forge.js";
 import * as libraryView from "./views/library.js";
-// tasks 视图在异步任务模块就绪后接入，缺失时自动跳过该标签
+import * as rulesView from "./views/rules.js";
+// tasks 视图异步加载模块，若缺失时自动禁用该标签
 import * as tasksView from "./views/tasks.js";
 
 /** 标签定义：id 与视图模块一一对应。 */
@@ -24,6 +25,7 @@ const TABS = [
   { id: "evidence", label: "证据管理", module: evidenceView },
   { id: "forge", label: "资源生成", module: forgeView },
   { id: "library", label: "资源库", module: libraryView },
+  { id: "rules", label: "规则集", module: rulesView },
   { id: "tasks", label: "任务队列", module: tasksView },
 ];
 
