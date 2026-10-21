@@ -301,6 +301,7 @@ export function createView(root, hooks = {}) {
 
   /** 单条证据卡片。 */
   function evidenceCard(item, index) {
+    const shortText = item.title?.length > 10 ? item.title.slice(0, 10) + "…" : item.title;
     const status = item.status || "draft";
     const scope = isPublic(item) ? "public" : "classified";
     const media = mediaTypeOf(item);
@@ -322,7 +323,8 @@ export function createView(root, hooks = {}) {
       [
         el("span", { class: "avatar", text: mediaIcon(media) }),
         el("span", { class: "student-card-body" }, [
-          el("h4", { text: item.title || obsName }),
+          // 这里需要截断过长内容
+          el("h4", { text: shortText || obsName }),
           el("div", { class: "badge-row" }, [
             badge(EVIDENCE_SCOPE[scope], scope === "public" ? "badge-info" : "badge-muted"),
             badge(owner),
