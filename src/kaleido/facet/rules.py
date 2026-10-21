@@ -1,4 +1,7 @@
-"""facet 规则引擎：在 forge 轻量检查之上补充适配性硬规则与软警告。"""
+"""facet 规则引擎：结构完整性检查与适配性风险提示。
+
+不评价篇幅、字数、句长或是否使用 emoji；这些交给审查模型与教师判断。
+"""
 
 import re
 
@@ -8,18 +11,15 @@ _SUGGESTIONS = {
     "empty": "请重新生成或补充资源正文。",
     "unclosed_code": "补全 Markdown 代码块围栏。",
     "table_no_separator": "在表格表头下补充分隔行，保证表格可正常渲染。",
-    "long_sentence": "把长句拆成短句，每句只表达一个信息点。",
     "missing_读题稿": "为练习增加教师读题稿。",
     "missing_答案": "为练习补充参考答案。",
-    "too_long": "压缩正文或拆分为多个课时。",
     "complex_terms": "用更口语化的词替换抽象术语，必要时配例子。",
     "sensory_missing": "补充与学生感官偏好匹配的线索（图像/语音/动手操作）。",
     "empty_alt_text": "为图像补充简洁的替代文本，方便视觉障碍学生理解。",
-    "visual_conflict": "删除 emoji、表格或图片提示，改为编号朗读清单和教师口述指令。",
+    "visual_conflict": "关键信息不要只靠表格或图片呈现，补充可朗读文字、触觉或听觉替代。",
     "color_no_tactile": "为颜色概念增加可触摸实物、纹理标签或温度/形状对比。",
 }
 
-_EMOJI_RE = re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]")
 _TACTILE_MARKERS = ("摸", "纹理", "实物", "温度", "形状", "触觉", "粗糙", "光滑")
 
 
@@ -41,15 +41,14 @@ def evaluate(
 ) -> dict:
     """执行规则校验。
 
-    :returns: ``{ok, score, blocking, issues, stats, long_sentences}``；
+    :returns: ``{ok, score, blocking, issues, stats}``；
         ``blocking`` 为真表示命中硬性错误，资源不应直接审核通过。
     """
     text = (content or "").strip()
     attributes = attributes or {}
     rules_config = config.get("rules") or {}
-    max_sentence = (config.get("max_sentence_chars") or {}).get(resource_type, 16)
     hard_codes = set(config.get("hard_codes") or rules_config.get("hard_codes") or [])
-    base = analyze(text, resource_type, max_sentence_len=max_sentence)
+    base = analyze(text, resource_type)
     issues: list[dict] = []
 
     for item in base["issues"]:
@@ -58,16 +57,6 @@ def evaluate(
         issues.append(_issue(code, level, str(item.get("message") or code)))
 
     if text:
-        max_chars = (config.get("max_characters") or {}).get(resource_type)
-        if max_chars and len(text) > int(max_chars):
-            issues.append(
-                _issue(
-                    "too_long",
-                    "warning",
-                    f"正文 {len(text)} 字，超过该资源类型的建议上限 {max_chars} 字",
-                )
-            )
-
         terms = [str(term) for term in config.get("complex_terms") or [] if str(term)]
         term_hits = [term for term in terms if term in text]
         term_count = sum(text.count(term) for term in term_hits)
@@ -100,8 +89,6 @@ def evaluate(
         constraints = attributes.get("adaptation_constraints") or {}
         if constraints.get("avoid_visual_ref"):
             references: list[str] = []
-            if _EMOJI_RE.search(text):
-                references.append("emoji")
             if re.search(r"^\s*\|", text, re.MULTILINE):
                 references.append("表格")
             if "![" in text:
@@ -111,7 +98,7 @@ def evaluate(
                     _issue(
                         "visual_conflict",
                         "warning",
-                        f"正文使用了{'、'.join(references)}，与 avoid_visual_ref 约束冲突",
+                        f"正文使用了{'、'.join(references)}；请确认关键信息同时有可朗读文字、触觉或听觉替代",
                     )
                 )
             disabilities = attributes.get("disabilities") or []
@@ -136,7 +123,6 @@ def evaluate(
     score = max(0, min(100, 100 - errors * 25 - warnings * 8))
     stats = {
         **base["stats"],
-        "characters": len(text),
         "errors": errors,
         "warnings": warnings,
         "sensory_preference": attributes.get("sensory_preference", ""),
@@ -147,5 +133,4 @@ def evaluate(
         "blocking": errors > 0,
         "issues": issues,
         "stats": stats,
-        "long_sentences": base["long_sentences"],
     }

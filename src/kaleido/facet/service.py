@@ -12,6 +12,7 @@ from kaleido.facet.models import FacetEvaluationRequest, FacetReport
 from kaleido.facet.rules import evaluate as evaluate_rules
 from kaleido.forge.llm_client import LLMClient, create_client, stream_complete
 from kaleido.forge.prompts import render
+from kaleido.profile.attributes import sanitize_constraints
 from kaleido.profile.service import ProfileService
 from kaleido.rules.service import PromptRuleService
 from kaleido.vault import Vault
@@ -342,7 +343,7 @@ class FacetService:
             f"- 学习节奏：{PACE_LABELS.get(pace, pace or '未填写')}",
             f"- 康复目标：{goals or '未填写'}",
         ]
-        constraints = attributes.get("adaptation_constraints") or {}
+        constraints = sanitize_constraints(attributes.get("adaptation_constraints"))
         if constraints:
             lines.append(
                 f"- 适配约束：{json.dumps(constraints, ensure_ascii=False)}"
@@ -378,12 +379,6 @@ class FacetService:
             if issue.get("suggestion"):
                 line += f"（建议：{issue['suggestion']}）"
             lines.append(line)
-        stats = rules.get("stats") or {}
-        lines.append(
-            f"- 统计：{stats.get('characters', 0)} 字，"
-            f"{stats.get('sentences', 0)} 句，"
-            f"最长句 {stats.get('max_length', 0)} 字"
-        )
         return "\n".join(lines)
 
     @staticmethod

@@ -7,7 +7,6 @@ student_types:
       sensory_preference: audio_first
     constraints:
       format: voice_first
-      sentence_length_max: 15
       avoid_visual_ref: true
     prompt_template: visual_layer
 
@@ -31,7 +30,6 @@ student_types:
     constraints:
       step_by_step: true
       add_emoji: true
-      sentence_length_max: 12
     prompt_template: intellectual_layer
 
   autism:
@@ -41,7 +39,6 @@ student_types:
     defaults:
       sensory_preference: mixed
     constraints:
-      short_sentence: true
       simple_vocab: true
       visual_aid: true
     prompt_template: autism_layer

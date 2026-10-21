@@ -14,6 +14,18 @@ from kaleido.profile.taxonomy import Taxonomy
 # 允许类约束：任一障碍显式禁止即禁止，否则只要有一个障碍需要就保留
 _PERMISSIVE_FLAGS = frozenset({"add_emoji", "visual_aid"})
 
+# 历史版本遗留的篇幅/句长约束：不再进入生成或审查提示词
+LEGACY_LENGTH_CONSTRAINTS = frozenset({"sentence_length_max", "short_sentence"})
+
+
+def sanitize_constraints(constraints: dict | None) -> dict:
+    """移除历史版本遗留的篇幅、字数或句长约束。"""
+    return {
+        key: value
+        for key, value in (constraints or {}).items()
+        if key not in LEGACY_LENGTH_CONSTRAINTS
+    }
+
 
 def _merge_constraints(taxonomy: Taxonomy, disabilities: list[str]) -> dict:
     """合并多障碍适配约束，避免后项覆盖前项导致安全约束失效。
@@ -43,10 +55,6 @@ def _merge_constraints(taxonomy: Taxonomy, disabilities: list[str]) -> dict:
                 merged[name] = min(current, value)
             elif isinstance(current, list) and isinstance(value, list):
                 merged[name] = list(dict.fromkeys([*current, *value]))
-    # 视觉参照限制优先于趣味性/视觉辅助约束
-    if merged.get("avoid_visual_ref"):
-        merged["add_emoji"] = False
-        merged["visual_aid"] = False
     return merged
 
 

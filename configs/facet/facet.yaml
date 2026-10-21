@@ -17,24 +17,10 @@ weights:
 thresholds:
   pass: 80                 # 综合得分达到该值且无警告时通过
   review: 60               # 低于该值判定为不通过
-  max_content_chars: 6000  # 送入模型评分的正文字符上限
+  max_content_chars: 6000  # 送入模型评分的上下文保护上限，不作为质量评价依据
   complex_term_limit: 8    # 复杂术语出现次数上限（超过则警告）
 
-# 各资源类型允许的单句最大字数
-max_sentence_chars:
-  exercise: 12
-  courseware: 16
-  rehabilitation: 16
-  interaction: 14
-  iep: 20
-
-# 各资源类型建议的正文长度上限（超过仅警告，不硬性拦截）
-max_characters:
-  exercise: 6000
-  courseware: 8000
-  rehabilitation: 6000
-  interaction: 5000
-  iep: 8000
+# 质量审查不评价篇幅、字数或句长；只检查结构完整性与适配风险。
 
 # 抽象、书面化术语：特殊教育材料中过多会增加理解负担
 complex_terms:

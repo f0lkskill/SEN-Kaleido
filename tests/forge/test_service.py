@@ -203,7 +203,7 @@ def test_generate_uses_approved_disability_rules(tmp_path):
     )
     added = service.rule_service.add_rules(
         "visual",
-        ["为颜色词配可触摸实物，不使用 emoji。"],
+        ["为颜色词配可触摸实物，并同时给出可朗读说明。"],
         source_resource_id="r_00001",
         source_topic="认识颜色",
         source_score=85,

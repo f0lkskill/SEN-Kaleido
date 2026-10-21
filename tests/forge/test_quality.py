@@ -16,7 +16,6 @@ def test_clean_content_passes():
     report = analyze("# 标题\n\n- 短句一。\n- 短句二。", "courseware")
     assert report["ok"] is True
     assert report["issues"] == []
-    assert report["stats"]["sentences"] >= 3
 
 
 def test_empty_content_flagged():
@@ -25,11 +24,12 @@ def test_empty_content_flagged():
     assert any(issue["code"] == "empty" for issue in report["issues"])
 
 
-def test_long_sentence_flagged():
+def test_length_is_not_judged():
     long_text = "这是一个非常非常长的句子" * 4
-    report = analyze(long_text, "exercise")
-    assert any(issue["code"] == "long_sentence" for issue in report["issues"])
-    assert report["stats"]["max_length"] > 12
+    report = analyze(long_text, "courseware")
+    assert report["ok"] is True
+    assert all(issue["code"] != "long_sentence" for issue in report["issues"])
+    assert "max_length" not in report["stats"]
 
 
 def test_unclosed_code_block_flagged():

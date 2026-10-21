@@ -32,9 +32,11 @@ def test_empty_content_blocks():
     assert "empty" in _codes(report)
 
 
-def test_long_sentence_is_warning_only():
+def test_long_content_is_not_judged():
     report = evaluate("这是一个非常非常长的句子" * 4, "courseware", {}, CONFIG)
-    assert "long_sentence" in _codes(report)
+    codes = _codes(report)
+    assert "long_sentence" not in codes
+    assert "too_long" not in codes
     assert report["blocking"] is False
 
 
@@ -64,7 +66,7 @@ def test_complex_terms_warn():
     assert "complex_terms" in _codes(report)
 
 
-def test_avoid_visual_ref_flags_emoji_table_and_color_without_tactile():
+def test_avoid_visual_ref_flags_color_without_tactile():
     attributes = {
         "disabilities": ["visual"],
         "sensory_preference": "audio_first",
@@ -76,6 +78,16 @@ def test_avoid_visual_ref_flags_emoji_table_and_color_without_tactile():
     assert "visual_conflict" in codes
     assert "color_no_tactile" in codes
     assert report["blocking"] is False
+
+
+def test_avoid_visual_ref_allows_emoji():
+    attributes = {
+        "disabilities": ["visual"],
+        "sensory_preference": "audio_first",
+        "adaptation_constraints": {"avoid_visual_ref": True},
+    }
+    report = evaluate("朗读：红色苹果 🍎。摸一摸苹果。", "courseware", attributes, CONFIG)
+    assert "visual_conflict" not in _codes(report)
 
 
 def test_avoid_visual_ref_accepts_tactile_color_activity():

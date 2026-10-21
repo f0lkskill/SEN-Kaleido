@@ -15,6 +15,7 @@ from kaleido.forge.llm_client import LLMClient, create_client
 from kaleido.forge.models import GenerateRequest
 from kaleido.forge.prompts import load_template, render
 from kaleido.forge.quality import analyze
+from kaleido.profile.attributes import sanitize_constraints
 from kaleido.profile.service import ProfileService
 from kaleido.rules.service import PromptRuleService
 from kaleido.vault import Vault
@@ -190,18 +191,13 @@ class ForgeService:
         )
         cognitive_labels = load_yaml("profile", "attributes").get("cognitive_level_labels", {})
         cognitive_key = attributes.get("cognitive_level", "")
-        constraints = dict(attributes.get("adaptation_constraints") or {})
-        if constraints.get("avoid_visual_ref"):
-            # 视觉参照限制优先于“添加表情”类趣味性约束
-            constraints["add_emoji"] = False
-            constraints["visual_aid"] = False
+        constraints = sanitize_constraints(attributes.get("adaptation_constraints"))
         mapping = {
             "severity": attributes.get("severity", ""),
             "cognitive_level": cognitive_labels.get(cognitive_key, cognitive_key),
             "sensory_preference": attributes.get("sensory_preference", ""),
             "learning_pace": attributes.get("learning_pace", ""),
             "constraints": json.dumps(constraints, ensure_ascii=False),
-            "avoid_visual_ref": "是" if constraints.get("avoid_visual_ref") else "否",
             "resource_type": labels[request.resource_type],
             "topic": request.topic,
             "extra": json.dumps(request.extra, ensure_ascii=False) if request.extra else "无",
@@ -226,12 +222,13 @@ class ForgeService:
             system_prompt = f"{system_prompt}\n\n{source_block}"
         if constraints.get("avoid_visual_ref"):
             system_prompt = (
-                f"{system_prompt}\n\n【视觉参照硬性限制】\n"
-                "- 禁止使用 emoji、图片、Markdown 表格、颜色块等视觉提示。\n"
-                "- 改用编号清单、逐条朗读稿和教师口述指令。\n"
-                "- 涉及颜色等视觉经验概念时，必须配可触摸实物、纹理、温度、形状或声音等替代线索。\n"
-                "- 不要写“播放音频”等无法执行的指令；若需音频，写成“教师朗读”或“播放教师录音”。\n"
-                "- 必须输出完整结尾，不得以半截标题或半句话结束。"
+                f"{system_prompt}\n\n【视觉信息可及性】\n"
+                "- 图片、表格、颜色和 emoji 都可以使用，但关键信息必须同时以文字、朗读、"
+                "触觉或听觉方式呈现，不能只靠视觉载体传递。\n"
+                "- 颜色、形状等依赖视觉经验的概念，配可触摸实物、纹理标签、温度或声音对比。\n"
+                "- 不写“播放音频”“点击链接”等无法执行的指令；若需音频，写成“教师朗读”"
+                "或“播放教师提前录好的录音”。\n"
+                "- 输出必须完整收尾，不得以半截标题或半句话结束。"
             )
         messages = [
             {"role": "system", "content": system_prompt},

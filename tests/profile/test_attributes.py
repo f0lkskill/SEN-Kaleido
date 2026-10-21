@@ -84,7 +84,20 @@ def test_invalid_rehab_goal_raises():
             ),
         )
 
-def test_avoid_visual_ref_disables_emoji():
+def test_legacy_length_constraints_are_removed():
+    from kaleido.profile.attributes import sanitize_constraints
+
+    cleaned = sanitize_constraints(
+        {
+            "sentence_length_max": 15,
+            "short_sentence": True,
+            "avoid_visual_ref": True,
+        }
+    )
+    assert cleaned == {"avoid_visual_ref": True}
+
+
+def test_emoji_is_allowed_with_visual_and_intellectual_disabilities():
     schema = _schema()
     taxonomy = Taxonomy.load()
     resolved = schema.resolve(
@@ -98,7 +111,7 @@ def test_avoid_visual_ref_disables_emoji():
     )
     constraints = resolved.adaptation_constraints
     assert constraints["avoid_visual_ref"] is True
-    assert constraints["add_emoji"] is False
+    assert constraints["add_emoji"] is True
     assert constraints["step_by_step"] is True
 
 
@@ -123,14 +136,13 @@ def test_multi_disability_constraints_ignore_order():
     for disabilities in (["visual", "autism"], ["autism", "visual"]):
         constraints = _constraints(schema, taxonomy, disabilities)
         assert constraints["avoid_visual_ref"] is True
-        assert constraints["add_emoji"] is False
-        assert constraints["visual_aid"] is False
+        assert constraints["visual_aid"] is True
         assert constraints["simple_vocab"] is True
-        assert constraints["short_sentence"] is True
+        assert "short_sentence" not in constraints
 
 
-def test_multi_disability_numeric_constraint_takes_strictest():
-    """数值型约束取最严格值，与障碍顺序无关。"""
+def test_multi_disability_has_no_sentence_length_constraint():
+    """不再写入句长限制，避免用固定字数评判生成文本。"""
     schema = _schema()
     taxonomy = Taxonomy.load()
     for disabilities in (
@@ -138,7 +150,7 @@ def test_multi_disability_numeric_constraint_takes_strictest():
         ["intellectual", "visual"],
     ):
         constraints = _constraints(schema, taxonomy, disabilities)
-        assert constraints["sentence_length_max"] == 12
+        assert "sentence_length_max" not in constraints
         assert constraints["step_by_step"] is True
 
 
