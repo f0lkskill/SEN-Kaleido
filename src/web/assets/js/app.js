@@ -144,6 +144,13 @@ function activate(id) {
           controllers.students.showStudent(profileId);
         }
       },
+      // 从钉住面板展开任务详情
+      onShowTask: (taskId) => {
+        activate("tasks");
+        if (controllers.tasks && controllers.tasks.showTask) {
+          controllers.tasks.showTask(taskId);
+        }
+      },
     });
     if (controllers[id].init) controllers[id].init();
   } else if (controllers[id].refresh) {

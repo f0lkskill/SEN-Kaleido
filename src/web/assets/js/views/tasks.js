@@ -713,6 +713,10 @@ export function createView(root) {
     refresh() {
       refresh();
     },
+    /** 从钉住面板等入口直接打开指定任务详情。 */
+    showTask(taskId) {
+      openTaskModalById(taskId);
+    },
     /** 离开视图时停止轮询。 */
     destroy() {
       clearTimeout(timer);

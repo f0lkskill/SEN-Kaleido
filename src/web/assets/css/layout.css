@@ -116,7 +116,7 @@
 
 @media (min-width: 900px) {
   .student-layout.narrowed {
-    grid-template-columns: minmax(220px, 300px) 1fr;
+    grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
   }
 }
 

@@ -93,7 +93,7 @@ export function createView(root, hooks = {}) {
       }),
     ]);
 
-    listBox = el("div", { class: "student-list" });
+    listBox = el("div", { class: "student-list student-list-people" });
     detailBox = el("div", { class: "student-detail", hidden: true });
     layout = el("div", { class: "student-layout" }, [listBox, detailBox]);
 
@@ -288,10 +288,12 @@ export function createView(root, hooks = {}) {
       [
         el("span", { class: "avatar", text: firstChar(item.name) }),
         el("span", { class: "student-card-body" }, [
-          el("h4", { text: item.name }),
-          el("div", { class: "badge-row" }, [
+          el("h4", { text: item.name, title: item.name }),
+          el("div", { class: "student-card-meta" }, [
             el("span", { class: "badge badge-info", text: labels(DISABILITY, item.disabilities) }),
             el("span", { class: "badge badge-muted", text: label(SEVERITY, item.severity) }),
+          ]),
+          el("div", { class: "student-card-meta" }, [
             el("span", {
               class: "badge badge-muted",
               text: `认知：${label(COGNITIVE_LEVEL, item.cognitive_level)}`,

@@ -8,6 +8,7 @@ import { el, clear, placeholder, enhanceDisclosure, panel } from "../core/dom.js
 import { label, labels, DISABILITY, SEVERITY, COGNITIVE_LEVEL } from "../core/format.js";
 import { renderMarkdown } from "../core/markdown.js";
 import { toastSuccess, toastError } from "../core/toast.js";
+import { pinTask, updatePinnedTask } from "../core/taskpin.js";
 import { buildAttributesForm, readAttributes } from "./framework.js";
 
 /**
@@ -219,6 +220,18 @@ export function createView(root, hooks = {}) {
     );
   }
 
+  /** 钉住面板中的资源生成摘要。 */
+  function generationSummary(task) {
+    if (task.error) return `失败：${task.error}`;
+    const result = task.result || {};
+    if (result.resource_id) {
+      return `已生成资源 ${result.resource_id}，等待审核。`;
+    }
+    if (task.status === "running") return "正在生成资源…";
+    if (task.status === "succeeded") return "资源生成完成，等待审核。";
+    return "等待生成结果…";
+  }
+
   /** 执行生成（流式：实时显示模型思考与正文增量）。 */
   async function doGenerate() {
     const topic = topicInput.value.trim();
@@ -259,6 +272,28 @@ export function createView(root, hooks = {}) {
     const button = root.querySelector(".btn-primary");
     if (button) button.disabled = true;
 
+    // 流式任务一创建就钉住，离开当前页也能继续查看生成进度
+    let pinnedTaskId = null;
+    const ensurePinned = (event) => {
+      if (!event.task_id || pinnedTaskId === event.task_id) return;
+      pinnedTaskId = event.task_id;
+      const task = {
+        task_id: event.task_id,
+        task_type: "forge.generate",
+        status: event.type === "done" ? "succeeded" : "running",
+        payload,
+        result: event.type === "done" ? event : null,
+        reasoning: "",
+      };
+      pinTask(task, {
+        summary: generationSummary(task),
+        summarize: generationSummary,
+        onOpen: hooks.onShowTask
+          ? () => hooks.onShowTask(event.task_id)
+          : null,
+      });
+    };
+
     // 正文累积 + 节流渲染，避免每个分片都重排
     let raw = "";
     let renderTimer = null;
@@ -289,6 +324,7 @@ export function createView(root, hooks = {}) {
 
     try {
       await api.generateStream(payload, (event) => {
+        ensurePinned(event);
         if (event.type === "reasoning") {
           reasoningBox.hidden = false;
           reasoningRaw += event.text;
@@ -345,11 +381,23 @@ export function createView(root, hooks = {}) {
           );
           toastSuccess("生成完成（草稿）");
           if (hooks.onGenerated) hooks.onGenerated();
+          if (pinnedTaskId) {
+            api
+              .getTask(pinnedTaskId)
+              .then((task) => updatePinnedTask(task, generationSummary(task)))
+              .catch(() => {});
+          }
         } else if (event.type === "error") {
           if (reasoningTimer) window.clearTimeout(reasoningTimer);
           statusEl.remove();
           output.append(placeholder(`生成失败：${event.message}`));
           toastError(event.message);
+          if (pinnedTaskId) {
+            api
+              .getTask(pinnedTaskId)
+              .then((task) => updatePinnedTask(task, generationSummary(task)))
+              .catch(() => {});
+          }
         }
       });
     } catch (err) {

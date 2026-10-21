@@ -21,6 +21,7 @@ import {
   SEVERITY,
   COGNITIVE_LEVEL,
   RESOURCE_STATUS,
+  RESOURCE_STATUS_CLASS,
   FACET_VERDICT,
   FACET_VERDICT_CLASS,
   label,
@@ -28,6 +29,8 @@ import {
   formatTime,
 } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
+import { pinTask } from "../core/taskpin.js";
+import { faIcon, resourceIcon } from "../core/icons.js";
 import { renderAttributes, ATTRIBUTE_OPTIONS } from "./framework.js";
 
 const STATUS_OPTIONS = Object.entries(RESOURCE_STATUS);
@@ -188,13 +191,16 @@ export function createView(root, hooks = {}) {
         },
       },
       [
-        el("span", { class: "avatar", text: (typeName || "?").slice(0, 1) }),
+        el("span", { class: "avatar" }, [faIcon(resourceIcon(item.resource_type))]),
         el("span", { class: "student-card-body" }, [
           el("h4", { text: item.topic }),
           el("div", { class: "badge-row" }, [
             el("span", { class: "badge badge-info", text: typeName }),
             // el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
-            el("span", { class: "badge badge-warning", text: label(RESOURCE_STATUS, item.status) }),
+            el("span", {
+              class: `badge ${RESOURCE_STATUS_CLASS[item.status] || "badge-muted"}`,
+              text: label(RESOURCE_STATUS, item.status),
+            }),
             // item.facet
             //   ? el("span", {
             //       class: `badge ${FACET_VERDICT_CLASS[item.facet.verdict] || "badge-muted"}`
@@ -212,12 +218,30 @@ export function createView(root, hooks = {}) {
     if (!item.profile_id) return null;
     const attributes = (student && student.attributes) || item.attributes || {};
     const name = (student && student.name) || item.profile_id;
+    const disabilities = Array.isArray(attributes.disabilities)
+      ? attributes.disabilities
+      : attributes.disabilities
+        ? [attributes.disabilities]
+        : [];
+    const firstDisability = disabilities[0];
+    const extraDisabilities = disabilities.length - 1;
+    const detailText = [
+      firstDisability
+        ? labels(DISABILITY, disabilities)
+        : "",
+      attributes.severity ? label(SEVERITY, attributes.severity) : "",
+      attributes.cognitive_level
+        ? `认知：${label(COGNITIVE_LEVEL, attributes.cognitive_level)}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
     return el(
       "button",
       {
         class: "student-card detail-source-student",
         type: "button",
-        title: "查看学生档案",
+        title: detailText ? `${name} · ${detailText}` : "查看学生档案",
         "aria-label": `查看来源学生 ${name}`,
         on: {
           click: () => {
@@ -230,10 +254,13 @@ export function createView(root, hooks = {}) {
         el("span", { class: "student-card-body" }, [
           el("h4", { text: name }),
           el("div", { class: "badge-row" }, [
-            attributes.disabilities
+            firstDisability
               ? el("span", {
                   class: "badge badge-info",
-                  text: labels(DISABILITY, attributes.disabilities),
+                  text:
+                    extraDisabilities > 0
+                      ? `${label(DISABILITY, firstDisability)} +${extraDisabilities}`
+                      : label(DISABILITY, firstDisability),
                 })
               : null,
             attributes.severity
@@ -245,7 +272,7 @@ export function createView(root, hooks = {}) {
             attributes.cognitive_level
               ? el("span", {
                   class: "badge badge-muted",
-                  text: `认知：${label(COGNITIVE_LEVEL, attributes.cognitive_level)}`,
+                  text: label(COGNITIVE_LEVEL, attributes.cognitive_level),
                 })
               : null,
           ]),
@@ -300,18 +327,21 @@ export function createView(root, hooks = {}) {
         type: "button",
         text: "删除",
         on: { click: () => removeResource(item) },
-      }),
-      el("button", { class: "btn btn-sm", type: "button", text: "收起", on: { click: closeDetail } })
+      })
     );
 
     const sourceStudent = renderSourceStudent(item, student);
-    const head = el("div", { class: "detail-head" }, [
+    const head = el("div", { class: "detail-head detail-head-source" }, [
       el("div", { class: "detail-id" }, [
-        el("span", { class: "avatar avatar-lg", text: (typeName || "?").slice(0, 1) }),
-        el("h3", { class: "detail-title", text: typeName }),
+        el("span", { class: "avatar avatar-lg" }, [
+          faIcon(resourceIcon(item.resource_type)),
+        ]),
+        el("h3", { class: "detail-title", text: typeName, title: typeName }),
       ]),
       sourceStudent
-        ? el("div", { class: "detail-source-link", "aria-hidden": "true" })
+        ? el("div", { class: "detail-source-link", "aria-hidden": "true" }, [
+            el("span", { class: "detail-source-pulse" }),
+          ])
         : null,
       sourceStudent,
     ]);
@@ -326,10 +356,10 @@ export function createView(root, hooks = {}) {
       el("div", { class: "quick-actions-head" }, [actionsToggle, actionBar]),
     ]);
     actionsToggle.addEventListener("click", () => {
-      const collapsed = actionBar.hidden;
-      actionBar.hidden = !collapsed;
-      actionsToggle.setAttribute("aria-expanded", String(collapsed));
-      actionsPanel.classList.toggle("is-collapsed", !collapsed);
+      const collapsed = actionsPanel.classList.toggle("is-collapsed");
+      actionsToggle.setAttribute("aria-expanded", String(!collapsed));
+      actionBar.inert = collapsed;
+      actionBar.setAttribute("aria-hidden", String(collapsed));
     });
 
     const panels = [
@@ -342,7 +372,10 @@ export function createView(root, hooks = {}) {
           el("span", { class: "badge badge-muted", text: `ID：${item.resource_id}` }),
           el("span", { class: "badge badge-muted", text: `模型：${item.model || "-"}` }),
           el("span", { class: "badge badge-muted", text: label(DISABILITY, item.disability) }),
-          el("span", { class: "badge badge-warning", text: label(RESOURCE_STATUS, item.status) }),
+          el("span", {
+            class: `badge ${RESOURCE_STATUS_CLASS[item.status] || "badge-muted"}`,
+            text: label(RESOURCE_STATUS, item.status),
+          }),
           el("span", { class: "badge badge-muted", text: formatTime(item.updated_at) }),
         ])
       ),
@@ -377,18 +410,7 @@ export function createView(root, hooks = {}) {
   function renderFacet(item) {
     const report = item.facet;
     if (!report) {
-      return el("div", { class: "facet-empty" }, [
-        el("p", {
-          class: "meta",
-          text: "尚未进行质量校验。规则会检查句长、结构与感官线索，模型会评估障碍适配度。",
-        }),
-        el("button", {
-          class: "btn btn-sm",
-          type: "button",
-          text: "开始校验",
-          on: { click: (event) => evaluateResource(item, event.currentTarget) },
-        }),
-      ]);
+      return placeholder("质量校验尚未生成。", "empty");
     }
 
     const verdict = report.verdict || "review";
@@ -401,7 +423,7 @@ export function createView(root, hooks = {}) {
       el("div", { class: "badge-row" }, [
         el("span", {
           class: `badge ${FACET_VERDICT_CLASS[verdict] || "badge-muted"}`,
-          text: label(FACET_VERDICT, verdict),
+          text: label(FACET_VERDICT, verdict)
         }),
         el("span", { class: "badge badge-muted", text: `规则分 ${report.rule_score ?? "-"}` }),
         report.blocking
@@ -455,11 +477,16 @@ export function createView(root, hooks = {}) {
     );
 
     const blocks = [];
-    if (report.summary) {
-      blocks.push(el("p", { class: "facet-summary", text: report.summary }));
-    }
     if (dimensions.childElementCount) {
-      blocks.push(el("h4", { class: "facet-subtitle", text: "评分维度" }), dimensions);
+      blocks.push(dimensions);
+    }
+    if (report.summary) {
+      blocks.push(
+        el("div", { class: "facet-block" }, [
+          el("h4", { class: "facet-subtitle", text: "资源总评" }),
+          el("p", { class: "facet-summary", text: report.summary }),
+        ])
+      );
     }
     blocks.push(facetList("优势表现", report.strengths));
     blocks.push(facetList("模型发现问题", report.issues));
@@ -527,6 +554,19 @@ export function createView(root, hooks = {}) {
     return el("div", { class: "facet-report" }, [head, ...blocks.filter(Boolean)]);
   }
 
+  /** 钉住面板中的质量校验摘要。 */
+  function facetTaskSummary(task) {
+    if (task.error) return `失败：${task.error}`;
+    const result = task.result || {};
+    if (result.verdict) {
+      return `质量校验：${label(FACET_VERDICT, result.verdict)}${
+        result.score === undefined ? "" : ` · ${result.score} 分`
+      }`;
+    }
+    if (task.status === "running") return "正在校验资源质量…";
+    return "等待质量校验结果…";
+  }
+
   /** 触发质量校验并刷新详情（校验期间按钮转圈、面板显示等待）。 */
   async function evaluateResource(item, trigger = null) {
     if (evaluating) return;
@@ -553,6 +593,15 @@ export function createView(root, hooks = {}) {
 
     try {
       const pending = await api.evaluateResource(item.resource_id);
+      if (pending && pending.task_id) {
+        pinTask(pending, {
+          summary: "正在校验资源质量…",
+          summarize: facetTaskSummary,
+          onOpen: hooks.onShowTask
+            ? () => hooks.onShowTask(pending.task_id)
+            : null,
+        });
+      }
       const report = await api.resolveTask(pending);
       toastSuccess(
         `质量校验完成：${label(FACET_VERDICT, report.verdict)}（${report.score} 分）`
@@ -617,7 +666,7 @@ export function createView(root, hooks = {}) {
   async function setStatus(resourceId, status) {
     try {
       await api.updateResourceStatus(resourceId, status);
-      toastSuccess(status === "approved" ? "已通过" : "已退回");
+      toastSuccess(status === "approved" ? "通过" : "退回");
       refresh();
     } catch (err) {
       toastError(err.message);
@@ -649,6 +698,7 @@ export function createView(root, hooks = {}) {
       window.clearTimeout(closeTimer);
       closeTimer = null;
     }
+    const scrollY = window.scrollY;
     activeId = resourceId;
     detailBox.hidden = false;
     layout.classList.add("narrowed");
@@ -674,8 +724,12 @@ export function createView(root, hooks = {}) {
       detailBox.append(placeholder(`加载失败：${err.message}`));
       toastError(err.message);
     } finally {
-      // 窄屏详情堆叠在列表下方：渲染完成后滚动到详情
-      revealDetail(detailBox);
+      // 桌面端保持列表当前滚动位置；窄屏详情堆叠在下方时才滚动到详情
+      if (window.matchMedia("(min-width: 900px)").matches) {
+        window.scrollTo(0, scrollY);
+      } else {
+        revealDetail(detailBox);
+      }
     }
   }
 

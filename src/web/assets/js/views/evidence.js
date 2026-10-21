@@ -23,6 +23,7 @@ import {
 import { toastSuccess, toastError } from "../core/toast.js";
 import { confirmDialog } from "../core/dialog.js";
 import { openContextMenu } from "../core/contextmenu.js";
+import { faIcon, mediaIcon } from "../core/icons.js";
 
 /** 当前没有登录体系，审核人暂用固定身份。 */
 const REVIEWER = "教师";
@@ -52,11 +53,6 @@ function badge(text, className = "badge-muted") {
 /** 生成表单字段。 */
 function field(text, control) {
   return el("div", { class: "field" }, [el("label", { text }), control]);
-}
-
-/** 媒体图标文字。 */
-function mediaIcon(media) {
-  return media === "image" ? "图" : media === "video" ? "影" : "文";
 }
 
 /** 按 URL 后缀判断图片。 */
@@ -321,7 +317,7 @@ export function createView(root, hooks = {}) {
         },
       },
       [
-        el("span", { class: "avatar", text: mediaIcon(media) }),
+        el("span", { class: "avatar" }, [faIcon(mediaIcon(media))]),
         el("span", { class: "student-card-body" }, [
           // 这里需要截断过长内容
           el("h4", { text: shortText || obsName }),
@@ -438,7 +434,7 @@ export function createView(root, hooks = {}) {
 
     const head = el("div", { class: "detail-head" }, [
       el("div", { class: "detail-id" }, [
-        el("span", { class: "avatar avatar-lg", text: mediaIcon(media) }),
+        el("span", { class: "avatar avatar-lg" }, [faIcon(mediaIcon(media))]),
         el("h3", { text: item.title || obsName }),
       ]),
       el("div", { class: "detail-actions" }, actions),

@@ -153,12 +153,14 @@ def record_stream(
     finished = False
     try:
         for event in events:
-            task_service.record_progress(task_id, event)
             event_type = event.get("type")
+            # 把任务 ID 一并推给前端，便于流式生成时立即钉住任务面板
+            enriched = {**event, "task_id": task_id}
+            task_service.record_progress(task_id, enriched)
             if event_type == "content":
                 content_parts.append(str(event.get("text") or ""))
             elif event_type == "done":
-                result = dict(event)
+                result = dict(enriched)
                 if content_parts and not result.get("content"):
                     result["content"] = "".join(content_parts)
                 task_service.mark_succeeded(task_id, task_summary(result))
@@ -168,7 +170,7 @@ def record_stream(
                     task_id, str(event.get("message") or "执行失败")
                 )
                 finished = True
-            yield event
+            yield enriched
     finally:
         if not finished:
             task_service.mark_failed(task_id, "执行流提前结束或连接中断")

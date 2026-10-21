@@ -15,6 +15,7 @@ let current = null;
 let host = null;
 let nodes = null;
 let pollTimer = null;
+let closing = false;
 
 /** 获取或创建固定挂载点。 */
 function ensureHost() {
@@ -25,15 +26,39 @@ function ensureHost() {
   return host;
 }
 
+/** 生成比任务 ID 更易读的标题。 */
+function taskTitle(task) {
+  const payload = task.payload || {};
+  const type = label(TASK_TYPE, task.task_type) || task.task_type || "任务";
+  if (task.task_type === "forge.generate") {
+    return payload.topic ? `${payload.topic} · ${type}` : type;
+  }
+  if (task.task_type === "facet.evaluate") {
+    return payload.resource_id ? `资源 ${payload.resource_id} · ${type}` : type;
+  }
+  if (task.task_type === "forge.portrait") {
+    return payload.profile_id ? `学生 ${payload.profile_id} · ${type}` : type;
+  }
+  if (task.task_type === "loop.evaluate") {
+    return payload.student_id ? `学生 ${payload.student_id} · ${type}` : type;
+  }
+  return type;
+}
+
 /** 构建一次缩略面板 DOM。 */
 function build() {
   const box = ensureHost();
   clear(box);
   nodes = null;
+  closing = false;
   if (!current) return;
 
   const { task, onOpen } = current;
-  const title = el("span", { class: "task-pin-title", text: task.task_id || "" });
+  const title = el("span", {
+    class: "task-pin-title",
+    text: taskTitle(task),
+    title: task.task_id || "",
+  });
   const typeBadge = el("span", { class: "badge badge-muted" });
   const statusBadge = el("span", { class: "status" });
   const summary = el("p", { class: "task-pin-summary" });
@@ -80,18 +105,24 @@ function build() {
             }),
           ]),
         ]),
-        el("div", { class: "task-pin-body" }, [
-          el("div", { class: "badge-row" }, [typeBadge, statusBadge]),
-          summary,
-          reasoningBlock,
-        ]),
-        el("div", { class: "task-pin-actions" }, [
-          el("button", {
-            class: "btn btn-sm",
-            type: "button",
-            text: "展开详情",
-            on: { click: () => onOpen && onOpen() },
-          }),
+        el("div", { class: "task-pin-collapsible" }, [
+          el("div", { class: "task-pin-collapsible-inner" }, [
+            el("div", { class: "task-pin-body" }, [
+              el("div", { class: "badge-row" }, [typeBadge, statusBadge]),
+              summary,
+              reasoningBlock,
+            ]),
+            onOpen
+              ? el("div", { class: "task-pin-actions" }, [
+                  el("button", {
+                    class: "btn btn-sm",
+                    type: "button",
+                    text: "展开详情",
+                    on: { click: () => onOpen() },
+                  }),
+                ])
+              : null,
+          ]),
         ]),
       ]
     )
@@ -131,7 +162,8 @@ function updateContent() {
   const statusClass = `status-${task.status || "pending"}`;
 
   nodes.root.dataset.status = task.status || "pending";
-  nodes.title.textContent = task.task_id || "";
+  nodes.title.textContent = taskTitle(task);
+  nodes.title.title = task.task_id || "";
   nodes.typeBadge.textContent = label(TASK_TYPE, task.task_type);
   nodes.statusBadge.className = `status ${statusClass}`;
   nodes.statusBadge.textContent = label(TASK_STATUS, task.status);
@@ -203,11 +235,32 @@ export function updatePinnedTask(task, summary = "") {
   if (!pollTimer) schedulePoll();
 }
 
-/** 取消钉住并移除缩略面板。 */
+/** 取消钉住：先播放退出动画，再移除缩略面板。 */
 export function unpin() {
   current = null;
-  nodes = null;
   clearTimeout(pollTimer);
   pollTimer = null;
-  if (host) clear(host);
+
+  const root = nodes && nodes.root;
+  if (!root || !root.isConnected || closing) {
+    if (host) clear(host);
+    nodes = null;
+    return;
+  }
+
+  closing = true;
+  root.classList.add("is-closing");
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    // 动画期间若已钉住新任务，不要清掉新面板
+    if (nodes && nodes.root === root) {
+      nodes = null;
+      if (host) clear(host);
+    }
+    closing = false;
+  };
+  root.addEventListener("animationend", finish, { once: true });
+  window.setTimeout(finish, 260);
 }

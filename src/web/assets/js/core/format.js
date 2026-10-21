@@ -232,8 +232,15 @@ export const TASK_STATUS_CLASS = {
 /** 资源状态。 */
 export const RESOURCE_STATUS = {
   draft: "草稿",
-  approved: "已通过",
-  rejected: "已退回",
+  approved: "通过",
+  rejected: "退回",
+};
+
+/** 资源审核状态对应的徽章样式类。 */
+export const RESOURCE_STATUS_CLASS = {
+  draft: "badge-warning",
+  approved: "badge-success",
+  rejected: "badge-danger",
 };
 
 /** 质量校验结论。 */

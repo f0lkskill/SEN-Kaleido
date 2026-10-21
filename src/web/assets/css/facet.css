@@ -3,7 +3,7 @@
 .facet-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
@@ -16,13 +16,17 @@
 }
 
 .facet-score strong {
-  font-size: calc(2.2rem * var(--font-scale));
-  line-height: 1;
+  font-size: calc(4rem * var(--font-scale));
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  text-shadow: 0 2px 0 rgba(47, 109, 240, 0.12);
 }
 
 .facet-score span {
   color: var(--color-text-muted);
   font-size: var(--font-small);
+  font-weight: 600;
 }
 
 .facet-summary {
