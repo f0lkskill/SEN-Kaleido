@@ -274,16 +274,9 @@ select:hover {
     display: none;
   }
 
-  /* 以整个胶囊字段为锚点，保证弹层左对齐且等宽 */
-  .field:has(> select) {
-    anchor-name: --kaleido-select;
-    anchor-scope: --kaleido-select;
-  }
-
-  /* 弹层容器：与触发框等宽，超高时内部滚动 */
+  /* 弹层默认锚定到 select 自身，保证任意位置的筛选框都能正确定位 */
   select::picker(select) {
     appearance: base-select;
-    position-anchor: --kaleido-select;
     left: anchor(left);
     right: auto;
     width: anchor-size(width);
@@ -2192,7 +2185,8 @@ textarea:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .task-item,
-  .task-pin {
+  .task-pin,
+  .rule-item {
     animation: none;
     transition: none;
   }
@@ -2301,6 +2295,7 @@ textarea:focus {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  animation: card-in 0.28s ease both;
 }
 
 .rule-text {
