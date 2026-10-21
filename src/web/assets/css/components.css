@@ -1001,6 +1001,18 @@ details.disclosure > summary {
   margin: 0;
 }
 
+.detail-head h3.detail-title {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 16px;
+  border-left: 5px solid var(--color-primary);
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  font-size: var(--font-large);
+  line-height: 1.4;
+}
+
 .detail-actions {
   display: flex;
   gap: var(--space-2);
@@ -1008,7 +1020,7 @@ details.disclosure > summary {
 
 .detail-actions-row {
   flex-wrap: wrap;
-  margin-bottom: var(--space-4);
+  justify-content: center;
 }
 
 .detail-source-student {
@@ -1028,7 +1040,7 @@ details.disclosure > summary {
   border: 0;
   border-radius: 0;
   background: none;
-  font-size: var(--font-large);
+  font-size: var(--font-body);
   line-height: 1.35;
 }
 

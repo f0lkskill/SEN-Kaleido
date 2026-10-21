@@ -307,14 +307,15 @@ export function createView(root, hooks = {}) {
     const head = el("div", { class: "detail-head" }, [
       el("div", { class: "detail-id" }, [
         el("span", { class: "avatar avatar-lg", text: (typeName || "?").slice(0, 1) }),
-        el("h3", { text: typeName }),
+        el("h3", { class: "detail-title", text: typeName }),
       ]),
       renderSourceStudent(item, student),
     ]);
     const actionBar = el("div", { class: "detail-actions detail-actions-row" }, actions);
 
     const panels = [
-      panel(null, [head, actionBar]),
+      panel(null, head),
+      panel("快捷操作", actionBar),
       panel(
         "资源信息",
         el("div", { class: "badge-row" }, [
