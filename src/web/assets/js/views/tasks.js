@@ -81,6 +81,8 @@ export function createView(root) {
   let counter;
   let timer = null;
   let latestItems = new Map();
+  let taskNodes = new Map();
+  let taskSignatures = new Map();
 
   function build() {
     clear(root);
@@ -259,10 +261,12 @@ export function createView(root) {
     }
   }
 
-  /** 拉取任务列表。 */
+  /** 拉取任务列表；轮询时增量更新，避免整表重建、滚动回顶与动画重播。 */
   async function refresh() {
-    clear(listBox);
-    listBox.append(placeholder("正在加载…", "loading"));
+    if (listBox.dataset.rendered !== "1") {
+      clear(listBox);
+      listBox.append(placeholder("正在加载…", "loading"));
+    }
     try {
       const data = await api.listTasks({
         status: filterStatus.value,
@@ -272,24 +276,68 @@ export function createView(root) {
       counter.textContent = `共 ${data.total} 条`;
       latestItems = new Map(data.items.map((item) => [item.task_id, item]));
       renderStats(data.items);
-      clear(listBox);
+
       if (data.items.length === 0) {
+        clear(listBox);
         listBox.append(placeholder("暂无任务。"));
+        taskNodes.clear();
+        taskSignatures.clear();
       } else {
-        for (const item of data.items) listBox.append(taskItem(item));
+        if (taskNodes.size === 0) clear(listBox);
+        const nextNodes = new Map();
+        const nextSignatures = new Map();
+        let reference = listBox.firstElementChild;
+        for (const item of data.items) {
+          const signature = taskSignature(item);
+          let node = taskNodes.get(item.task_id);
+          if (!node || taskSignatures.get(item.task_id) !== signature) {
+            const fresh = taskItem(item, { animate: !node });
+            if (node) node.replaceWith(fresh);
+            node = fresh;
+          }
+          nextNodes.set(item.task_id, node);
+          nextSignatures.set(item.task_id, signature);
+          if (node === reference) {
+            reference = reference.nextElementSibling;
+          } else {
+            listBox.insertBefore(node, reference);
+          }
+        }
+        for (const [taskId, node] of taskNodes) {
+          if (!nextNodes.has(taskId)) node.remove();
+        }
+        taskNodes = nextNodes;
+        taskSignatures = nextSignatures;
         // 思考内容自动滚动到最新位置
         for (const pre of listBox.querySelectorAll(".task-reasoning-text")) {
           pre.scrollTop = pre.scrollHeight;
         }
       }
+      listBox.dataset.rendered = "1";
+
       const pinned = data.items.find((item) => isPinned(item.task_id));
       if (pinned) updatePinnedTask(pinned, taskSummary(pinned));
       schedulePolling(data.items);
     } catch (err) {
       clear(listBox);
+      listBox.dataset.rendered = "";
       listBox.append(placeholder(`加载失败：${err.message}`));
+      taskNodes.clear();
+      taskSignatures.clear();
       toastError(err.message);
     }
+  }
+
+  /** 用于判断任务卡片是否需要重建的轻量签名。 */
+  function taskSignature(item) {
+    return [
+      item.updated_at || "",
+      item.status || "",
+      item.attempts ?? "",
+      String(item.reasoning || "").length,
+      String(item.stream_content || "").length,
+      item.error || "",
+    ].join("|");
   }
 
   /** 汇总当前筛选范围内的状态数量。 */
@@ -349,8 +397,8 @@ export function createView(root) {
     return result.keys ? `结果字段：${result.keys.join("、")}` : "暂无输出摘要。";
   }
 
-  /** 单条任务卡片。 */
-  function taskItem(item) {
+  /** 单条任务卡片；仅首次出现或新增任务播放渐入动画。 */
+  function taskItem(item, { animate = false } = {}) {
     const statusClass = TASK_STATUS_CLASS[item.status] || "";
     const canCancel = ACTIVE_STATUS.includes(item.status);
     const card = el(
@@ -430,6 +478,14 @@ export function createView(root) {
         ]),
       ]
     );
+    if (animate) {
+      card.classList.add("is-new");
+      card.addEventListener(
+        "animationend",
+        () => card.classList.remove("is-new"),
+        { once: true }
+      );
+    }
     return card;
   }
 
