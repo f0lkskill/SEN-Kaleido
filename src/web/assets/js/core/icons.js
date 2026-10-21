@@ -14,6 +14,9 @@ export const RESOURCE_TYPE_ICONS = {
   iep: "fa-route",
 };
 
+/** 学生档案默认图标。 */
+export const STUDENT_ICON = "fa-user";
+
 /** 证据媒体类型 -> Font Awesome 图标类。 */
 export const MEDIA_ICONS = {
   text: "fa-file-lines",

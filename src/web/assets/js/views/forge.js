@@ -9,6 +9,7 @@ import { label, labels, DISABILITY, SEVERITY, COGNITIVE_LEVEL } from "../core/fo
 import { renderMarkdown } from "../core/markdown.js";
 import { toastSuccess, toastError } from "../core/toast.js";
 import { pinTask, updatePinnedTask } from "../core/taskpin.js";
+import { faIcon, STUDENT_ICON } from "../core/icons.js";
 import { buildAttributesForm, readAttributes } from "./framework.js";
 
 /**
@@ -147,7 +148,7 @@ export function createView(root, hooks = {}) {
     studentPanel.hidden = false;
     studentPanel.append(
       el("div", { class: "student-card" }, [
-        el("span", { class: "avatar", text: (item.name || "?").slice(0, 1) }),
+        el("span", { class: "avatar" }, [faIcon(STUDENT_ICON)]),
         el("span", { class: "student-card-body" }, [
           el("h4", { text: item.name }),
           el("div", { class: "badge-row" }, [

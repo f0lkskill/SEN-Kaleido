@@ -17,8 +17,11 @@
 }
 
 .facet-score strong {
+  display: inline-block;
+  min-width: 2ch;
   font-size: calc(4rem * var(--font-scale));
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   line-height: 0.9;
   letter-spacing: -0.04em;
   text-shadow: 0 2px 0 rgba(47, 109, 240, 0.12);

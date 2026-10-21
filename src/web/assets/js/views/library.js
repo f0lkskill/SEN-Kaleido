@@ -30,7 +30,7 @@ import {
 } from "../core/format.js";
 import { toastSuccess, toastError } from "../core/toast.js";
 import { pinTask } from "../core/taskpin.js";
-import { faIcon, resourceIcon } from "../core/icons.js";
+import { faIcon, resourceIcon, STUDENT_ICON } from "../core/icons.js";
 import { renderAttributes, ATTRIBUTE_OPTIONS } from "./framework.js";
 
 const STATUS_OPTIONS = Object.entries(RESOURCE_STATUS);
@@ -59,6 +59,7 @@ export function createView(root, hooks = {}) {
   let studentMap = new Map(); // 学生档案缓存
   let closeTimer = null;
   let activeId = null; // 当前选中的资源 ID
+  let detailRequest = 0; // 详情请求序号，丢弃过期响应
   let evaluating = false; // 质量校验进行中，避免重复提交
 
   function build() {
@@ -118,6 +119,7 @@ export function createView(root, hooks = {}) {
       }
       // 收起动画期间若已重新选中资源，则不再收起（避免清空新面板）
       if (activeId) return;
+      detailBox.style.minHeight = "";
       detailBox.hidden = true;
       clear(detailBox);
     };
@@ -250,7 +252,7 @@ export function createView(root, hooks = {}) {
         },
       },
       [
-        el("span", { class: "avatar", text: (name || "?").slice(0, 1) }),
+        el("span", { class: "avatar" }, [faIcon(STUDENT_ICON)]),
         el("span", { class: "student-card-body" }, [
           el("h4", { text: name }),
           el("div", { class: "badge-row" }, [
@@ -406,6 +408,30 @@ export function createView(root, hooks = {}) {
     ]);
   }
 
+  /** 分数递增载入动画；onFrame 用于同步环形进度。 */
+  function animateScore(node, target, onFrame = null) {
+    const value = Math.max(0, Math.min(100, Math.round(Number(target) || 0)));
+    const render = (current) => {
+      node.textContent = String(Math.round(current));
+      if (onFrame) onFrame(current);
+    };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      render(value);
+      return;
+    }
+    const duration = 760;
+    const start = performance.now();
+    const tick = (now) => {
+      if (!node.isConnected) return;
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      render(value * eased);
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    render(0);
+    requestAnimationFrame(tick);
+  }
+
   /** 组装质量报告。 */
   function renderFacet(item) {
     const report = item.facet;
@@ -415,9 +441,10 @@ export function createView(root, hooks = {}) {
 
     const verdict = report.verdict || "review";
     const score = Number(report.score) || 0;
+    const scoreNode = el("strong", { text: "0" });
     const head = el("div", { class: "facet-head" }, [
       el("div", { class: "facet-score" }, [
-        el("strong", { text: String(score) }),
+        scoreNode,
         el("span", { text: "/100" }),
       ]),
       el("div", { class: "badge-row" }, [
@@ -432,6 +459,7 @@ export function createView(root, hooks = {}) {
         el("span", { class: "badge badge-muted", text: formatTime(report.evaluated_at) }),
       ]),
     ]);
+    animateScore(scoreNode, score);
 
     const dimensions = el(
       "div",
@@ -451,25 +479,31 @@ export function createView(root, hooks = {}) {
               : value >= 40
                 ? "warn"
                 : "bad";
-        const scoreText = hasScore ? `${Math.round(value)}` : "—";
+        const scoreNode = el("strong", { text: hasScore ? "0" : "—" });
+        const orb = el(
+          "div",
+          {
+            class: `facet-orb facet-orb-${level}`,
+            style: `--value:${hasScore ? 0 : value}`,
+            role: "img",
+            "aria-label": `${dimension.name}（权重 ${weight}%）：${
+              hasScore ? `${Math.round(value)} 分` : "未评分"
+            }`,
+          },
+          [
+            el("div", { class: "facet-orb-core" }, [
+              scoreNode,
+              el("span", { text: hasScore ? "分" : "未评分" }),
+            ]),
+          ]
+        );
+        if (hasScore) {
+          animateScore(scoreNode, value, (current) => {
+            orb.style.setProperty("--value", current);
+          });
+        }
         return el("div", { class: "facet-dim" }, [
-          el(
-            "div",
-            {
-              class: `facet-orb facet-orb-${level}`,
-              style: `--value:${value}`,
-              role: "img",
-              "aria-label": `${dimension.name}（权重 ${weight}%）：${
-                hasScore ? `${Math.round(value)} 分` : "未评分"
-              }`,
-            },
-            [
-              el("div", { class: "facet-orb-core" }, [
-                el("strong", { text: scoreText }),
-                el("span", { text: hasScore ? "分" : "未评分" }),
-              ]),
-            ]
-          ),
+          orb,
           el("div", { class: "facet-dim-name", text: dimension.name }),
           el("div", { class: "facet-dim-weight", text: `权重 ${weight}%` }),
         ]);
@@ -698,18 +732,31 @@ export function createView(root, hooks = {}) {
       window.clearTimeout(closeTimer);
       closeTimer = null;
     }
-    const scrollY = window.scrollY;
-    activeId = resourceId;
-    detailBox.hidden = false;
-    layout.classList.add("narrowed");
-    clear(detailBox);
-    detailBox.append(placeholder("正在加载…", "loading"));
-    if (cardEl) {
+    const markActive = () => {
+      if (!cardEl) return;
       for (const node of listBox.querySelectorAll(".student-card")) {
         node.classList.remove("active");
       }
       cardEl.classList.add("active");
+    };
+    // 重复点击当前资源时只更新选中态，避免详情反复重建造成闪烁
+    if (activeId === resourceId && !detailBox.hidden && detailBox.querySelector(".detail-body")) {
+      markActive();
+      return;
     }
+
+    const requestId = ++detailRequest;
+    const scrollY = window.scrollY;
+    const hadDetail = !!detailBox.querySelector(".detail-body");
+    activeId = resourceId;
+    detailBox.hidden = false;
+    layout.classList.add("narrowed");
+    // 切换资源时保留旧详情，等新内容就绪后再替换，避免高度塌陷和列表跳动
+    if (!hadDetail) {
+      clear(detailBox);
+      detailBox.append(placeholder("正在加载…", "loading"));
+    }
+    markActive();
     try {
       const item = await api.getResource(resourceId);
       let student = item.profile_id ? studentMap.get(item.profile_id) : null;
@@ -717,13 +764,16 @@ export function createView(root, hooks = {}) {
         student = await api.getStudent(item.profile_id).catch(() => null);
         if (student) studentMap.set(item.profile_id, student);
       }
+      if (requestId !== detailRequest) return;
       clear(detailBox);
       detailBox.append(renderDetail(item, student));
     } catch (err) {
+      if (requestId !== detailRequest) return;
       clear(detailBox);
       detailBox.append(placeholder(`加载失败：${err.message}`));
       toastError(err.message);
     } finally {
+      if (requestId !== detailRequest) return;
       // 桌面端保持列表当前滚动位置；窄屏详情堆叠在下方时才滚动到详情
       if (window.matchMedia("(min-width: 900px)").matches) {
         window.scrollTo(0, scrollY);

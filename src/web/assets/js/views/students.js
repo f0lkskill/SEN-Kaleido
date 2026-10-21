@@ -29,6 +29,7 @@ import {
 import { toastSuccess, toastError } from "../core/toast.js";
 import { confirmDialog } from "../core/dialog.js";
 import { openContextMenu } from "../core/contextmenu.js";
+import { faIcon, STUDENT_ICON } from "../core/icons.js";
 import {
   buildAttributesForm,
   readAttributes,
@@ -46,12 +47,6 @@ function filterSelect(name, options) {
   node.append(el("option", { value: "", text: "全部" }));
   for (const [value, text] of options) node.append(el("option", { value, text }));
   return node;
-}
-
-/** 取姓名首字作为头像文字。 */
-function firstChar(name) {
-  const text = String(name || "").trim();
-  return text ? text[0] : "?";
 }
 
 /**
@@ -286,7 +281,7 @@ export function createView(root, hooks = {}) {
         },
       },
       [
-        el("span", { class: "avatar", text: firstChar(item.name) }),
+        el("span", { class: "avatar" }, [faIcon(STUDENT_ICON)]),
         el("span", { class: "student-card-body" }, [
           el("h4", { text: item.name, title: item.name }),
           el("div", { class: "student-card-meta" }, [
@@ -310,7 +305,7 @@ export function createView(root, hooks = {}) {
     const attributes = item.attributes;
     const head = el("div", { class: "detail-head" }, [
       el("div", { class: "detail-id" }, [
-        el("span", { class: "avatar avatar-lg", text: firstChar(item.name) }),
+        el("span", { class: "avatar avatar-lg" }, [faIcon(STUDENT_ICON)]),
         el("h3", { text: `${item.name}` }),
       ]),
       el("div", { class: "detail-actions" }, [

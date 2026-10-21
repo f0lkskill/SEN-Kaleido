@@ -284,6 +284,12 @@ select:hover {
     display: none;
   }
 
+  /* 筛选字段作为锚点，让弹层与整个胶囊字段等宽 */
+  .field:has(> label):has(> select) {
+    anchor-name: --select-field;
+    anchor-scope: --select-field;
+  }
+
   /* 弹层默认锚定到 select 自身，保证任意位置的筛选框都能正确定位 */
   select::picker(select) {
     appearance: base-select;
@@ -307,6 +313,14 @@ select:hover {
       transform 0.16s ease,
       display 0.16s allow-discrete,
       overlay 0.16s allow-discrete;
+  }
+
+  /* 带标签的筛选框：弹层左对齐并铺满整个字段宽度 */
+  .field:has(> label):has(> select) select::picker(select) {
+    position-anchor: --select-field;
+    left: anchor(left);
+    right: auto;
+    width: anchor-size(--select-field width);
   }
 
   /* 关闭时淡出并轻微上移 */
@@ -2064,8 +2078,8 @@ details.collapse[open] > summary::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: #fff;
@@ -2076,18 +2090,18 @@ details.collapse[open] > summary::after {
 }
 
 .avatar-lg {
-  width: 64px;
-  height: 64px;
+  width: 70px;
+  height: 70px;
   font-size: var(--font-heading);
 }
 
 .avatar .fa-solid {
-  font-size: 1.25em;
+  font-size: 2em;
   line-height: 1;
 }
 
 .avatar-lg .fa-solid {
-  font-size: 1.3em;
+  font-size: 1.8em;
 }
 
 .student-card:hover .avatar {
