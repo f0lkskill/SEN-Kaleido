@@ -17,6 +17,8 @@ class EvaluationSnapshot(BaseModel):
     snapshot_id: str
     student_id: str
     framework_id: str = ""
+    framework_snapshot: dict = Field(default_factory=dict)
+    snapshot_version: int = 1
     period: str = ""
     status: Literal["ok", "partial", "insufficient"] = "insufficient"
     dimension_scores: dict[str, float] = Field(default_factory=dict)

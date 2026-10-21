@@ -116,7 +116,8 @@ def create_app(service: EvidenceService | None = None) -> Bottle:
         """上传证据附件（文本 / 图像 / 视频）。"""
 
         def action():
-            upload = request.files.get("file")
+            files = cast("dict[str, Any]", request.files)
+            upload = files.get("file")
             if upload is None or not upload.filename:
                 raise ValidationError("缺少上传文件")
             original = Path(str(upload.filename).replace("\\", "/")).name

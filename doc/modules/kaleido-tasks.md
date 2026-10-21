@@ -62,6 +62,7 @@ tests/tasks/
 
 ```yaml
 worker_count: 2                     # 后台工作线程数
+max_recoveries: 3                   # 进程重启后中断任务的最大自动恢复次数
 schedule:
   defer_poll_seconds: 5             # 闲时任务未到窗口时的轮询间隔
   off_peak:
@@ -84,6 +85,16 @@ pending ──(工作线程取用)──► running ──┬─► succeeded
 - 状态：`pending / running / succeeded / failed / cancelled`。
 - `attempts` 记录已尝试次数，`max_attempts` 控制重试上限。
 - 取消为协作式：执行中的任务在完成后若已被取消，则保留取消态、丢弃结果。
+
+### 5.1 进程重启恢复
+
+统一服务在注册完全部处理器后调用 `TaskService.recover()`：
+
+- `pending` 任务重新入队，继续执行；
+- `running` 任务视为上次进程中断，回退该次尝试并重新入队；
+- 每个任务用 `recoveries` 记录恢复次数，超过 `max_recoveries` 才标记失败，
+  避免“启动即崩溃”造成无限重启；
+- 处理器尚未注册的任务保持原状，待注册后再恢复。
 
 ## 六、闲时调度
 

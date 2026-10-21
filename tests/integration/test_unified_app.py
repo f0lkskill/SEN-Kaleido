@@ -61,6 +61,18 @@ def _json(raw):
     return json.loads(raw.decode("utf-8")) if raw else {}
 
 
+def _wait_task(app, task_id, timeout=5.0):
+    """轮询任务直至进入终态。"""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        _, _, raw = _call(app, "GET", f"/api/v1/tasks/{task_id}")
+        data = _json(raw)["data"]
+        if data["status"] in ("succeeded", "failed", "cancelled"):
+            return data
+        time.sleep(0.05)
+    raise AssertionError(f"任务未在 {timeout}s 内完成: {task_id}")
+
+
 def _app(tmp_path):
     """构建使用临时数据目录的统一应用。"""
     vault = Vault(data_dir=tmp_path)
@@ -130,24 +142,28 @@ def test_facet_evaluate_via_unified_app(tmp_path, monkeypatch):
         "resource_type": "courseware",
         "topic": "认识四季",
     }
-    status, _, raw = _call(app, "POST", "/api/v1/forge/generate", body)
+    status, _, raw = _call(app, "POST", "/api/v1/forge/generate", body, query="sync=1")
     assert status.startswith("201")
     resource_id = _json(raw)["data"]["resource_id"]
 
     status, _, raw = _call(
         app, "POST", f"/api/v1/facet/resources/{resource_id}/evaluate", {}
     )
-    assert status.startswith("201")
+    assert status.startswith("202")
+    task_id = _json(raw)["data"]["task_id"]
+    task = _wait_task(app, task_id)
+    assert task["status"] == "succeeded"
+    assert task["result"]["resource_id"] == resource_id
+
+    status, _, raw = _call(app, "GET", f"/api/v1/facet/resources/{resource_id}")
+    assert status.startswith("200")
     data = _json(raw)["data"]
     assert data["resource_id"] == resource_id
     assert data["verdict"] in ("pass", "review", "fail")
 
     items = _task_items(app, "facet.evaluate")
     assert len(items) == 1
-    task = items[0]
-    assert task["status"] == "succeeded"
-    assert task["result"]["resource_id"] == resource_id
-    assert task["result"]["verdict"] == data["verdict"]
+    assert items[0]["result"]["verdict"] == data["verdict"]
 
 
 def test_forge_generate_via_task(tmp_path, monkeypatch):
@@ -197,8 +213,8 @@ def _task_items(app, task_type="forge.generate"):
     return _json(raw)["data"]["items"]
 
 
-def test_forge_generate_records_task(tmp_path, monkeypatch):
-    """同步生成接口会在任务队列留下 succeeded 记录。"""
+def test_forge_generate_queues_task(tmp_path, monkeypatch):
+    """普通生成接口默认入队，不占用请求线程。"""
     monkeypatch.setenv("SEN_KALEIDO_LLM_PROVIDER", "stub")
     app = _app(tmp_path)
     body = {
@@ -212,16 +228,45 @@ def test_forge_generate_records_task(tmp_path, monkeypatch):
         "topic": "认识四季",
     }
     status, _, raw = _call(app, "POST", "/api/v1/forge/generate", body)
+    assert status.startswith("202")
+    queued = _json(raw)["data"]
+    assert queued["status"] == "pending"
+
+    task = _wait_task(app, queued["task_id"])
+    assert task["status"] == "succeeded"
+    assert task["task_type"] == "forge.generate"
+    resource_id = task["result"]["resource_id"]
+    assert resource_id.startswith("r_")
+
+    status, _, raw = _call(app, "GET", f"/api/v1/forge/resources/{resource_id}")
+    assert status.startswith("200")
+    assert _json(raw)["data"]["content"]
+    assert task["started_at"] and task["finished_at"]
+
+
+def test_forge_generate_sync_mode(tmp_path, monkeypatch):
+    """``?sync=1`` 保留同步生成行为，便于脚本与兼容调用。"""
+    monkeypatch.setenv("SEN_KALEIDO_LLM_PROVIDER", "stub")
+    app = _app(tmp_path)
+    body = {
+        "attributes": {
+            "disabilities": ["hearing"],
+            "severity": "moderate",
+            "cognitive_level": "primary_5",
+            "learning_pace": "slow",
+        },
+        "resource_type": "exercise",
+        "topic": "看图识字",
+    }
+    status, _, raw = _call(app, "POST", "/api/v1/forge/generate", body, query="sync=1")
     assert status.startswith("201")
     resource_id = _json(raw)["data"]["resource_id"]
+    assert _json(raw)["data"]["content"]
 
     items = _task_items(app)
     assert len(items) == 1
-    task = items[0]
-    assert task["status"] == "succeeded"
-    assert task["task_type"] == "forge.generate"
-    assert task["result"]["resource_id"] == resource_id
-    assert task["started_at"] and task["finished_at"]
+    assert items[0]["status"] == "succeeded"
+    assert items[0]["result"]["resource_id"] == resource_id
 
 
 def test_forge_stream_records_task(tmp_path, monkeypatch):

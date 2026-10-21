@@ -8,7 +8,28 @@ HTTP 同步接口（如资源生成、质量校验、画像分析）不经过后
 from collections.abc import Callable, Iterator
 from typing import Any
 
+from kaleido.tasks.models import CreateTaskRequest
 from kaleido.tasks.service import TaskService
+
+
+def can_queue(task_service: TaskService | None, task_type: str) -> bool:
+    """判断某任务类型是否可交给后台队列执行。
+
+    仅当任务服务存在且该类型已注册处理器时才返回真；模块单独部署或
+    单元测试未注册处理器时，调用方应回退为同步执行。
+    """
+    return task_service is not None and task_type in task_service.registered_types()
+
+
+def submit_task(
+    task_service: TaskService | None, task_type: str, payload: dict
+) -> dict:
+    """把业务请求提交为后台任务，立即返回任务记录。"""
+    if task_service is None:
+        raise RuntimeError("任务服务不可用")
+    return task_service.submit(
+        CreateTaskRequest(task_type=task_type, payload=payload)
+    )
 
 
 def task_summary(result: Any) -> dict:
@@ -20,18 +41,24 @@ def task_summary(result: Any) -> dict:
         for key in (
             "resource_id",
             "profile_id",
+            "student_id",
             "model",
             "status",
             "prompt_template_key",
             "verdict",
             "score",
             "snapshot_id",
+            "framework_id",
             "period",
             "coverage",
             "dimension_scores",
+            "indicator_scores",
+            "observation_scores",
+            "weights",
             "missing_observations",
             "evidence_count",
             "computed_at",
+            "evaluated_at",
             "overall_score",
             "rule_score",
             "blocking",
@@ -39,6 +66,10 @@ def task_summary(result: Any) -> dict:
             "issues",
             "suggestions",
             "strengths",
+            "portrait",
+            "framework_snapshot",
+            "use_llm",
+            "usage",
         )
         if key in result
     }

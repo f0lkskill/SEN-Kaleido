@@ -60,6 +60,43 @@ async function request(path, { method = "GET", body, query } = {}) {
 }
 
 /**
+ * 轮询等待任务进入终态，成功时返回任务结果。
+ * @param {string} taskId 任务 ID
+ * @param {Object} [options] 轮询间隔与超时（毫秒）
+ * @returns {Promise<any>} 任务成功时的 result
+ */
+async function waitTask(taskId, { interval = 500, timeout = 10 * 60 * 1000 } = {}) {
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    const task = await request(`/api/v1/tasks/${encodeURIComponent(taskId)}`);
+    if (task.status === "succeeded") return task.result;
+    if (task.status === "failed" || task.status === "cancelled") {
+      const error = new Error(task.error || "任务执行失败");
+      error.code = task.status === "cancelled" ? 1003 : 1000;
+      throw error;
+    }
+    if (Date.now() >= deadline) {
+      throw new Error("任务等待超时，请到任务队列查看进度");
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+}
+
+/**
+ * 兼容同步与异步两种接口返回：异步任务等待完成后返回结果。
+ * @param {Object} result 接口返回的数据
+ * @param {Object} [options] 轮询选项
+ * @returns {Promise<any>} 业务结果
+ */
+async function resolveTask(result, options) {
+  const active = result && ["pending", "running"].includes(result.status);
+  if (active && result.task_id && result.task_type) {
+    return waitTask(result.task_id, options);
+  }
+  return result;
+}
+
+/**
  * 流式请求：POST 后逐块解析 SSE，回调每个事件。
  * @param {string} path 接口路径
  * @param {Object} body 请求体
@@ -252,6 +289,8 @@ export const api = {
     }),
 
   // ---- 异步任务 ----
+  waitTask,
+  resolveTask,
   taskTypes: () => request("/api/v1/tasks/types"),
   listTasks: (query) => request("/api/v1/tasks", { query }),
   createTask: (body) => request("/api/v1/tasks", { method: "POST", body }),

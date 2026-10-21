@@ -25,6 +25,7 @@ class TaskModel(BaseModel):
     priority: int = 0
     attempts: int = 0  # 已尝试次数
     max_attempts: int = 1
+    recoveries: int = 0  # 进程中断后的自动恢复次数
     defer_off_peak: bool = False
     created_at: str | None = None
     updated_at: str | None = None

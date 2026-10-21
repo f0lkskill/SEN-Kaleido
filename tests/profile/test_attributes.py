@@ -102,6 +102,46 @@ def test_avoid_visual_ref_disables_emoji():
     assert constraints["step_by_step"] is True
 
 
+def _constraints(schema, taxonomy, disabilities):
+    """解析给定障碍组合的适配约束。"""
+    resolved = schema.resolve(
+        taxonomy,
+        StudentAttributesInput(
+            disabilities=disabilities,
+            severity="moderate",
+            cognitive_level="primary_3",
+            learning_pace="slow",
+        ),
+    )
+    return resolved.adaptation_constraints
+
+
+def test_multi_disability_constraints_ignore_order():
+    """安全约束不因障碍书写顺序而被覆盖。"""
+    schema = _schema()
+    taxonomy = Taxonomy.load()
+    for disabilities in (["visual", "autism"], ["autism", "visual"]):
+        constraints = _constraints(schema, taxonomy, disabilities)
+        assert constraints["avoid_visual_ref"] is True
+        assert constraints["add_emoji"] is False
+        assert constraints["visual_aid"] is False
+        assert constraints["simple_vocab"] is True
+        assert constraints["short_sentence"] is True
+
+
+def test_multi_disability_numeric_constraint_takes_strictest():
+    """数值型约束取最严格值，与障碍顺序无关。"""
+    schema = _schema()
+    taxonomy = Taxonomy.load()
+    for disabilities in (
+        ["visual", "intellectual"],
+        ["intellectual", "visual"],
+    ):
+        constraints = _constraints(schema, taxonomy, disabilities)
+        assert constraints["sentence_length_max"] == 12
+        assert constraints["step_by_step"] is True
+
+
 if __name__ == "__main__":
     import pytest
 

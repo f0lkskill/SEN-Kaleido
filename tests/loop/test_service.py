@@ -12,7 +12,11 @@ from kaleido.evidence.models import CreateEvidenceRequest, ReviewEvidenceRequest
 from kaleido.evidence.repository import EvidenceRepository
 from kaleido.evidence.service import EvidenceService
 from kaleido.loop.service import LoopService
-from kaleido.profile.models.student import CreateStudentRequest, StudentAttributesInput
+from kaleido.profile.models.student import (
+    CreateStudentRequest,
+    StudentAttributesInput,
+    UpdateStudentRequest,
+)
 from kaleido.profile.repository import StudentRepository
 from kaleido.profile.service import ProfileService
 from kaleido.vault import Vault
@@ -130,3 +134,33 @@ def test_snapshot_without_evidence_is_insufficient(tmp_path):
         "class_engagement",
         "practice_completion",
     }
+
+
+def test_snapshot_keeps_framework_for_replay(tmp_path):
+    """快照内嵌当时框架，学生属性更新后旧评价仍可复现。"""
+    profile_service, student, _, loop_service = _setup(tmp_path)
+    student_id = student["profile_id"]
+
+    snapshot = loop_service.evaluate_student(student_id)
+    assert snapshot["framework_snapshot"]["framework_id"] == student["framework"]["framework_id"]
+    assert snapshot["framework_snapshot"]["weights"] == student["framework"]["weights"]
+    assert snapshot["framework_snapshot"]["indicators"]
+
+    profile_service.update_student(
+        student_id,
+        UpdateStudentRequest(
+            attributes=StudentAttributesInput(
+                disabilities=["hearing"],
+                severity="severe",
+                cognitive_level="primary_6",
+                learning_pace="fast",
+                rehab_goals=["social"],
+            )
+        ),
+    )
+
+    stored = loop_service.get_snapshot(snapshot["snapshot_id"])
+    assert stored["framework_snapshot"] == snapshot["framework_snapshot"]
+    assert stored["framework_snapshot"]["weights"] == snapshot["weights"]
+    current = profile_service.get_student(student_id)
+    assert current["framework"]["weights"] != stored["framework_snapshot"]["weights"]

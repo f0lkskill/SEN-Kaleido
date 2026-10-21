@@ -465,7 +465,8 @@ export function createView(root, hooks = {}) {
       button.textContent = "计算中…";
     }
     try {
-      await api.evaluateLoop(item.profile_id);
+      const pending = await api.evaluateLoop(item.profile_id);
+      await api.resolveTask(pending);
       toastSuccess("评价快照已更新");
       await refreshDetail(item);
     } catch (err) {
@@ -653,7 +654,8 @@ export function createView(root, hooks = {}) {
       button.textContent = "分析中…";
     }
     try {
-      await api.generatePortrait(item.profile_id);
+      const pending = await api.generatePortrait(item.profile_id);
+      await api.resolveTask(pending);
       toastSuccess("学生画像已生成");
       const card = listBox.querySelector(`[data-profile-id="${item.profile_id}"]`);
       await showDetail(item.profile_id, card);

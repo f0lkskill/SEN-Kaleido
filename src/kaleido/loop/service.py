@@ -7,6 +7,7 @@
 - 维度/指标得分均为 0~1，保留两位小数，便于与画像指数对齐。
 """
 
+import copy
 from collections import defaultdict
 from datetime import datetime
 
@@ -136,6 +137,7 @@ class LoopService:
             snapshot_id=self.snapshots.next_id(),
             student_id=student_id,
             framework_id=str(framework.get("framework_id") or ""),
+            framework_snapshot=copy.deepcopy(framework),
             period=period,
             status=status,
             dimension_scores=dimension_scores,

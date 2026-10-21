@@ -92,12 +92,12 @@ class FacetService:
         report = FacetReport(
             resource_id=resource_id,
             profile_id=document.get("profile_id"),
-            verdict=verdict,
+            verdict=verdict, # type: ignore
             score=score,
             rule_score=int(rules["score"]),
             blocking=bool(rules["blocking"]),
             rules=rules,
-            dimensions=self._dimensions(scores, weights),
+            dimensions=self._dimensions(scores, weights), # type: ignore
             summary=self._summary(llm, rules),
             strengths=(llm or {}).get("strengths") or [],
             issues=(llm or {}).get("issues") or [],

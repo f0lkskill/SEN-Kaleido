@@ -460,7 +460,8 @@ export function createView(root, hooks = {}) {
     }
 
     try {
-      const report = await api.evaluateResource(item.resource_id);
+      const pending = await api.evaluateResource(item.resource_id);
+      const report = await api.resolveTask(pending);
       toastSuccess(
         `质量校验完成：${label(FACET_VERDICT, report.verdict)}（${report.score} 分）`
       );

@@ -13,7 +13,7 @@ from kaleido.common.response import fail, ok
 from kaleido.forge.models import GenerateRequest
 from kaleido.forge.portrait import PortraitService
 from kaleido.forge.service import ForgeService
-from kaleido.tasks.recording import record_stream, record_task
+from kaleido.tasks.recording import can_queue, record_stream, record_task, submit_task
 from kaleido.tasks.service import TaskService
 
 _logger = get_logger("forge.api")
@@ -23,6 +23,12 @@ def _sse(events: Iterator[dict]) -> Iterator[str]:
     """把事件字典序列化为 SSE 文本块（``data: {...}`` + 空行）。"""
     for event in events:
         yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+
+def _sync_requested() -> bool:
+    """请求是否显式要求同步执行（``?sync=1``）。"""
+    query = cast("dict[str, str]", request.query)
+    return str(query.get("sync", "")).lower() in {"1", "true", "yes"}
 
 
 def create_app(
@@ -55,11 +61,14 @@ def create_app(
 
     @app.post("/api/v1/forge/generate")
     def generate():
-        """生成资源。"""
+        """生成资源：默认提交后台任务，``?sync=1`` 时同步执行。"""
+        queued = can_queue(task_service, "forge.generate") and not _sync_requested()
 
         def action():
             payload = cast("dict[str, Any]", request.json) or {}
             req = GenerateRequest(**payload)
+            if queued:
+                return submit_task(task_service, "forge.generate", req.model_dump())
             return record_task(
                 task_service,
                 "forge.generate",
@@ -67,7 +76,7 @@ def create_app(
                 lambda: svc.generate(req),
             )
 
-        return run(action, status=201)
+        return run(action, status=202 if queued else 201)
 
     @app.post("/api/v1/forge/generate/stream")
     def generate_stream():
@@ -133,16 +142,21 @@ def create_app(
 
     @app.post("/api/v1/forge/students/<profile_id>/portrait")
     def generate_portrait(profile_id):
-        """分析学生全部证据并生成学情画像。"""
-        return run(
-            lambda: record_task(
+        """分析学生全部证据并生成学情画像：默认入队，``?sync=1`` 同步执行。"""
+        queued = can_queue(task_service, "forge.portrait") and not _sync_requested()
+        payload = {"profile_id": profile_id}
+
+        def action():
+            if queued:
+                return submit_task(task_service, "forge.portrait", payload)
+            return record_task(
                 task_service,
                 "forge.portrait",
-                {"profile_id": profile_id},
+                payload,
                 lambda: portrait.generate(profile_id),
-            ),
-            status=201,
-        )
+            )
+
+        return run(action, status=202 if queued else 201)
 
     return app
 

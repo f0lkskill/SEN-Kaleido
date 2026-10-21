@@ -21,6 +21,7 @@ from kaleido.evidence.api import create_app as create_evidence_app
 from kaleido.evidence.repository import EvidenceRepository
 from kaleido.evidence.service import EvidenceService
 from kaleido.facet.api import create_app as create_facet_app
+from kaleido.facet.models import FacetEvaluationRequest
 from kaleido.facet.service import FacetService
 from kaleido.forge.models import GenerateRequest
 from kaleido.loop.api import create_app as create_loop_app
@@ -31,6 +32,7 @@ from kaleido.profile.repository import StudentRepository
 from kaleido.profile.service import ProfileService
 from kaleido.tasks.api import create_app as create_tasks_app
 from kaleido.tasks.models import CreateTaskRequest
+from kaleido.tasks.recording import task_summary
 from kaleido.tasks.service import TaskService
 from kaleido.vault import Vault
 from kaleido.vault.api import create_app as create_vault_app
@@ -99,13 +101,15 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
         app.merge(create_forge_app(forge_service, portrait_service, task_service))
         task_service.register(
             "forge.generate",
-            lambda payload: forge_service.generate(GenerateRequest(**payload)),
+            lambda payload: task_summary(
+                forge_service.generate(GenerateRequest(**payload))
+            ),
         )
         if portrait_service is not None:
             task_service.register(
                 "forge.portrait",
-                lambda payload: portrait_service.generate(
-                    str(payload.get("profile_id") or "")
+                lambda payload: task_summary(
+                    portrait_service.generate(str(payload.get("profile_id") or ""))
                 ),
             )
 
@@ -118,7 +122,15 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
     app.merge(create_facet_app(facet_service, task_service=task_service))
     task_service.register(
         "facet.evaluate",
-        lambda payload: facet_service.evaluate(str(payload.get("resource_id") or "")),
+        lambda payload: task_summary(
+            facet_service.evaluate(
+                str(payload.get("resource_id") or ""),
+                FacetEvaluationRequest(
+                    use_llm=bool(payload.get("use_llm", True)),
+                    force=bool(payload.get("force", False)),
+                ),
+            )
+        ),
     )
 
     # 反馈迭代：证据审核通过后自动重算，也支持手动触发
@@ -130,13 +142,18 @@ def create_app(vault: Vault | None = None, profile_service: ProfileService | Non
     app.merge(create_loop_app(loop_service, task_service=task_service))
     task_service.register(
         "loop.evaluate",
-        lambda payload: loop_service.evaluate_student(
-            str(payload.get("student_id") or ""),
-            LoopEvaluateRequest(period=payload.get("period")),
+        lambda payload: task_summary(
+            loop_service.evaluate_student(
+                str(payload.get("student_id") or ""),
+                LoopEvaluateRequest(period=payload.get("period")),
+            )
         ),
     )
 
     app.merge(create_tasks_app(task_service))
+
+    # 所有处理器注册完成后再恢复上次进程遗留的任务，避免误判为“未注册类型”
+    task_service.recover()
 
     # ---- 可选访问日志（默认关闭，设 SEN_KALEIDO_ACCESS_LOG=1 开启） ----
     if os.environ.get("SEN_KALEIDO_ACCESS_LOG") == "1":

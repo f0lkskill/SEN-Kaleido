@@ -5,6 +5,9 @@
 # 后台工作线程数
 worker_count: 2
 
+# 进程重启后，中断任务最多自动恢复的次数（超过则标记失败）
+max_recoveries: 3
+
 schedule:
   # 闲时任务未到执行窗口时的轮询间隔（秒）
   defer_poll_seconds: 5

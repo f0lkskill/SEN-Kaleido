@@ -55,6 +55,7 @@ class TaskService:
         self._worker_count = int(self.config.get("worker_count", 2))
         self._schedule_cfg = self.config.get("schedule", {})
         self._defer_poll = float(self._schedule_cfg.get("defer_poll_seconds", 5))
+        self._max_recoveries = int(self.config.get("max_recoveries", 3))
         if autostart:
             self.start()
 
@@ -100,6 +101,65 @@ class TaskService:
         """返回已注册的任务类型。"""
         return sorted(self._handlers.keys())
 
+    # ---- 进程重启恢复 ----
+    def recover(self) -> dict:
+        """恢复上次进程遗留的未完成任务。
+
+        需在各模块注册完处理器后调用。``pending`` 任务重新入队；
+        ``running`` 任务视为上次进程中断：回退该次尝试并重新入队，
+        超过 ``max_recoveries`` 才标记失败。未注册类型的任务保持原状，
+        以便注册后再恢复。
+        """
+        stats = {"requeued": 0, "failed": 0, "skipped": 0}
+        for document in self.tasks.iter_all():
+            status = document.get("status")
+            if status not in (PENDING, RUNNING):
+                continue
+            task_id = str(document.get("task_id") or "")
+            task_type = str(document.get("task_type") or "")
+            if not task_id or task_type not in self._handlers:
+                stats["skipped"] += 1
+                logger.warning(
+                    "跳过不可恢复任务: id=%s type=%s status=%s",
+                    task_id,
+                    task_type,
+                    status,
+                )
+                continue
+            if status == RUNNING:
+                recoveries = int(document.get("recoveries", 0)) + 1
+                document["recoveries"] = recoveries
+                if recoveries > self._max_recoveries:
+                    document["status"] = FAILED
+                    document["error"] = "任务执行中断，且超过自动恢复上限"
+                    document["finished_at"] = self._now()
+                    document["updated_at"] = self._now()
+                    self.tasks.put(task_id, document)
+                    stats["failed"] += 1
+                    logger.error(
+                        "任务中断且超过恢复上限: id=%s type=%s recoveries=%d",
+                        task_id,
+                        task_type,
+                        recoveries,
+                    )
+                    continue
+                document["status"] = PENDING
+                document["attempts"] = max(0, int(document.get("attempts", 0)) - 1)
+                document["error"] = "任务执行中断，已重新排队"
+                document["finished_at"] = None
+                logger.warning(
+                    "恢复中断任务: id=%s type=%s recoveries=%d",
+                    task_id,
+                    task_type,
+                    recoveries,
+                )
+            document["updated_at"] = self._now()
+            self.tasks.put(task_id, document)
+            self._queue.push(task_id, int(document.get("priority", 0)))
+            stats["requeued"] += 1
+        logger.info("任务恢复完成: %s", stats)
+        return stats
+
     # ---- 用例 ----
     def submit(self, request: CreateTaskRequest) -> dict:
         """提交任务：落库 pending 并入队。"""
@@ -117,6 +177,7 @@ class TaskService:
             "priority": request.priority,
             "attempts": 0,
             "max_attempts": max(1, request.max_attempts),
+            "recoveries": 0,
             "defer_off_peak": request.defer_off_peak,
             "created_at": now,
             "updated_at": now,
@@ -170,6 +231,7 @@ class TaskService:
             "priority": 0,
             "attempts": 0,
             "max_attempts": 1,
+            "recoveries": 0,
             "defer_off_peak": False,
             "created_at": now,
             "updated_at": now,

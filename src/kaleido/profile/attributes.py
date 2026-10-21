@@ -11,6 +11,44 @@ from kaleido.profile.config_loader import load_config
 from kaleido.profile.models.student import StudentAttributes, StudentAttributesInput
 from kaleido.profile.taxonomy import Taxonomy
 
+# 允许类约束：任一障碍显式禁止即禁止，否则只要有一个障碍需要就保留
+_PERMISSIVE_FLAGS = frozenset({"add_emoji", "visual_aid"})
+
+
+def _merge_constraints(taxonomy: Taxonomy, disabilities: list[str]) -> dict:
+    """合并多障碍适配约束，避免后项覆盖前项导致安全约束失效。
+
+    - 布尔约束默认取并集（任一障碍要求即生效）；允许类约束取交集；
+    - 数值约束取最严格值（最小）；
+    - 列表取并集；字符串等冲突保留主障碍（首项）的值。
+    """
+    merged: dict = {}
+    for key in disabilities:
+        for name, value in taxonomy.get(key).constraints.items():
+            if name not in merged:
+                merged[name] = value
+                continue
+            current = merged[name]
+            if isinstance(current, bool) and isinstance(value, bool):
+                if name in _PERMISSIVE_FLAGS:
+                    merged[name] = current and value
+                else:
+                    merged[name] = current or value
+            elif (
+                isinstance(current, (int, float))
+                and not isinstance(current, bool)
+                and isinstance(value, (int, float))
+                and not isinstance(value, bool)
+            ):
+                merged[name] = min(current, value)
+            elif isinstance(current, list) and isinstance(value, list):
+                merged[name] = list(dict.fromkeys([*current, *value]))
+    # 视觉参照限制优先于趣味性/视觉辅助约束
+    if merged.get("avoid_visual_ref"):
+        merged["add_emoji"] = False
+        merged["visual_aid"] = False
+    return merged
+
 
 class AttributeSchema:
     """属性维度的校验规则与解析器。"""
@@ -68,14 +106,8 @@ class AttributeSchema:
         sensory = data.sensory_preference or primary_type.defaults.get("sensory_preference")
         if not sensory:
             raise ConfigError(f"类型 {primary} 未定义默认感官偏好")
-        # 依次合并各障碍类型的适配约束
-        constraints: dict = {}
-        for key in data.disabilities:
-            constraints.update(taxonomy.get(key).constraints)
-        # 视觉参照与表情符号冲突时，以无障碍约束优先
-        if constraints.get("avoid_visual_ref"):
-            constraints["add_emoji"] = False
-            constraints["visual_aid"] = False
+        # 合并各障碍类型的适配约束（安全约束取并集，不受书写顺序影响）
+        constraints = _merge_constraints(taxonomy, list(data.disabilities))
         return StudentAttributes(
             disabilities=list(data.disabilities),
             severity=data.severity,

@@ -14,10 +14,16 @@ from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.loop.models import LoopEvaluateRequest
 from kaleido.loop.service import LoopService
-from kaleido.tasks.recording import record_task
+from kaleido.tasks.recording import can_queue, record_task, submit_task
 from kaleido.tasks.service import TaskService
 
 _logger = get_logger("loop.api")
+
+
+def _sync_requested() -> bool:
+    """请求是否显式要求同步执行（``?sync=1``）。"""
+    query = cast("dict[str, str]", request.query)
+    return str(query.get("sync", "")).lower() in {"1", "true", "yes"}
 
 
 def create_app(
@@ -47,19 +53,27 @@ def create_app(
 
     @app.post("/api/v1/loop/students/<student_id>/evaluate")
     def evaluate_student(student_id):
-        """手动触发学生评价快照计算。"""
+        """手动触发评价快照：默认入队，``?sync=1`` 时同步计算。"""
+        queued = can_queue(task_service, "loop.evaluate") and not _sync_requested()
 
         def action():
             payload = cast("dict[str, Any]", request.json) or {}
             req = LoopEvaluateRequest(**payload)
+            task_payload = {
+                "student_id": student_id,
+                "trigger": "manual",
+                **req.model_dump(),
+            }
+            if queued:
+                return submit_task(task_service, "loop.evaluate", task_payload)
             return record_task(
                 task_service,
                 "loop.evaluate",
-                {"student_id": student_id, "trigger": "manual", **req.model_dump()},
+                task_payload,
                 lambda: svc.evaluate_student(student_id, req),
             )
 
-        return run(action, status=201)
+        return run(action, status=202 if queued else 201)
 
     @app.get("/api/v1/loop/students/<student_id>/latest")
     def latest_snapshot(student_id):

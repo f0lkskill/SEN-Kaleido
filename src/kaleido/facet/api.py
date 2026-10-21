@@ -10,10 +10,16 @@ from kaleido.common.logging import get_logger
 from kaleido.common.response import fail, ok
 from kaleido.facet.models import FacetEvaluationRequest
 from kaleido.facet.service import FacetService
-from kaleido.tasks.recording import record_task
+from kaleido.tasks.recording import can_queue, record_task, submit_task
 from kaleido.tasks.service import TaskService
 
 _logger = get_logger("facet.api")
+
+
+def _sync_requested() -> bool:
+    """请求是否显式要求同步执行（``?sync=1``）。"""
+    query = cast("dict[str, str]", request.query)
+    return str(query.get("sync", "")).lower() in {"1", "true", "yes"}
 
 
 def create_app(
@@ -44,19 +50,23 @@ def create_app(
 
     @app.post("/api/v1/facet/resources/<resource_id>/evaluate")
     def evaluate(resource_id):
-        """校验资源并返回质量报告。"""
+        """校验资源：默认提交后台任务，``?sync=1`` 时同步返回报告。"""
+        queued = can_queue(task_service, "facet.evaluate") and not _sync_requested()
 
         def action():
             payload = cast("dict[str, Any]", request.json) or {}
             req = FacetEvaluationRequest(**payload)
+            task_payload = {"resource_id": resource_id, **req.model_dump()}
+            if queued:
+                return submit_task(task_service, "facet.evaluate", task_payload)
             return record_task(
                 task_service,
                 "facet.evaluate",
-                {"resource_id": resource_id, **req.model_dump()},
+                task_payload,
                 lambda: svc.evaluate(resource_id, req),
             )
 
-        return run(action, status=201)
+        return run(action, status=202 if queued else 201)
 
     @app.get("/api/v1/facet/resources/<resource_id>")
     def get_report(resource_id):

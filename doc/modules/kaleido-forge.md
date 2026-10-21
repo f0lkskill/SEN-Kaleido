@@ -103,7 +103,7 @@ resource_types:
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/v1/forge/generate` | 生成资源（`profile_id` 或 `attributes` 二选一） |
+| POST | `/api/v1/forge/generate` | 生成资源（`profile_id` 或 `attributes` 二选一）；默认入队返回 202，`?sync=1` 同步返回 |
 | GET | `/api/v1/forge/resources` | 分页/筛选资源（`resource_type / disability / status`） |
 | GET | `/api/v1/forge/resources/<id>` | 资源详情 |
 | GET | `/api/v1/forge/resource-types` | 可用资源类型 |
