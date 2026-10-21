@@ -284,13 +284,13 @@ export function createView(root, hooks = {}) {
         on: { click: (event) => evaluateResource(item, event.currentTarget) },
       }),
       el("button", {
-        class: "btn btn-sm",
+        class: "btn btn-success btn-sm",
         type: "button",
         text: "通过",
         on: { click: () => setStatus(item.resource_id, "approved") },
       }),
       el("button", {
-        class: "btn btn-sm",
+        class: "btn btn-danger btn-sm",
         type: "button",
         text: "退回",
         on: { click: () => setStatus(item.resource_id, "rejected") },
@@ -304,18 +304,37 @@ export function createView(root, hooks = {}) {
       el("button", { class: "btn btn-sm", type: "button", text: "收起", on: { click: closeDetail } })
     );
 
+    const sourceStudent = renderSourceStudent(item, student);
     const head = el("div", { class: "detail-head" }, [
       el("div", { class: "detail-id" }, [
         el("span", { class: "avatar avatar-lg", text: (typeName || "?").slice(0, 1) }),
         el("h3", { class: "detail-title", text: typeName }),
       ]),
-      renderSourceStudent(item, student),
+      sourceStudent
+        ? el("div", { class: "detail-source-link", "aria-hidden": "true" })
+        : null,
+      sourceStudent,
     ]);
-    const actionBar = el("div", { class: "detail-actions detail-actions-row" }, actions);
+    const actionBar = el("div", { class: "detail-actions quick-actions-content" }, actions);
+    const actionsToggle = el("button", {
+      class: "panel-title quick-actions-toggle",
+      type: "button",
+      "aria-expanded": "true",
+      text: "快捷操作",
+    });
+    const actionsPanel = el("section", { class: "panel quick-actions-panel" }, [
+      el("div", { class: "quick-actions-head" }, [actionsToggle, actionBar]),
+    ]);
+    actionsToggle.addEventListener("click", () => {
+      const collapsed = actionBar.hidden;
+      actionBar.hidden = !collapsed;
+      actionsToggle.setAttribute("aria-expanded", String(collapsed));
+      actionsPanel.classList.toggle("is-collapsed", !collapsed);
+    });
 
     const panels = [
       panel(null, head),
-      panel("快捷操作", actionBar),
+      actionsPanel,
       panel(
         "资源信息",
         el("div", { class: "badge-row" }, [

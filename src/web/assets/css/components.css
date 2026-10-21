@@ -107,6 +107,16 @@
   color: #fff;
 }
 
+.btn-success {
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: var(--color-success);
+  color: #fff;
+}
+
 .btn-sm {
   min-height: 34px;
   padding: var(--space-1) var(--space-3);
@@ -1018,9 +1028,77 @@ details.disclosure > summary {
   gap: var(--space-2);
 }
 
-.detail-actions-row {
-  flex-wrap: wrap;
-  justify-content: center;
+.quick-actions-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.quick-actions-toggle {
+  flex: none;
+  margin: 0;
+  border: 0;
+  border-left: 5px solid var(--color-primary);
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.quick-actions-toggle:hover {
+  background: var(--color-primary-soft);
+}
+
+.quick-actions-content {
+  flex-wrap: nowrap;
+  align-items: center;
+  overflow-x: auto;
+}
+
+.detail-source-link {
+  position: relative;
+  flex: 1;
+  min-width: 40px;
+  height: 2px;
+  margin: 0 var(--space-2);
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-primary-soft) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+.detail-source-link::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 7px solid var(--color-primary);
+  transform: translate(-1px, -50%);
+}
+
+.detail-source-link::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 4px var(--color-primary-soft);
+  transform: translate(-50%, -50%);
+  animation: source-flow 2.2s ease-in-out infinite;
+}
+
+@keyframes source-flow {
+  0% { left: 100%; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { left: 0; opacity: 0; }
 }
 
 .detail-source-student {
@@ -2284,6 +2362,10 @@ textarea:focus {
 }
 
 @media (max-width: 720px) {
+  .detail-source-link {
+    display: none;
+  }
+
   .task-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
