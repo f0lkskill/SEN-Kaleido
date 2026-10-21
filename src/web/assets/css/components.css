@@ -351,8 +351,8 @@ select:hover {
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
   gap: 8px;
   max-width: 520px;
-  /* 与上方标签左对齐，避免多选组整体居中造成错位 */
-  align-self: start;
+  /* 在字段的纵向布局中水平居中整组按钮 */
+  align-self: center;
 }
 
 @media (max-width: 700px) {
