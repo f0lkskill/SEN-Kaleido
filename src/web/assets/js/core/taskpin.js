@@ -9,6 +9,7 @@ import { el, clear } from "./dom.js";
 import { TASK_STATUS, TASK_TYPE, label } from "./format.js";
 
 const ACTIVE_STATUS = ["pending", "running"];
+const POLL_INTERVAL = 800;
 
 let current = null;
 let host = null;
@@ -32,6 +33,7 @@ function build() {
   if (!current) return;
 
   const { task, onOpen } = current;
+  const title = el("span", { class: "task-pin-title", text: task.task_id || "" });
   const typeBadge = el("span", { class: "badge badge-muted" });
   const statusBadge = el("span", { class: "status" });
   const summary = el("p", { class: "task-pin-summary" });
@@ -45,7 +47,15 @@ function build() {
     { class: "task-pin-stream-block", hidden: true },
     [reasoningLabel, reasoning]
   );
-  const meta = el("p", { class: "meta" });
+  const minimizeButton = el("button", {
+    class: "task-pin-minimize",
+    type: "button",
+    title: "最小化",
+    "aria-label": "最小化钉住面板",
+    "aria-expanded": "true",
+    text: "−",
+    on: { click: () => toggleMinimize() },
+  });
 
   box.append(
     el(
@@ -57,21 +67,23 @@ function build() {
       },
       [
         el("div", { class: "task-pin-head" }, [
-          el("span", { class: "task-pin-title", text: "钉住输出" }),
-          el("button", {
-            class: "task-pin-close",
-            type: "button",
-            title: "取消钉住",
-            "aria-label": "取消钉住",
-            text: "×",
-            on: { click: () => unpin() },
-          }),
+          title,
+          el("div", { class: "task-pin-head-actions" }, [
+            minimizeButton,
+            el("button", {
+              class: "task-pin-close",
+              type: "button",
+              title: "取消钉住",
+              "aria-label": "取消钉住",
+              text: "×",
+              on: { click: () => unpin() },
+            }),
+          ]),
         ]),
         el("div", { class: "task-pin-body" }, [
           el("div", { class: "badge-row" }, [typeBadge, statusBadge]),
           summary,
           reasoningBlock,
-          meta,
         ]),
         el("div", { class: "task-pin-actions" }, [
           el("button", {
@@ -87,15 +99,29 @@ function build() {
 
   nodes = {
     root: box.firstElementChild,
+    title,
     typeBadge,
     statusBadge,
     summary,
     reasoningLabel,
     reasoningBlock,
     reasoning,
-    meta,
+    minimizeButton,
   };
   updateContent();
+}
+
+/** 折叠/展开面板主体。 */
+function toggleMinimize() {
+  if (!nodes || !nodes.root) return;
+  const minimized = nodes.root.classList.toggle("is-minimized");
+  nodes.minimizeButton.textContent = minimized ? "+" : "−";
+  nodes.minimizeButton.title = minimized ? "展开" : "最小化";
+  nodes.minimizeButton.setAttribute(
+    "aria-label",
+    minimized ? "展开钉住面板" : "最小化钉住面板"
+  );
+  nodes.minimizeButton.setAttribute("aria-expanded", String(!minimized));
 }
 
 /** 只更新文本内容，不重建节点。 */
@@ -104,6 +130,8 @@ function updateContent() {
   const { task, summary } = current;
   const statusClass = `status-${task.status || "pending"}`;
 
+  nodes.root.dataset.status = task.status || "pending";
+  nodes.title.textContent = task.task_id || "";
   nodes.typeBadge.textContent = label(TASK_TYPE, task.task_type);
   nodes.statusBadge.className = `status ${statusClass}`;
   nodes.statusBadge.textContent = label(TASK_STATUS, task.status);
@@ -115,8 +143,6 @@ function updateContent() {
     task.status === "running" ? "思考中…" : "思考过程";
   nodes.reasoning.textContent = reasoning.slice(-800);
   if (reasoning) nodes.reasoning.scrollTop = nodes.reasoning.scrollHeight;
-
-  nodes.meta.textContent = task.task_id || "";
 }
 
 /** 钉住期间独立轮询，离开任务队列页后仍能刷新思考流。 */
@@ -124,7 +150,7 @@ function schedulePoll() {
   clearTimeout(pollTimer);
   pollTimer = null;
   if (!current || !ACTIVE_STATUS.includes(current.task.status)) return;
-  pollTimer = setTimeout(pollPinned, 2000);
+  pollTimer = setTimeout(pollPinned, POLL_INTERVAL);
 }
 
 async function pollPinned() {

@@ -2123,10 +2123,23 @@ textarea:focus {
 }
 
 .task-pin-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.task-pin-close {
+.task-pin-head-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-pin-close,
+.task-pin-minimize {
   width: 28px;
   height: 28px;
   border: 0;
@@ -2138,8 +2151,34 @@ textarea:focus {
   cursor: pointer;
 }
 
-.task-pin-close:hover {
+.task-pin-close:hover,
+.task-pin-minimize:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.task-pin[data-status="succeeded"] {
+  border-color: var(--color-success);
+}
+
+.task-pin[data-status="succeeded"] .task-pin-head {
+  background: var(--color-success);
+}
+
+.task-pin[data-status="failed"] {
+  border-color: var(--color-danger);
+}
+
+.task-pin[data-status="failed"] .task-pin-head {
+  background: var(--color-danger);
+}
+
+.task-pin[data-status="cancelled"] .task-pin-head {
+  background: var(--color-text-muted);
+}
+
+.task-pin.is-minimized .task-pin-body,
+.task-pin.is-minimized .task-pin-actions {
+  display: none;
 }
 
 .task-pin-body {
