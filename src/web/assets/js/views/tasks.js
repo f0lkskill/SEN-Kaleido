@@ -292,11 +292,17 @@ export function createView(root) {
           let node = taskNodes.get(item.task_id);
           if (!node || taskSignatures.get(item.task_id) !== signature) {
             const fresh = taskItem(item, { animate: !node });
-            if (node) node.replaceWith(fresh);
+            if (node) {
+              // 节点即将被替换：若它正是插入参照点，先让参照点后移，
+              // 避免 insertBefore 使用已被替换出 DOM 的旧节点。
+              if (reference === node) reference = node.nextElementSibling;
+              node.replaceWith(fresh);
+            }
             node = fresh;
           }
           nextNodes.set(item.task_id, node);
           nextSignatures.set(item.task_id, signature);
+          if (reference && reference.parentNode !== listBox) reference = null;
           if (node === reference) {
             reference = reference.nextElementSibling;
           } else {
@@ -335,7 +341,6 @@ export function createView(root) {
       item.status || "",
       item.attempts ?? "",
       String(item.reasoning || "").length,
-      String(item.stream_content || "").length,
       item.error || "",
     ].join("|");
   }
@@ -620,14 +625,6 @@ export function createView(root) {
         ])
       );
     }
-    if (String(task.stream_content || "").trim()) {
-      body.append(
-        panel("实时输出", [
-          el("pre", { class: "output", text: task.stream_content }),
-        ])
-      );
-    }
-
     const result = task.result || {};
     if (String(result.content || "").trim()) {
       const output = el("div", { class: "md task-output" });

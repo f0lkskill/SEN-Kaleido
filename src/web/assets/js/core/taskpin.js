@@ -31,22 +31,6 @@ function build() {
   const typeBadge = el("span", { class: "badge badge-muted" });
   const statusBadge = el("span", { class: "status" });
   const summary = el("p", { class: "task-pin-summary" });
-  const reasoningLabel = el("span", {
-    class: "task-pin-stream-label",
-    text: "思考过程",
-  });
-  const reasoning = el("pre", { class: "task-pin-stream" });
-  const reasoningBlock = el(
-    "div",
-    { class: "task-pin-stream-block", hidden: true },
-    [reasoningLabel, reasoning]
-  );
-  const stream = el("pre", { class: "task-pin-stream" });
-  const streamBlock = el(
-    "div",
-    { class: "task-pin-stream-block", hidden: true },
-    [el("span", { class: "task-pin-stream-label", text: "实时输出" }), stream]
-  );
   const meta = el("p", { class: "meta" });
 
   box.append(
@@ -72,8 +56,6 @@ function build() {
         el("div", { class: "task-pin-body" }, [
           el("div", { class: "badge-row" }, [typeBadge, statusBadge]),
           summary,
-          reasoningBlock,
-          streamBlock,
           meta,
         ]),
         el("div", { class: "task-pin-actions" }, [
@@ -93,11 +75,6 @@ function build() {
     typeBadge,
     statusBadge,
     summary,
-    reasoningLabel,
-    reasoningBlock,
-    reasoning,
-    streamBlock,
-    stream,
     meta,
   };
   updateContent();
@@ -113,19 +90,6 @@ function updateContent() {
   nodes.statusBadge.className = `status ${statusClass}`;
   nodes.statusBadge.textContent = label(TASK_STATUS, task.status);
   nodes.summary.textContent = summary || "暂无输出摘要。";
-
-  const reasoning = String(task.reasoning || "").trim();
-  nodes.reasoningBlock.hidden = !reasoning;
-  nodes.reasoningLabel.textContent =
-    task.status === "running" ? "思考中…" : "思考过程";
-  nodes.reasoning.textContent = reasoning.slice(-800);
-  if (reasoning) nodes.reasoning.scrollTop = nodes.reasoning.scrollHeight;
-
-  const stream = String(task.stream_content || "").trim();
-  nodes.streamBlock.hidden = !stream;
-  nodes.stream.textContent = stream.slice(-800);
-  if (stream) nodes.stream.scrollTop = nodes.stream.scrollHeight;
-
   nodes.meta.textContent = task.task_id || "";
 }
 

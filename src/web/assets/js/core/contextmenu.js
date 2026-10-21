@@ -34,7 +34,8 @@ function bindGlobal() {
   document.addEventListener("mousedown", onPointerDown, true);
   document.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("resize", closeMenu);
-  window.addEventListener("scroll", closeMenu, true);
+  // 只监听页面滚动，避免任务列表内思考框的自动滚动误关菜单。
+  window.addEventListener("scroll", closeMenu);
 }
 
 /**
